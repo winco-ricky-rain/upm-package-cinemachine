@@ -1,7 +1,16 @@
 {
     "name": "Cinemachine",
-    "references": [],
+    "references": [
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Jobs",
+        "Unity.Mathematics",
+        "Unity.Entities.Hybrid",
+        "Unity.Transforms",
+        "Unity.Burst"
+    ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
-    "excludePlatforms": []
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
 }
