@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace Cinemachine.ECS
 {
+    [UpdateAfter(typeof(CM_TargetSystem))]
     public class CM_VcamTransposerSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -29,30 +30,29 @@ namespace Cinemachine.ECS
             public ComponentDataArray<CM_VcamTransposerState> transposerStates;
             [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
             [ReadOnly] public ComponentDataArray<CM_VcamFollowTarget> targets;
-            [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+            [ReadOnly] public NativeHashMap<Entity, CM_TargetLookup.TargetInfo> targetLookup;
 
             public void Execute(int index)
             {
-                CM_TargetSystem.TargetInfo targetInfo;
+                CM_TargetLookup.TargetInfo targetInfo;
                 if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
                 {
                     // Track it!
-                    var bindingMode = transposers[index].bindingMode;
                     var targetPos = targetInfo.position;
                     var targetRot = GetRotationForBindingMode(
-                        targetInfo.rotation, bindingMode, 
-                        targetPos - positions[index].raw);
-                    var previousPos = math.select(transposerStates[index].previousTargetPosition, targetPos, deltaTime >= 0);
-                    var previousRot = math.select(transposerStates[index].previousTargetRotation.value, targetRot.value, deltaTime >= 0);
-
-                    // No X damping if simplefollow
-                    var damping = transposers[index].damping;
-                    damping.x = math.select(
-                        damping.y, 0, bindingMode == CM_VcamTransposer.BindingMode.SimpleFollowWithWorldUp);
-
+                            targetInfo.rotation, transposers[index].bindingMode, 
+                            targetPos - positions[index].raw);
                     ApplyDamping(
-                        deltaTime, damping, transposers[index].angularDamping, 
-                        previousPos, previousRot, ref targetPos, ref targetRot);
+                            deltaTime, transposers[index].damping, transposers[index].angularDamping, 
+                            math.select(
+                                transposerStates[index].previousTargetPosition, 
+                                targetPos, 
+                                deltaTime < 0), 
+                            math.select(
+                                transposerStates[index].previousTargetRotation.value, 
+                                targetRot.value, 
+                                deltaTime < 0), 
+                            ref targetPos, ref targetRot);
                     transposerStates[index] = new CM_VcamTransposerState 
                     { 
                         previousTargetPosition = targetPos, 
@@ -61,7 +61,7 @@ namespace Cinemachine.ECS
                     positions[index] = new CM_VcamPosition
                     {
                         raw = targetPos + math.mul(targetRot, transposers[index].followOffset),
-                        dampingBypass = positions[index].dampingBypass,
+                        dampingBypass = float3.zero,
                         up = math.mul(targetRot, math.up())
                     };
                 }
@@ -70,15 +70,22 @@ namespace Cinemachine.ECS
         
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            var targetSystem = World.GetExistingManager<CM_TargetSystem>();
+            var targetLookup = targetSystem.GetTargetLookup(ref inputDeps);
+            if (!targetLookup.IsCreated)
+                return default(JobHandle);
+
             var job = new TrackTargetJob()
             {
                 deltaTime = Time.deltaTime, // GML todo: use correct value
                 positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
                 transposers = m_mainGroup.GetComponentDataArray<CM_VcamTransposer>(),
+                transposerStates = m_mainGroup.GetComponentDataArray<CM_VcamTransposerState>(),
                 targets = m_mainGroup.GetComponentDataArray<CM_VcamFollowTarget>(),
-                targetLookup = World.GetExistingManager<CM_TargetSystem>().TargetLookup
+                targetLookup =  targetLookup
             };
-            return job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps);
+            return targetSystem.RegisterTargetTableReadJobs(
+                job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
         }
 
         /// <summary>Applies damping to target position and rtotation</summary>
@@ -116,10 +123,10 @@ namespace Cinemachine.ECS
                     return targetRotation;
                 case CM_VcamTransposer.BindingMode.SimpleFollowWithWorldUp:
                 {
-                    float3 dir = directionCameraToTarget.ProjectOntoPlane(math.up());
-                    float len = math.length(dir);
+                    directionCameraToTarget.y = 0;
+                    float len = math.length(directionCameraToTarget);
                     return new quaternion(math.select(
-                        quaternion.LookRotation(dir / len, math.up()).value, 
+                        quaternion.LookRotation(directionCameraToTarget / len, math.up()).value, 
                         quaternion.identity.value, len < MathHelpers.Epsilon));
                 }
                 default:

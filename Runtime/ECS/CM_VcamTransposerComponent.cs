@@ -50,12 +50,4 @@ namespace Cinemachine.ECS
 
     [UnityEngine.DisallowMultipleComponent]
     public class CM_VcamTransposerComponent : ComponentDataWrapper<CM_VcamTransposer> { } 
-
-    [Serializable]
-    public struct CM_VcamTransposerState : IComponentData
-    {
-        /// State information used for damping
-        public float3 previousTargetPosition;
-        public quaternion previousTargetRotation;
-    }
 }

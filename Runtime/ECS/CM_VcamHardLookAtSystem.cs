@@ -6,6 +6,7 @@ using Unity.Burst;
 
 namespace Cinemachine.ECS
 {
+    [UpdateAfter(typeof(CM_TargetSystem))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -15,6 +16,7 @@ namespace Cinemachine.ECS
             m_mainGroup = GetComponentGroup(
                 typeof(CM_VcamRotation), 
                 ComponentType.ReadOnly(typeof(CM_VcamPosition)), 
+                ComponentType.ReadOnly(typeof(CM_VcamHardLookAt)),
                 ComponentType.ReadOnly(typeof(CM_VcamLookAtTarget)));
         }
 
@@ -24,11 +26,11 @@ namespace Cinemachine.ECS
             public ComponentDataArray<CM_VcamRotation> rotations;
             [ReadOnly] public ComponentDataArray<CM_VcamPosition> positions;
             [ReadOnly] public ComponentDataArray<CM_VcamLookAtTarget> targets;
-            [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+            [ReadOnly] public NativeHashMap<Entity, CM_TargetLookup.TargetInfo> targetLookup;
 
             public void Execute(int index)
             {
-                CM_TargetSystem.TargetInfo targetInfo;
+                CM_TargetLookup.TargetInfo targetInfo;
                 if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
                 {
                     var q = rotations[index].raw;
@@ -46,14 +48,20 @@ namespace Cinemachine.ECS
         
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            var targetSystem = World.GetExistingManager<CM_TargetSystem>();
+            var targetLookup = targetSystem.GetTargetLookup(ref inputDeps);
+            if (!targetLookup.IsCreated)
+                return default(JobHandle);
+
             var job = new LookAtTargetJob()
             {
                 rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotation>(),
                 positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
                 targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
-                targetLookup = World.GetExistingManager<CM_TargetSystem>().TargetLookup
+                targetLookup = targetLookup
             };
-            return job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps);
+            return targetSystem.RegisterTargetTableReadJobs(
+                job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
         }
     }
 }
