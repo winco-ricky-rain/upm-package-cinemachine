@@ -14,10 +14,10 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                typeof(CM_VcamRotation), 
-                ComponentType.ReadOnly(typeof(CM_VcamPosition)), 
-                ComponentType.ReadOnly(typeof(CM_VcamHardLookAt)),
-                ComponentType.ReadOnly(typeof(CM_VcamLookAtTarget)));
+                ComponentType.Create<CM_VcamRotation>(), 
+                ComponentType.ReadOnly<CM_VcamPosition>(), 
+                ComponentType.ReadOnly<CM_VcamHardLookAt>(),
+                ComponentType.ReadOnly<CM_VcamLookAtTarget>());
         }
 
         [BurstCompile]

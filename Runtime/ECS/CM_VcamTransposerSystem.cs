@@ -16,10 +16,10 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                typeof(CM_VcamPosition), 
-                typeof(CM_VcamTransposerState), 
-                ComponentType.ReadOnly(typeof(CM_VcamTransposer)),
-                ComponentType.ReadOnly(typeof(CM_VcamFollowTarget)));
+                ComponentType.Create<CM_VcamPosition>(), 
+                ComponentType.Create<CM_VcamTransposerState>(), 
+                ComponentType.ReadOnly<CM_VcamTransposer>(),
+                ComponentType.ReadOnly<CM_VcamFollowTarget>());
        }
 
         [BurstCompile]
@@ -42,6 +42,7 @@ namespace Cinemachine.ECS
                     var targetRot = GetRotationForBindingMode(
                             targetInfo.rotation, transposers[index].bindingMode, 
                             targetPos - positions[index].raw);
+
                     ApplyDamping(
                             deltaTime, transposers[index].damping, transposers[index].angularDamping, 
                             math.select(
@@ -53,11 +54,13 @@ namespace Cinemachine.ECS
                                 targetRot.value, 
                                 deltaTime < 0), 
                             ref targetPos, ref targetRot);
+
                     transposerStates[index] = new CM_VcamTransposerState 
                     { 
                         previousTargetPosition = targetPos, 
                         previousTargetRotation = targetRot
                     };
+
                     positions[index] = new CM_VcamPosition
                     {
                         raw = targetPos + math.mul(targetRot, transposers[index].followOffset),
@@ -125,9 +128,9 @@ namespace Cinemachine.ECS
                 {
                     directionCameraToTarget.y = 0;
                     float len = math.length(directionCameraToTarget);
-                    return new quaternion(math.select(
+                    return math.select(
                         quaternion.LookRotation(directionCameraToTarget / len, math.up()).value, 
-                        quaternion.identity.value, len < MathHelpers.Epsilon));
+                        targetRotation.value, len < MathHelpers.Epsilon);
                 }
                 default:
                     return quaternion.identity;

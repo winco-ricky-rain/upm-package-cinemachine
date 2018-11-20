@@ -125,7 +125,7 @@ namespace Cinemachine.ECS
 
             const float kLogNegligibleResidual = -4.605170186f; // == math.Log(0.01f);
             float decayScale = math.select(
-                1f, 1f - math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
+                0, 1f - math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
 
             float vel = initial * step / deltaTime;
             float r = 0;
@@ -167,7 +167,7 @@ namespace Cinemachine.ECS
 
             const float kLogNegligibleResidual = -4.605170186f; // == math.Log(0.01f);
             float3 decayScale = math.select(
-                1f, 1f - math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
+                0, 1f - math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
 
             float3 vel = initial * step / deltaTime;
             float3 r = 0;

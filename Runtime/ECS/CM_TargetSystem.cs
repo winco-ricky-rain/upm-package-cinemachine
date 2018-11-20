@@ -18,6 +18,7 @@ namespace Cinemachine.ECS
         public NativeHashMap<Entity, TargetInfo> targetLookup;
     }
     
+    [UpdateAfter(typeof(TransformSystem))]
     public class CM_TargetSystem : JobComponentSystem
     {
         Entity m_systemSingleton;
@@ -64,7 +65,7 @@ namespace Cinemachine.ECS
                 hashMap.TryAdd(entities[index], new CM_TargetLookup.TargetInfo() 
                 { 
                     position = math.transform(positions[index].Value, float3.zero),
-                    rotation = math.mul(positions[index].Value, quaternion.identity.value),
+                    rotation = new quaternion(positions[index].Value),
                     radius = targets[index].radius
                 });
             }
