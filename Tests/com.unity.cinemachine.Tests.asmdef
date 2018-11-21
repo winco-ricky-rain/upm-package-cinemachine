@@ -1,0 +1,13 @@
+{
+    "name": "com.unity.cinemachine.Tests",
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+  "references": [
+    "com.unity.cinemachine"
+  ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "allowUnsafeCode": true
+}

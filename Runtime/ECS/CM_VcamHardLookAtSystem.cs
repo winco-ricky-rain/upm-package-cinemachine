@@ -6,7 +6,7 @@ using Unity.Burst;
 
 namespace Cinemachine.ECS
 {
-    [UpdateAfter(typeof(CM_TargetSystem))]
+    [UpdateAfter(typeof(CM_VcamTransposerSystem))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;

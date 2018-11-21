@@ -6,6 +6,7 @@ using Unity.Transforms;
 
 namespace Cinemachine.ECS
 {
+    [UpdateAfter(typeof(CM_VcamHardLookAtSystem))]
     public class CM_VcamPushToTransformSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;

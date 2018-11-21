@@ -18,7 +18,7 @@ namespace Cinemachine.ECS
         public NativeHashMap<Entity, TargetInfo> targetLookup;
     }
     
-    [UpdateAfter(typeof(TransformSystem))]
+    [UpdateAfter(typeof(EndFrameTransformSystem))]
     public class CM_TargetSystem : JobComponentSystem
     {
         Entity m_systemSingleton;
