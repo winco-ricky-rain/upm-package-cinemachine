@@ -6,7 +6,8 @@ using Unity.Burst;
 
 namespace Cinemachine.ECS
 {
-    [UpdateAfter(typeof(CM_VcamTransposerSystem))]
+    [UpdateAfter(typeof(CM_VcamAimSystem))]
+    [UpdateBefore(typeof(CM_VcamCorrectionSystem))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -26,11 +27,11 @@ namespace Cinemachine.ECS
             public ComponentDataArray<CM_VcamRotation> rotations;
             [ReadOnly] public ComponentDataArray<CM_VcamPosition> positions;
             [ReadOnly] public ComponentDataArray<CM_VcamLookAtTarget> targets;
-            [ReadOnly] public NativeHashMap<Entity, CM_TargetLookup.TargetInfo> targetLookup;
+            [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
             public void Execute(int index)
             {
-                CM_TargetLookup.TargetInfo targetInfo;
+                CM_TargetSystem.TargetInfo targetInfo;
                 if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
                 {
                     var q = rotations[index].raw;

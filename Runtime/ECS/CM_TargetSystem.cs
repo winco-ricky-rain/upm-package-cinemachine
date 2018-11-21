@@ -7,23 +7,19 @@ using Unity.Mathematics;
 
 namespace Cinemachine.ECS
 {
-    public struct CM_TargetLookup : ISystemStateSharedComponentData
+    [UpdateAfter(typeof(EndFrameTransformSystem))]
+    public class CM_TargetSystem : JobComponentSystem
     {
+        Entity m_systemSingleton;
+        ComponentGroup m_mainGroup;
+
         public struct TargetInfo
         {
             public float3 position;
             public float radius;
             public quaternion rotation;
         }
-        public NativeHashMap<Entity, TargetInfo> targetLookup;
-    }
-    
-    [UpdateAfter(typeof(EndFrameTransformSystem))]
-    public class CM_TargetSystem : JobComponentSystem
-    {
-        Entity m_systemSingleton;
-        ComponentGroup m_mainGroup;
-        ComponentGroup m_targetGroup;
+        NativeHashMap<Entity, TargetInfo> m_targetLookup;
 
         protected override void OnCreateManager()
         {
@@ -31,25 +27,13 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_Target>(), 
                 ComponentType.ReadOnly<LocalToWorld>());
 
-            m_targetGroup = GetComponentGroup(
-                ComponentType.Create<CM_TargetLookup>());
+            m_targetLookup = new NativeHashMap<Entity, TargetInfo>(64, Allocator.Persistent);
         }
 
-        protected override void OnStartRunning()
+        protected override void OnDestroyManager()
         {
-            base.OnStartRunning();
-            m_systemSingleton = EntityManager.CreateEntity(typeof(CM_TargetLookup));
-            EntityManager.SetSharedComponentData(m_systemSingleton, new CM_TargetLookup
-            { 
-                targetLookup = new NativeHashMap<Entity, CM_TargetLookup.TargetInfo>(64, Allocator.Persistent) 
-            });
-        }
-
-        protected override void OnStopRunning()
-        {
-            m_targetGroup.GetSharedComponentDataArray<CM_TargetLookup>()[0].targetLookup.Dispose();
-            EntityManager.DestroyEntity(m_systemSingleton);
-            base.OnStopRunning();
+            m_targetLookup.Dispose();
+            base.OnDestroyManager();
         }
 
         [BurstCompile]
@@ -58,11 +42,11 @@ namespace Cinemachine.ECS
             [ReadOnly] public EntityArray entities;
             [ReadOnly] public ComponentDataArray<CM_Target> targets;
             [ReadOnly] public ComponentDataArray<LocalToWorld> positions;
-            public NativeHashMap<Entity, CM_TargetLookup.TargetInfo>.Concurrent hashMap;
+            public NativeHashMap<Entity, TargetInfo>.Concurrent hashMap;
 
             public void Execute(int index)
             {
-                hashMap.TryAdd(entities[index], new CM_TargetLookup.TargetInfo() 
+                hashMap.TryAdd(entities[index], new TargetInfo() 
                 { 
                     position = math.transform(positions[index].Value, float3.zero),
                     rotation = new quaternion(positions[index].Value),
@@ -75,16 +59,16 @@ namespace Cinemachine.ECS
         {
             TargetTableReadJobHandle.Complete();
             TargetTableReadJobHandle = default(JobHandle);
-            var targetLookup = m_targetGroup.GetSharedComponentDataArray<CM_TargetLookup>()[0];
-            targetLookup.targetLookup.Clear();
-            targetLookup.targetLookup.Capacity = m_mainGroup.GetComponentDataArray<CM_Target>().Length;
+
+            m_targetLookup.Clear();
+            m_targetLookup.Capacity = m_mainGroup.GetComponentDataArray<CM_Target>().Length;
 
             var hashJob = new HashTargets()
             {
                 entities = m_mainGroup.GetEntityArray(),
                 targets = m_mainGroup.GetComponentDataArray<CM_Target>(),
                 positions = m_mainGroup.GetComponentDataArray<LocalToWorld>(),
-                hashMap = targetLookup.targetLookup.ToConcurrent()
+                hashMap = m_targetLookup.ToConcurrent()
             };
             TargetTableWriteHandle = hashJob.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps);
             return TargetTableWriteHandle;
@@ -97,14 +81,11 @@ namespace Cinemachine.ECS
         /// Get the singleton TargetLookup table.  This table converts an Entity to CM_TargetLookup.TargetInfo.
         /// </summary>
         /// <param name="inputDeps">Adds a dependency on the jobs that write the table</param>
-        /// <returns>The lokup table.  Don't use it if it's not created</returns>
-        public NativeHashMap<Entity, CM_TargetLookup.TargetInfo> GetTargetLookup(ref JobHandle inputDeps)
+        /// <returns>The lookup table.  Read-only</returns>
+        public NativeHashMap<Entity, TargetInfo> GetTargetLookup(ref JobHandle inputDeps)
         {
-            var targetLookupArray = m_targetGroup.GetSharedComponentDataArray<CM_TargetLookup>();
-            if (targetLookupArray.Length == 0)
-                return new NativeHashMap<Entity, CM_TargetLookup.TargetInfo>();
             inputDeps = JobHandle.CombineDependencies(inputDeps, TargetTableWriteHandle);
-            return targetLookupArray[0].targetLookup;
+            return m_targetLookup;
         }
 
         /// <summary>
@@ -118,5 +99,30 @@ namespace Cinemachine.ECS
             TargetTableReadJobHandle = JobHandle.CombineDependencies(TargetTableReadJobHandle, h);
             return h;
         }
+    }
+
+    // These systems define the CM Vcam pipeline
+    [UpdateAfter(typeof(CM_TargetSystem))]
+    public class CM_VcamBodySystem : ComponentSystem
+    {
+        protected override void OnUpdate() {} // Do nothing
+    }
+
+    [UpdateAfter(typeof(CM_VcamBodySystem))]
+    public class CM_VcamAimSystem : ComponentSystem
+    {
+        protected override void OnUpdate() {} // Do nothing
+    }
+
+    [UpdateAfter(typeof(CM_VcamAimSystem))]
+    public class CM_VcamCorrectionSystem : ComponentSystem
+    {
+        protected override void OnUpdate() {} // Do nothing
+    }
+
+    [UpdateAfter(typeof(CM_VcamCorrectionSystem))]
+    public class CM_VcamFinalizeSystem : ComponentSystem
+    {
+        protected override void OnUpdate() {} // Do nothing
     }
 }

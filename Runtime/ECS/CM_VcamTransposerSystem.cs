@@ -8,7 +8,8 @@ using UnityEngine;
 
 namespace Cinemachine.ECS
 {
-    [UpdateAfter(typeof(CM_TargetSystem))]
+    [UpdateAfter(typeof(CM_VcamBodySystem))]
+    [UpdateBefore(typeof(CM_VcamAimSystem))]
     public class CM_VcamTransposerSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -30,11 +31,11 @@ namespace Cinemachine.ECS
             public ComponentDataArray<CM_VcamTransposerState> transposerStates;
             [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
             [ReadOnly] public ComponentDataArray<CM_VcamFollowTarget> targets;
-            [ReadOnly] public NativeHashMap<Entity, CM_TargetLookup.TargetInfo> targetLookup;
+            [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
             public void Execute(int index)
             {
-                CM_TargetLookup.TargetInfo targetInfo;
+                CM_TargetSystem.TargetInfo targetInfo;
                 if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
                 {
                     // Track it!
