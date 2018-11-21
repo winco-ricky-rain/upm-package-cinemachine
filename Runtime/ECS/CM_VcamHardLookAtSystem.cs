@@ -61,7 +61,7 @@ namespace Cinemachine.ECS
                 targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
                 targetLookup = targetLookup
             };
-            return targetSystem.RegisterTargetTableReadJobs(
+            return targetSystem.RegisterTargetLookupReadJobs(
                 job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
         }
     }

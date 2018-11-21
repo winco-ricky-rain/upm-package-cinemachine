@@ -94,14 +94,16 @@ namespace Cinemachine.ECS
         /// </summary>
         /// <param name="h">Jobs that are reading from the table</param>
         /// <returns>the same h as passed in, for convenience</returns>
-        public JobHandle RegisterTargetTableReadJobs(JobHandle h)
+        public JobHandle RegisterTargetLookupReadJobs(JobHandle h)
         {
             TargetTableReadJobHandle = JobHandle.CombineDependencies(TargetTableReadJobHandle, h);
             return h;
         }
     }
 
-    // These systems define the CM Vcam pipeline
+    // These systems define the CM Vcam pipeline, in this order.  
+    // Use them to ensure correct ordering of CM pipeline systems
+
     [UpdateAfter(typeof(CM_TargetSystem))]
     public class CM_VcamBodySystem : ComponentSystem
     {
