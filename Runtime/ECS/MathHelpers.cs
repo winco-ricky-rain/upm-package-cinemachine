@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Cinemachine.ECS
 {
-    static class MathHelpers
+    public static class MathHelpers
     {
         /// <summary>A useful Epsilon</summary>
         public const float Epsilon = 0.0001f;
@@ -14,7 +14,7 @@ namespace Cinemachine.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool AlmostZero(this float3 v)
         {
-            return math.lengthsq(v) < 0.00001f;
+            return math.lengthsq(v) < 0.000001f;
         }
         
         /// <summary>
@@ -31,7 +31,7 @@ namespace Cinemachine.ECS
         }
 
         /// <summary>Much more stable for small angles than Unity's native implementation.  
-        /// Directions must be unit length.  Retruns radians</summary>
+        /// Directions must be unit length.  Returns radians</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float AngleUnit(float3 fromUnit, float3 toUnit)
         {
@@ -121,21 +121,21 @@ namespace Cinemachine.ECS
             float step = math.select(
                 fixedDeltaTime / 5, deltaTime, 
                 fixedDeltaTime == 0 || fixedDeltaTime == deltaTime);
-            float numSteps = math.floor(deltaTime / step);
 
             const float kLogNegligibleResidual = -4.605170186f; // == math.Log(0.01f);
-            float decayScale = math.select(
-                0, 1f - math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
+            float decayConstant = math.select(
+                0, math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
 
             float vel = initial * step / deltaTime;
+            int numSteps = (int)math.floor(deltaTime / step);
             float r = 0;
             for (int i = 0; i < numSteps; ++i)
-                r = (r + vel) * decayScale;
+                r = (r + vel) * decayConstant;
 
             float d = deltaTime - (step * numSteps);
-            r = math.lerp(r, (r + vel) * decayScale, d / step);
+            r = math.lerp(r, (r + vel) * decayConstant, d / step);
 
-            return initial - r;
+            return initial - math.select(0, r, deltaTime < dampTime);
         }
 
         /// <summary>Get a damped version of a quantity.  This is the portion of the
@@ -163,21 +163,21 @@ namespace Cinemachine.ECS
             float step = math.select(
                 fixedDeltaTime / 5, deltaTime, 
                 fixedDeltaTime == 0 || fixedDeltaTime == deltaTime);
-            float numSteps = math.floor(deltaTime / step);
 
             const float kLogNegligibleResidual = -4.605170186f; // == math.Log(0.01f);
-            float3 decayScale = math.select(
-                0, 1f - math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
+            float3 decayConstant = math.select(
+                0, math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
 
             float3 vel = initial * step / deltaTime;
+            int numSteps = (int)math.floor(deltaTime / step);
             float3 r = 0;
             for (int i = 0; i < numSteps; ++i)
-                r = (r + vel) * decayScale;
+                r = (r + vel) * decayConstant;
 
             float d = deltaTime - (step * numSteps);
-            r = math.lerp(r, (r + vel) * decayScale, d / step);
+            r = math.lerp(r, (r + vel) * decayConstant, d / step);
 
-            return initial - r;
+            return initial - math.select(0, r, deltaTime < dampTime);
         }
     }
 }
