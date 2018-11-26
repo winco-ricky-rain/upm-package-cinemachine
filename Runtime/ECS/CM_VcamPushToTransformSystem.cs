@@ -29,8 +29,9 @@ namespace Cinemachine.ECS
 
             public void Execute(int index)
             {
-                var m = positions[index].Value; m.c0.w = m.c1.w = m.c2.w = 0; // GML todo: just get float3x3 instead
-                float4 v = new float4(0.5773503f, 0.5773503f, 0.5773503f, 0); // unit vector
+                var m0 = positions[index].Value; 
+                var m = new float3x3(m0.c0.xyz, m0.c1.xyz, m0.c2.xyz);
+                var v = new float3(0.5773503f, 0.5773503f, 0.5773503f); // unit vector
                 var scale = float4x4.Scale(math.length(math.mul(m, v))); // approximate uniform scale
                 positions[index] = new LocalToWorld 
                 { 

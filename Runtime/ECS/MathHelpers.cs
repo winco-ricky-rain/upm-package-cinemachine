@@ -49,7 +49,7 @@ namespace Cinemachine.ECS
         }
 
         /// <summary>Much more stable for small angles than Unity's native implementation.  
-        /// Directions must be unit length.  Retruns radians</summary>
+        /// Directions must be unit length.  Returns radians</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float SignedAngleUnit(float3 fromUnit, float3 toUnit, float3 upUnit)
         {
