@@ -96,6 +96,9 @@ namespace Cinemachine.ECS
             return math.mul(FromToRotationUnit(math.mul(q, math.up()), upUnit, math.forward(q)), q);
         }
 
+        /// <summary>The amount left after dampTime.  Exposed for testing purposes only </summary>
+        public const float kNegligibleResidual = 0.01f;
+
         /// <summary>Get a damped version of a quantity.  This is the portion of the
         /// quantity that will take effect over the given time.</summary>
         /// <param name="initial">The amount that will be damped</param>
@@ -122,7 +125,7 @@ namespace Cinemachine.ECS
                 fixedDeltaTime / 5, deltaTime, 
                 fixedDeltaTime == 0 || fixedDeltaTime == deltaTime);
 
-            const float kLogNegligibleResidual = -4.605170186f; // == math.Log(0.01f);
+            const float kLogNegligibleResidual = -4.605170186f; // == math.Log(kNegligibleResidual=0.01f);
             float decayConstant = math.select(
                 0, math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
 
@@ -135,7 +138,7 @@ namespace Cinemachine.ECS
             float d = deltaTime - (step * numSteps);
             r = math.lerp(r, (r + vel) * decayConstant, d / step);
 
-            return initial - math.select(0, r, deltaTime < dampTime);
+            return initial - r;
         }
 
         /// <summary>Get a damped version of a quantity.  This is the portion of the
@@ -164,7 +167,7 @@ namespace Cinemachine.ECS
                 fixedDeltaTime / 5, deltaTime, 
                 fixedDeltaTime == 0 || fixedDeltaTime == deltaTime);
 
-            const float kLogNegligibleResidual = -4.605170186f; // == math.Log(0.01f);
+            const float kLogNegligibleResidual = -4.605170186f; // == math.Log(kNegligibleResidual=0.01f);
             float3 decayConstant = math.select(
                 0, math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
 
@@ -177,7 +180,7 @@ namespace Cinemachine.ECS
             float d = deltaTime - (step * numSteps);
             r = math.lerp(r, (r + vel) * decayConstant, d / step);
 
-            return initial - math.select(0, r, deltaTime < dampTime);
+            return initial - r;
         }
     }
 }

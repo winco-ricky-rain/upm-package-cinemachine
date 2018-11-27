@@ -111,7 +111,7 @@ namespace Cinemachine.Utility
         /// a value between 0 and 1.</returns>
         public static float Damp(float initial, float dampTime, float deltaTime)
         {
-            if (dampTime < Epsilon || Mathf.Abs(initial) < Epsilon || deltaTime >= dampTime)
+            if (dampTime < Epsilon || Mathf.Abs(initial) < Epsilon)
                 return initial;
             if (deltaTime < Epsilon)
                 return 0;
