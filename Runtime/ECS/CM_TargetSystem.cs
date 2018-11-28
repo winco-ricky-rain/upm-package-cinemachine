@@ -10,7 +10,6 @@ namespace Cinemachine.ECS
     [UpdateAfter(typeof(EndFrameTransformSystem))]
     public class CM_TargetSystem : JobComponentSystem
     {
-        Entity m_systemSingleton;
         ComponentGroup m_mainGroup;
 
         public struct TargetInfo
