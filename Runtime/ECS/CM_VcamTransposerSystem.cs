@@ -44,17 +44,20 @@ namespace Cinemachine.ECS
                             targetInfo.rotation, transposers[index].bindingMode, 
                             targetPos - positions[index].raw);
 
+                    bool applyDamping = positions[index].previousFrameDataIsValid != 0;
                     ApplyDamping(
-                            deltaTime, transposers[index].damping, transposers[index].angularDamping, 
-                            math.select(
-                                transposerStates[index].previousTargetPosition, 
-                                targetPos, 
-                                deltaTime < 0), 
-                            math.select(
-                                transposerStates[index].previousTargetRotation.value, 
-                                targetRot.value, 
-                                deltaTime < 0), 
-                            ref targetPos, ref targetRot);
+                        deltaTime, 
+                        math.select(float3.zero, transposers[index].damping, applyDamping),
+                        math.select(0, transposers[index].angularDamping, applyDamping),
+                        math.select(
+                            transposerStates[index].previousTargetPosition, 
+                            targetPos, 
+                            deltaTime < 0), 
+                        math.select(
+                            transposerStates[index].previousTargetRotation.value, 
+                            targetRot.value, 
+                            deltaTime < 0), 
+                        ref targetPos, ref targetRot);
 
                     transposerStates[index] = new CM_VcamTransposerState 
                     { 

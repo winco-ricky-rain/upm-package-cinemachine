@@ -122,8 +122,39 @@ namespace Cinemachine.ECS
     }
 
     [UpdateAfter(typeof(CM_VcamCorrectionSystem))]
-    public class CM_VcamFinalizeSystem : ComponentSystem
+    public class CM_VcamFinalizeSystem : JobComponentSystem
     {
-        protected override void OnUpdate() {} // Do nothing
+        ComponentGroup m_mainGroup;
+
+        protected override void OnCreateManager()
+        {
+            m_mainGroup = GetComponentGroup(ComponentType.Create<CM_VcamPosition>());
+        }
+
+        [BurstCompile]
+        struct FinalizeJob : IJobParallelFor
+        {
+            public ComponentDataArray<CM_VcamPosition> positions;
+
+            public void Execute(int index)
+            {
+                positions[index] = new CM_VcamPosition
+                {
+                    raw = positions[index].raw,
+                    dampingBypass = float3.zero,
+                    up = positions[index].up,
+                    previousFrameDataIsValid = 1
+                };
+            }
+        }
+        
+        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        {
+            var job = new FinalizeJob
+            {
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
+            };
+            return job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps);
+        }
     }
 }
