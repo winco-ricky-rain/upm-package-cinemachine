@@ -4,9 +4,26 @@ using Unity.Jobs;
 using Unity.Burst;
 using Unity.Mathematics;
 using System.Collections.Generic;
+using System;
 
 namespace Cinemachine.ECS
 {
+    [Serializable]
+    public struct CM_VcamPriority : IComponentData
+    {
+        /// <summary>GameObjet layer mask, brain will only see the vcams that pass 
+        /// its layer filter</summary>
+        public int vcamLayer;
+
+        /// <summary>The priority will determine which camera becomes active based on the
+        /// state of other cameras and this camera.  Higher numbers have greater priority.
+        /// </summary>
+        public int priority;
+
+        /// <summary>Used as second key for priority sorting</summary>
+        public int vcamSequence;
+    }
+    
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
     public class CM_VcamPrioritySystem : JobComponentSystem
     {
@@ -153,20 +170,29 @@ namespace Cinemachine.ECS
         JobHandle QueueReadJobHandle = default(JobHandle);
         public JobHandle QueueWriteHandle { get; private set; }
 
-        /// <summary>Get the vcam priority queue.</summary>
+        /// <summary>Get the vcam priority queue, which may not be written yet, for access by jobs.</summary>
         /// <param name="inputDeps">Adds a dependency on the jobs that write the queue</param>
         /// <returns>The queue.  Read-only</returns>
-        public NativeArray<QueueEntry> GetPriorityQueue(ref JobHandle inputDeps)
+        public NativeArray<QueueEntry> GetPriorityQueueForJobs(ref JobHandle inputDeps)
         {
             inputDeps = JobHandle.CombineDependencies(inputDeps, QueueWriteHandle);
             return m_priorityQueue;
         }
 
+        /// <summary>Get the vcam priority queue for immediate access. 
+        /// Waits for queue write jobs to complete.</summary>
+        /// <returns>The queue</returns>
+        public NativeArray<QueueEntry> GetPriorityQueueNow()
+        {
+            QueueWriteHandle.Complete();
+            return m_priorityQueue;
+        }
+
         /// <summary>
-        /// Register the jobs that are reading from the singleton target lookup table, so that table
+        /// Register the jobs that are reading from the singleton priority queue, so that queue
         /// will not be prematurely corrupted.
         /// </summary>
-        /// <param name="h">Jobs that are reading from the table</param>
+        /// <param name="h">Jobs that are reading from the queue</param>
         /// <returns>the same h as passed in, for convenience</returns>
         public JobHandle RegisterPriorityQueueReadJobs(JobHandle h)
         {

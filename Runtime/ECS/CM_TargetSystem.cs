@@ -4,9 +4,16 @@ using Unity.Jobs;
 using Unity.Transforms;
 using Unity.Burst;
 using Unity.Mathematics;
+using System;
 
 namespace Cinemachine.ECS
 {
+    [Serializable]
+    public struct CM_Target : IComponentData
+    {
+        public float radius;
+    }
+
     [UpdateAfter(typeof(EndFrameTransformSystem))]
     public class CM_TargetSystem : JobComponentSystem
     {
@@ -79,16 +86,29 @@ namespace Cinemachine.ECS
         public JobHandle TargetTableWriteHandle { get; private set; }
         
         /// <summary>
-        /// Get the singleton TargetLookup table.  This table converts an Entity to CM_TargetLookup.TargetInfo.
+        /// Get the singleton TargetLookup table, which may not be written yet, for access by jobs.  
+        /// This table converts an Entity to CM_TargetLookup.TargetInfo.
         /// </summary>
         /// <param name="inputDeps">Adds a dependency on the jobs that write the table</param>
         /// <returns>The lookup table.  Read-only</returns>
-        public NativeHashMap<Entity, TargetInfo> GetTargetLookup(ref JobHandle inputDeps)
+        public NativeHashMap<Entity, TargetInfo> GetTargetLookupForJobs(ref JobHandle inputDeps)
         {
             inputDeps = JobHandle.CombineDependencies(inputDeps, TargetTableWriteHandle);
             return m_targetLookup;
         }
 
+        /// <summary>
+        /// Get the singleton TargetLookup table for immediate access. 
+        /// Waits for table write jobs to complete.
+        /// This table converts an Entity to CM_TargetLookup.TargetInfo.
+        /// </summary>
+        /// <returns>The lookup table.</returns>
+        public NativeHashMap<Entity, TargetInfo> GetTargetLookupNow()
+        {
+            TargetTableWriteHandle.Complete();
+            return m_targetLookup;
+        }
+        
         /// <summary>
         /// Register the jobs that are reading from the singleton target lookup table, so that table
         /// will not be prematurely corrupted.

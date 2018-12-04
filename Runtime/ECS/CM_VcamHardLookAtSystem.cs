@@ -3,9 +3,15 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Burst;
+using System;
 
 namespace Cinemachine.ECS
 {
+    [Serializable]
+    public struct CM_VcamHardLookAt : IComponentData
+    {
+    }
+
     [UpdateAfter(typeof(CM_VcamAimSystem))]
     [UpdateBefore(typeof(CM_VcamCorrectionSystem))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem
@@ -50,9 +56,9 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             var targetSystem = World.GetExistingManager<CM_TargetSystem>();
-            var targetLookup = targetSystem.GetTargetLookup(ref inputDeps);
+            var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
-                return default(JobHandle);
+                return default(JobHandle); // no targets yet
 
             var job = new LookAtTargetJob()
             {
