@@ -11,6 +11,7 @@ namespace Cinemachine.ECS
     [Serializable]
     public struct CM_VcamShotQuality : IComponentData
     {
+        public const float DefaultValue = 1;
         public float value;
     }
 

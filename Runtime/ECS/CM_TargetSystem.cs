@@ -56,11 +56,13 @@ namespace Cinemachine.ECS
         
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            // Make sure all readers have finished with the table
             TargetTableReadJobHandle.Complete();
             TargetTableReadJobHandle = default(JobHandle);
 
+            var objectCount = m_mainGroup.CalculateLength();
             m_targetLookup.Clear();
-            m_targetLookup.Capacity = m_mainGroup.GetComponentDataArray<CM_Target>().Length;
+            m_targetLookup.Capacity = math.max(m_targetLookup.Capacity, objectCount);
 
             var hashJob = new HashTargets()
             {
@@ -69,7 +71,7 @@ namespace Cinemachine.ECS
                 positions = m_mainGroup.GetComponentDataArray<LocalToWorld>(),
                 hashMap = m_targetLookup.ToConcurrent()
             };
-            TargetTableWriteHandle = hashJob.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps);
+            TargetTableWriteHandle = hashJob.Schedule(objectCount, 32, inputDeps);
             return TargetTableWriteHandle;
         } 
 

@@ -4,7 +4,6 @@ using Unity.Jobs;
 using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
-using System.Runtime.CompilerServices;
 
 namespace Cinemachine.ECS
 {
