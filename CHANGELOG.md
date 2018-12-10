@@ -4,13 +4,16 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [2.2.8-preview.10] - 2018-10-31
+## [2.2.8-preview.16] - 2018-12-10
 ### Bugfixes, optimizations, and some experimental stuff
 - Transposer: added Angular Damping Mode, to support quaternion calculations in gimbal-lock situations
+- Framing Transposer and Group Transposer: group composing bugfixes, respect min/max limits
+- Added ConemachineCameraOffset extension, to offset the camera a fixed distance at the end of the pipeline
 - Dolly Cart: added support for LateUpdate
 - State-driven-camera: added [NoSaveDuringPlay] to Animated Target and Layer Index
 - Added AxisState.Recentering.RecenterNow() API call to skip wait time and start recentering now (if enabled)
 - Added NoLens blend hint, to leave camera Lens settings alone
+- Added Composer.CenterOnActivate option, to disable automatic centering in dead zone when vcam is activated
 - Updated documentation (corrections, and relocation to prevent importing)
 - Upgrade: added support for nested prefabs in Unity 2018.3 (fogbugz 1077395)
 - Optimization: position predictor is more efficient
@@ -20,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Experimental: Optional new extra-efficient versions of vcam and FreeLook (not back-compatible)
 - Timeline: play/pause doesn't kick out the timeline vcam
 - Path editor: make sure game view gets updated when a path waypoint is dragged in the scene view
+- Composer guides are shown even if Camera is attached to a renderTexture
 - Bugfix: allow impulse definition to be a non-public field (property drawer was complaining)
 - Bugfix: added null check for when there is no active virtual camera
 - Bugfix: CollisionImpulseSource typo in detection of 2D collider

@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Cinemachine.Utility
 {
-    internal class PositionPredictor
+    public class PositionPredictor
     {
         Vector3 m_Position;
 
@@ -99,7 +99,7 @@ namespace Cinemachine.Utility
 
         /// <summary>Standard residual</summary>
         public const float kNegligibleResidual = 0.01f;
-        const float kLogNegligibleResidual = -4.605170186f; // == math.Log(0.01f);
+        const float kLogNegligibleResidual = -4.605170186f; // == math.Log(kNegligibleResidual=0.01f);
 
         /// <summary>Get a damped version of a quantity.  This is the portion of the
         /// quantity that will take effect over the given time.</summary>
