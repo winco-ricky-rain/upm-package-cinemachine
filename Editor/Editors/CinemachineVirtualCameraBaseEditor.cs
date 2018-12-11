@@ -79,9 +79,10 @@ namespace Cinemachine.Editor
         {
             List<string> excluded = GetExcludedPropertiesInInspector();
             EditorGUI.BeginChangeCheck();
+            var parentCamera = Target.ParentCamera as CinemachineVirtualCameraBase;
             if (!excluded.Contains(followTarget.name))
             {
-                if (Target.ParentCamera == null || Target.ParentCamera.Follow == null)
+                if (parentCamera == null || parentCamera.Follow == null)
                     EditorGUILayout.PropertyField(followTarget);
                 else
                     EditorGUILayout.PropertyField(followTarget, 
@@ -90,7 +91,7 @@ namespace Cinemachine.Editor
             }
             if (!excluded.Contains(lookAtTarget.name))
             {
-                if (Target.ParentCamera == null || Target.ParentCamera.LookAt == null)
+                if (parentCamera == null || parentCamera.LookAt == null)
                     EditorGUILayout.PropertyField(lookAtTarget);
                 else
                     EditorGUILayout.PropertyField(lookAtTarget, 

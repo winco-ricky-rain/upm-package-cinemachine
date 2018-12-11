@@ -1,8 +1,8 @@
-﻿#if false
+﻿using Cinemachine.ECS;
 using Cinemachine.Utility;
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -14,7 +14,7 @@ namespace Cinemachine.ECS_Hybrid
 #else
     [ExecuteInEditMode]
 #endif
-    [AddComponentMenu("Cinemachine/CinemachineBrain")]
+    [AddComponentMenu("Cinemachine/CM_Brain")]
     [SaveDuringPlay]
     public class CM_Brain : MonoBehaviour 
     {
@@ -81,9 +81,8 @@ namespace Cinemachine.ECS_Hybrid
         }
         private Camera m_OutputCamera = null; // never use directly - use accessor
 
-#if false
-        /// <summary>Event with a CinemachineBrain parameter</summary>
-        [Serializable] public class BrainEvent : UnityEvent<CinemachineBrain> {}
+        /// <summary>Event with a CM_Brain parameter</summary>
+        [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
 
         /// <summary>Event with a ICinemachineCamera parameter</summary>
         [Serializable] public class VcamActivatedEvent : UnityEvent<ICinemachineCamera, ICinemachineCamera> {}
@@ -96,7 +95,9 @@ namespace Cinemachine.ECS_Hybrid
         /// then the event will fire on the first frame of the blend</summary>
         [Tooltip("This event will fire whenever a virtual camera goes live.  If a blend is involved, then the event will fire on the first frame of the blend.")]
         public VcamActivatedEvent m_CameraActivatedEvent = new VcamActivatedEvent();
-#endif
+
+        /// <summary>This event will fire after a brain updates its Camera</summary>
+        public static BrainEvent CameraUpdatedEvent = new BrainEvent();
 
         /// <summary>
         /// API for the Unity Editor.
@@ -136,7 +137,7 @@ namespace Cinemachine.ECS_Hybrid
                 mFrameStack.Add(new BrainFrame());
 
             m_OutputCamera = GetComponent<Camera>();
-//            CinemachineCore.Instance.AddActiveBrain(this);
+            sActiveBrains.Insert(0, this);
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }
@@ -144,7 +145,7 @@ namespace Cinemachine.ECS_Hybrid
         private void OnDisable()
         {
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
-//            CinemachineCore.Instance.RemoveActiveBrain(this);
+            sActiveBrains.Remove(this);
             mFrameStack.Clear();
         }
 
@@ -222,6 +223,21 @@ namespace Cinemachine.ECS_Hybrid
         }
 #endif
 
+        /// <summary>List of all active CinemachineBrains.</summary>
+        private static List<CM_Brain> sActiveBrains = new List<CM_Brain>();
+
+        /// <summary>Access the array of active CinemachineBrains in the scene</summary>
+        public static int BrainCount { get { return sActiveBrains.Count; } }
+
+        /// <summary>Access the array of active CinemachineBrains in the scene 
+        /// without gebnerating garbage</summary>
+        /// <param name="index">Index of the brain to access, range 0-BrainCount</param>
+        /// <returns>The brain at the specified index</returns>
+        public static CM_Brain GetActiveBrain(int index)
+        {
+            return sActiveBrains[index];
+        }
+
         private float GetEffectiveDeltaTime(bool fixedDelta)
         {
             if (SoloCamera != null)
@@ -240,31 +256,6 @@ namespace Cinemachine.ECS_Hybrid
             if (m_IgnoreTimeScale)
                 return fixedDelta ? Time.fixedDeltaTime : Time.unscaledDeltaTime;
             return fixedDelta ? Time.fixedDeltaTime * Time.timeScale : Time.deltaTime;
-        }
-
-        private void UpdateVirtualCameras(CinemachineCore.UpdateFilter updateFilter, float deltaTime)
-        {
-            // We always update all active virtual cameras 
-            CinemachineCore.Instance.CurrentUpdateFilter = updateFilter;
-            Camera camera = OutputCamera;
-            CinemachineCore.Instance.UpdateAllActiveVirtualCameras(
-                camera == null ? -1 : camera.cullingMask, DefaultWorldUp, deltaTime);
-
-            // Make sure all live cameras get updated, in case some of them are deactivated
-            if (SoloCamera != null)
-                SoloCamera.UpdateCameraState(DefaultWorldUp, deltaTime);
-            mCurrentLiveCameras.UpdateCameraState(DefaultWorldUp, deltaTime);
-
-            // Restore the filter for general use
-            updateFilter = CinemachineCore.UpdateFilter.Late;
-            if (Application.isPlaying)
-            {
-                if (m_UpdateMethod == UpdateMethod.SmartUpdate)
-                    updateFilter |= CinemachineCore.UpdateFilter.Smart;
-                else if (m_UpdateMethod == UpdateMethod.FixedUpdate)
-                    updateFilter = CinemachineCore.UpdateFilter.Fixed;
-            }
-            CinemachineCore.Instance.CurrentUpdateFilter = updateFilter;
         }
 
         /// <summary>
@@ -448,8 +439,8 @@ namespace Cinemachine.ECS_Hybrid
             if (activeCamera != outGoingCamera)
             {
                 // Do we need to create a game-play blend?
-                if ((UnityEngine.Object)activeCamera != null
-                    && (UnityEngine.Object)outGoingCamera != null && deltaTime >= 0)
+                if (activeCamera != null && activeCamera.IsValid
+                    && outGoingCamera != null && outGoingCamera.IsValid && deltaTime >= 0)
                 {
                     // Create a blend (curve will be null if a cut)
                     var blendDef = LookupBlend(outGoingCamera, activeCamera);
@@ -571,16 +562,18 @@ namespace Cinemachine.ECS_Hybrid
         /// </summary>
         private ICinemachineCamera TopCameraFromPriorityQueue()
         {
-            CinemachineCore core = CinemachineCore.Instance;
-            Camera outputCamera = OutputCamera;
-            int mask = outputCamera == null ? ~0 : outputCamera.cullingMask;
-            int numCameras = core.VirtualCameraCount;
-            for (int i = 0; i < numCameras; ++i)
+            var prioritySystem = World.Active.GetExistingManager<CM_VcamPrioritySystem>();
+            if (prioritySystem != null)
             {
-                var cam = core.GetVirtualCamera(i);
-                GameObject go = cam != null ? cam.gameObject : null;
-                if (go != null && (mask & (1 << go.layer)) != 0)
-                    return cam;
+                Camera outputCamera = OutputCamera;
+                int mask = outputCamera == null ? ~0 : outputCamera.cullingMask;
+                var queue = prioritySystem.GetPriorityQueueNow();
+                for (int i = 0; i < queue.Length; ++i)
+                {
+                    var e = queue[i];
+                    if ((mask & (1 << e.vcamPriority.vcamLayer)) != 0)
+                        return new CM_EntityVcam(e.entity);
+                }
             }
             return null;
         }
@@ -632,9 +625,8 @@ namespace Cinemachine.ECS_Hybrid
 #endif
                 }
             }
-            if (CinemachineCore.CameraUpdatedEvent != null)
-                CinemachineCore.CameraUpdatedEvent.Invoke(this);
+            if (CameraUpdatedEvent != null)
+                CameraUpdatedEvent.Invoke(this);
         }
     }
 }
-#endif

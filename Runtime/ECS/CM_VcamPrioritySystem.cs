@@ -102,10 +102,10 @@ namespace Cinemachine.ECS
                 public int Compare(QueueEntry x, QueueEntry y)
                 {
                     int a = x.vcamPriority.vcamLayer - y.vcamPriority.vcamLayer;
-                    int p = x.vcamPriority.priority - y.vcamPriority.priority;
-                    float qf = x.shotQuality.value - y.shotQuality.value;
+                    int p = y.vcamPriority.priority - x.vcamPriority.priority; // high-to-low
+                    float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
                     int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
-                    int s = x.vcamPriority.vcamSequence - y.vcamPriority.vcamSequence;
+                    int s = y.vcamPriority.vcamSequence - x.vcamPriority.vcamSequence; // high-to-low
                     int e = x.entity.Index - y.entity.Index;
                     int v = x.entity.Version - y.entity.Version;
                     return math.select(a, 
@@ -179,15 +179,6 @@ namespace Cinemachine.ECS
             return m_priorityQueue;
         }
 
-        /// <summary>Get the vcam priority queue for immediate access. 
-        /// Waits for queue write jobs to complete.</summary>
-        /// <returns>The queue</returns>
-        public NativeArray<QueueEntry> GetPriorityQueueNow()
-        {
-            QueueWriteHandle.Complete();
-            return m_priorityQueue;
-        }
-
         /// <summary>
         /// Register the jobs that are reading from the singleton priority queue, so that queue
         /// will not be prematurely corrupted.
@@ -198,6 +189,15 @@ namespace Cinemachine.ECS
         {
             QueueReadJobHandle = JobHandle.CombineDependencies(QueueReadJobHandle, h);
             return h;
+        }
+
+        /// <summary>Get the vcam priority queue for immediate access. 
+        /// Waits for queue write jobs to complete.</summary>
+        /// <returns>The queue</returns>
+        public NativeArray<QueueEntry> GetPriorityQueueNow()
+        {
+            QueueWriteHandle.Complete();
+            return m_priorityQueue;
         }
     }
 }

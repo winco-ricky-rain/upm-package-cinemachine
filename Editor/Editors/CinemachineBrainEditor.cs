@@ -44,8 +44,10 @@ namespace Cinemachine.Editor
             // Show the active camera and blend
             GUI.enabled = false;
             ICinemachineCamera vcam = Target.ActiveVirtualCamera;
-            Transform activeCam = (vcam != null && vcam.VirtualCameraGameObject != null)
-                ? vcam.VirtualCameraGameObject.transform : null;
+            Transform activeCam = null;
+            MonoBehaviour b = vcam as MonoBehaviour;
+            if (b != null)
+                activeCam = b.transform;
             EditorGUILayout.ObjectField("Live Camera", activeCam, typeof(Transform), true);
             EditorGUILayout.DelayedTextField(
                 "Live Blend", Target.ActiveBlend != null

@@ -178,17 +178,6 @@ namespace Cinemachine
             }
         }
         
-        /// <summary>The GameObject owner of the Virtual Camera behaviour.</summary>
-        public GameObject VirtualCameraGameObject
-        {
-            get
-            {
-                if (this == null)
-                    return null; // object deleted
-                return gameObject;
-            }
-        }
-
         public bool IsValid { get { return !(this == null); } }
 
         /// <summary>The CameraState object holds all of the information
@@ -384,8 +373,11 @@ namespace Cinemachine
         protected Transform ResolveLookAt(Transform localLookAt)
         {
             Transform lookAt = localLookAt;
-            if (lookAt == null && ParentCamera != null)
-                lookAt = ParentCamera.LookAt; // Parent provides default
+            if (lookAt == null)
+            {
+                var parent = ParentCamera as CinemachineVirtualCameraBase;
+                lookAt = parent.LookAt; // Parent provides default
+            }
             return lookAt;
         }
 
@@ -396,8 +388,11 @@ namespace Cinemachine
         protected Transform ResolveFollow(Transform localFollow)
         {
             Transform follow = localFollow;
-            if (follow == null && ParentCamera != null)
-                follow = ParentCamera.Follow; // Parent provides default
+            if (follow == null)
+            {
+                var parent = ParentCamera as CinemachineVirtualCameraBase;
+                follow = parent.Follow; // Parent provides default
+            }
             return follow;
         }
 

@@ -224,9 +224,10 @@ namespace Cinemachine
         /// <param name="deltaTime">Delta time for time-based effects (ignore if less than or equal to 0)</param>
         /// <returns>True if the vcam should do an internal update as a result of this call</returns>
         public override bool OnTransitionFromCamera(
-            ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime,
+            ICinemachineCamera iFromCam, Vector3 worldUp, float deltaTime,
             ref CinemachineVirtualCameraBase.TransitionParams transitionParams) 
         { 
+            var fromCam = iFromCam as CinemachineVirtualCameraBase;
             if (fromCam != null && fromCam.Follow == FollowTarget
                 && m_BindingMode != CinemachineTransposer.BindingMode.SimpleFollowWithWorldUp
                 && transitionParams.m_InheritPosition)

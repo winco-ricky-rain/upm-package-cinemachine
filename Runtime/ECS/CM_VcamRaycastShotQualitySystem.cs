@@ -4,6 +4,7 @@ using Unity.Jobs;
 using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
+using System.Runtime.CompilerServices;
 
 namespace Cinemachine.ECS
 {
@@ -56,33 +57,37 @@ namespace Cinemachine.ECS
 
             public void Execute(int i)
             {
-                bool isVisible = (hits[i].normal == Vector3.zero)
-                    && !IsTargetOnscreen(
-                        raycasts[i].from, rotations[i].raw, 
-                        lenses[i].fov, aspect, isOrthographic, rotations[i].lookAtPoint);
+                bool noObstruction = hits[i].normal == Vector3.zero;
+
+                float3 offset = rotations[i].lookAtPoint - new float3(raycasts[i].from);
+                offset = math.mul(math.inverse(rotations[i].raw), offset); // camera-space
+                bool isOnscreen = 
+                    (!isOrthographic & IsTargetOnscreen(offset, lenses[i].fov, aspect))
+                    | (isOrthographic & IsTargetOnscreenOrtho(offset, lenses[i].fov, aspect));
+
+                bool isVisible = noObstruction && isOnscreen;
                 qualities[i] = new CM_VcamShotQuality { value = math.select(0f, 1f, isVisible) };
             }
         }
         
-        static bool IsTargetOnscreen(
-            float3 pos, quaternion rot, float fov, float aspect, bool isOrthographic, float3 targetPos)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static bool IsTargetOnscreen(float3 dir, float size, float aspect)
         {
-            float3 dir = math.mul(math.inverse(rot), targetPos - pos);
-            if (isOrthographic)
-                return math.abs(dir.y) < fov && math.abs(dir.x) < fov * aspect;
+            float fovY = 0.5f * math.radians(size);    // size is fovH in deg.  need half-fov in rad
+            float2 fov = new float2(math.atan(math.tan(fovY) * aspect), fovY);
+            float2 angle = new float2(
+                MathHelpers.AngleUnit(
+                    math.normalize(dir.ProjectOntoPlane(math.up())), new float3(0, 0, 1)), 
+                MathHelpers.AngleUnit(
+                    math.normalize(dir.ProjectOntoPlane(new float3(1, 0, 0))), new float3(0, 0, 1)));
+            return math.all(angle <= fov);
+        }
 
-            fov *= 0.5f * math.radians(fov);    // need half-fov in rad
-            float angle = MathHelpers.AngleUnit(
-                math.normalize(dir.ProjectOntoPlane(new float3(1, 0, 0))), new float3(0, 0, 1));
-            if (angle > fov)
-                return false;
-            fov = math.atan(math.tan(fov) * aspect);
-            angle = MathHelpers.AngleUnit(
-                math.normalize(dir.ProjectOntoPlane(math.up())), new float3(0, 0, 1));
-            if (angle > fov)
-                return false;
-
-            return true;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static bool IsTargetOnscreenOrtho(float3 dir, float size, float aspect)
+        {
+            float2 s = new float2(size * aspect, size);
+            return math.all(math.abs(new float2(dir.x, dir.y)) < s);
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
@@ -110,6 +115,8 @@ namespace Cinemachine.ECS
 
             var qualityJob = new CalculateQualityJob()
             {
+                isOrthographic = false, // GML fixme
+                aspect = (float)Screen.width / (float)Screen.height, // GML fixme
                 qualities = m_mainGroup.GetComponentDataArray<CM_VcamShotQuality>(),
                 hits = raycastHits,         // deallocates on completion
                 raycasts = raycastCommands, // deallocates on completion

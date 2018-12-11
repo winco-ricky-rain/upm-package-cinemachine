@@ -309,9 +309,13 @@ namespace Cinemachine
                 childCameras = m_RandomizedChilden;
             }
 
-            if (LiveChild != null && !LiveChild.VirtualCameraGameObject.activeSelf)
-                LiveChild = null;
-            ICinemachineCamera best = LiveChild;
+            if (LiveChild != null)
+            {
+                var b = LiveChild as MonoBehaviour;
+                if (b != null && !b.gameObject.activeSelf)
+                    LiveChild = null;
+            }
+            var best = LiveChild as CinemachineVirtualCameraBase;
             for (int i = 0; i < childCameras.Length; ++i)
             {
                 CinemachineVirtualCameraBase vcam = childCameras[i];
@@ -335,7 +339,7 @@ namespace Cinemachine
             if (mActivationTime != 0)
             {
                 // Is it active now?
-                if (LiveChild == best)
+                if (LiveChild == (ICinemachineCamera)best)
                 {
                     // Yes, cancel any pending
                     mPendingActivationTime = 0;
@@ -346,7 +350,7 @@ namespace Cinemachine
                 // Is it pending?
                 if (deltaTime >= 0)
                 {
-                    if (mPendingActivationTime != 0 && mPendingCamera == best)
+                    if (mPendingActivationTime != 0 && mPendingCamera == (ICinemachineCamera)best)
                     {
                         // Has it been pending long enough, and are we allowed to switch away
                         // from the active action?
