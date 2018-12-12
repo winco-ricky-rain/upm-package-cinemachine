@@ -9,11 +9,11 @@ using UnityEngine.Events;
 namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
-#if UNITY_2018_3_OR_NEWER
-    [ExecuteAlways]
-#else
-    [ExecuteInEditMode]
-#endif
+//#if UNITY_2018_3_OR_NEWER
+//    [ExecuteAlways]
+//#else
+//    [ExecuteInEditMode]
+//#endif
     [AddComponentMenu("Cinemachine/CM_Brain")]
     [SaveDuringPlay]
     public class CM_Brain : MonoBehaviour 
@@ -140,6 +140,8 @@ namespace Cinemachine.ECS_Hybrid
             sActiveBrains.Insert(0, this);
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
+
+            mVcamCache.Clear();
         }
 
         private void OnDisable()
@@ -572,11 +574,19 @@ namespace Cinemachine.ECS_Hybrid
                 {
                     var e = queue[i];
                     if ((mask & (1 << e.vcamPriority.vcamLayer)) != 0)
-                        return new CM_EntityVcam(e.entity);
+                    {
+                        CM_EntityVcam vcam = null;
+                        if (!mVcamCache.TryGetValue(e.entity, out vcam))
+                            mVcamCache[e.entity] = vcam = new CM_EntityVcam(e.entity);
+                        return vcam;
+                    }
                 }
             }
             return null;
         }
+
+        // GML hack until I think of something better
+        Dictionary<Entity, CM_EntityVcam> mVcamCache = new Dictionary<Entity, CM_EntityVcam>();
 
         /// <summary>
         /// Create a blend curve for blending from one ICinemachineCamera to another.

@@ -40,10 +40,10 @@ namespace Cinemachine.ECS
                 CM_TargetSystem.TargetInfo targetInfo;
                 if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
                 {
-                    var q = rotations[index].raw;
-                    float3 dir = math.normalizesafe(
-                        targetInfo.position - positions[index].raw, math.forward(q));
-                    q = q.LookRotationUnit(dir, positions[index].up);
+                    var q = math.normalizesafe(rotations[index].raw, quaternion.identity);
+                    float3 dir = math.normalizesafe(targetInfo.position - positions[index].raw, math.forward(q));
+                    float3 up = math.normalizesafe(positions[index].up, math.up());
+                    q = q.LookRotationUnit(dir, up);
                     rotations[index] = new CM_VcamRotation
                     {
                         lookAtPoint = targetInfo.position,
@@ -58,7 +58,7 @@ namespace Cinemachine.ECS
             var targetSystem = World.GetExistingManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
-                return default(JobHandle); // no targets yet
+                return default; // no targets yet
 
             var job = new LookAtTargetJob()
             {

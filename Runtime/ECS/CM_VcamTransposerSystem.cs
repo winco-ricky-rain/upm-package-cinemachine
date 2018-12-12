@@ -53,7 +53,6 @@ namespace Cinemachine.ECS
         public float angularDamping;
     }
 
-    ///  GML todo: make this more hidden and automatic
     [Serializable]
     public struct CM_VcamTransposerState : IComponentData
     {
@@ -67,6 +66,10 @@ namespace Cinemachine.ECS
     public class CM_VcamTransposerSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
+        ComponentGroup m_missingStateGroup;
+
+        // Used only to add missing CM_VcamTransposerState components
+        [Inject] EndFrameBarrier m_missingStateBarrier;
 
         protected override void OnCreateManager()
         {
@@ -75,7 +78,13 @@ namespace Cinemachine.ECS
                 ComponentType.Create<CM_VcamTransposerState>(), 
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
-       }
+
+            m_missingStateGroup = GetComponentGroup(
+                ComponentType.Create<CM_VcamPosition>(), 
+                ComponentType.Subtractive<CM_VcamTransposerState>(), 
+                ComponentType.ReadOnly<CM_VcamTransposer>(),
+                ComponentType.ReadOnly<CM_VcamFollowTarget>());
+        }
 
         [BurstCompile]
         struct TrackTargetJob : IJobParallelFor
@@ -92,26 +101,18 @@ namespace Cinemachine.ECS
                 CM_TargetSystem.TargetInfo targetInfo;
                 if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
                 {
-                    // Track it!
                     var targetPos = targetInfo.position;
                     var targetRot = GetRotationForBindingMode(
                             targetInfo.rotation, transposers[index].bindingMode, 
                             targetPos - positions[index].raw);
 
-                    bool applyDamping = positions[index].previousFrameDataIsValid != 0;
-                    ApplyDamping(
-                        deltaTime, 
-                        math.select(float3.zero, transposers[index].damping, applyDamping),
-                        math.select(0, transposers[index].angularDamping, applyDamping),
-                        math.select(
-                            transposerStates[index].previousTargetPosition, 
-                            targetPos, 
-                            deltaTime < 0), 
-                        math.select(
-                            transposerStates[index].previousTargetRotation.value, 
-                            targetRot.value, 
-                            deltaTime < 0), 
-                        ref targetPos, ref targetRot);
+                    bool applyDamping = deltaTime >= 0 && positions[index].previousFrameDataIsValid != 0;
+                    targetRot = ApplyRotationDamping(
+                        deltaTime, math.select(0, transposers[index].angularDamping, applyDamping),
+                        transposerStates[index].previousTargetRotation, targetRot);
+                    targetPos = ApplyPositionDamping(
+                        deltaTime, math.select(float3.zero, transposers[index].damping, applyDamping),
+                        transposerStates[index].previousTargetPosition, targetPos, targetRot);
 
                     transposerStates[index] = new CM_VcamTransposerState 
                     { 
@@ -131,10 +132,22 @@ namespace Cinemachine.ECS
         
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            // Add any missing transposer state components
+            var missingEntities = m_missingStateGroup.GetEntityArray();
+            if (missingEntities.Length > 0)
+            {
+                var cb  = m_missingStateBarrier.CreateCommandBuffer();
+                for (int i = 0; i < missingEntities.Length; ++i)
+                {
+                    cb.AddComponent(missingEntities[i], new CM_VcamTransposerState());
+                    cb.SetComponent(missingEntities[i], new CM_VcamPosition()); // invalidate prev pos
+                }
+            }
+
             var targetSystem = World.GetExistingManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
-                return default(JobHandle); // no targets yet
+                return default; // no targets yet
 
             var job = new TrackTargetJob()
             {
@@ -149,21 +162,28 @@ namespace Cinemachine.ECS
                 job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
         }
 
-        /// <summary>Applies damping to target position and rtotation</summary>
+        /// <summary>Applies damping to target rotation</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ApplyDamping(
-            float deltaTime, float3 damping, float angularDamping,
-            float3 previousTargetPosition, quaternion previousTargetRotation,
-            ref float3 currentTargetPosition, ref quaternion currentTargetRotation)
+        public static quaternion ApplyRotationDamping(
+            float deltaTime, float angularDamping,
+            quaternion previousTargetRotation, quaternion currentTargetRotation)
         {
             float t = MathHelpers.Damp(1, angularDamping, deltaTime);
-            currentTargetRotation = math.slerp(previousTargetRotation, currentTargetRotation, t);
+            return math.slerp(previousTargetRotation, currentTargetRotation, t);
+        }
 
+        /// <summary>Applies damping to target position</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 ApplyPositionDamping(
+            float deltaTime, float3 damping, 
+            float3 previousTargetPosition, float3 currentTargetPosition,
+            quaternion currentTargetRotation)
+        {
             var worldOffset = currentTargetPosition - previousTargetPosition;
             float3 localOffset = math.mul(math.inverse(currentTargetRotation), worldOffset);
             localOffset = MathHelpers.Damp(localOffset, damping, deltaTime);
             worldOffset = math.mul(currentTargetRotation, localOffset);
-            currentTargetPosition = previousTargetPosition + worldOffset;
+            return previousTargetPosition + worldOffset;
         }
 
         /// <summary>Applies binding mode: 

@@ -1,6 +1,7 @@
 using Unity.Entities;
+using Cinemachine.ECS;
 
-namespace Cinemachine.ECS
+namespace Cinemachine.ECS_Hybrid
 {
     // GML todo: remove this, make it more hidden and automatic
     [UnityEngine.DisallowMultipleComponent]
