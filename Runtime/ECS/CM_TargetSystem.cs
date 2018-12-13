@@ -14,6 +14,7 @@ namespace Cinemachine.ECS
         public float radius;
     }
 
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(EndFrameTransformSystem))]
     public class CM_TargetSystem : JobComponentSystem
     {
@@ -30,7 +31,7 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_Target>(), 
+                ComponentType.ReadOnly<CM_Target>(),
                 ComponentType.ReadOnly<LocalToWorld>());
 
             m_targetLookup = new NativeHashMap<Entity, TargetInfo>(64, Allocator.Persistent);
@@ -52,15 +53,15 @@ namespace Cinemachine.ECS
 
             public void Execute(int index)
             {
-                hashMap.TryAdd(entities[index], new TargetInfo() 
-                { 
+                hashMap.TryAdd(entities[index], new TargetInfo()
+                {
                     position = math.transform(positions[index].Value, float3.zero),
                     rotation = new quaternion(positions[index].Value),
                     radius = targets[index].radius
                 });
             }
         }
-        
+
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Make sure all readers have finished with the table
@@ -80,13 +81,13 @@ namespace Cinemachine.ECS
             };
             TargetTableWriteHandle = hashJob.Schedule(objectCount, 32, inputDeps);
             return TargetTableWriteHandle;
-        } 
+        }
 
         JobHandle TargetTableReadJobHandle = default(JobHandle);
         public JobHandle TargetTableWriteHandle { get; private set; }
-        
+
         /// <summary>
-        /// Get the singleton TargetLookup table, which may not be written yet, for access by jobs.  
+        /// Get the singleton TargetLookup table, which may not be written yet, for access by jobs.
         /// This table converts an Entity to CM_TargetLookup.TargetInfo.
         /// </summary>
         /// <param name="inputDeps">Adds a dependency on the jobs that write the table</param>
@@ -98,7 +99,7 @@ namespace Cinemachine.ECS
         }
 
         /// <summary>
-        /// Get the singleton TargetLookup table for immediate access. 
+        /// Get the singleton TargetLookup table for immediate access.
         /// Waits for table write jobs to complete.
         /// This table converts an Entity to CM_TargetLookup.TargetInfo.
         /// </summary>
@@ -108,7 +109,7 @@ namespace Cinemachine.ECS
             TargetTableWriteHandle.Complete();
             return m_targetLookup;
         }
-        
+
         /// <summary>
         /// Register the jobs that are reading from the singleton target lookup table, so that table
         /// will not be prematurely corrupted.
@@ -122,27 +123,31 @@ namespace Cinemachine.ECS
         }
     }
 
-    // These systems define the CM Vcam pipeline, in this order.  
+    // These systems define the CM Vcam pipeline, in this order.
     // Use them to ensure correct ordering of CM pipeline systems
 
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_TargetSystem))]
     public class CM_VcamBodySystem : ComponentSystem
     {
         protected override void OnUpdate() {} // Do nothing
     }
 
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_VcamBodySystem))]
     public class CM_VcamAimSystem : ComponentSystem
     {
         protected override void OnUpdate() {} // Do nothing
     }
 
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_VcamAimSystem))]
     public class CM_VcamCorrectionSystem : ComponentSystem
     {
         protected override void OnUpdate() {} // Do nothing
     }
 
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_VcamCorrectionSystem))]
     public class CM_VcamFinalizeSystem : JobComponentSystem
     {
@@ -169,7 +174,7 @@ namespace Cinemachine.ECS
                 };
             }
         }
-        
+
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             var job = new FinalizeJob

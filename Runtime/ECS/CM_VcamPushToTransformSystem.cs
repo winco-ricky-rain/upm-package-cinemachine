@@ -15,8 +15,8 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<LocalToWorld>(), 
-                ComponentType.ReadOnly<CM_VcamPosition>(), 
+                ComponentType.Create<LocalToWorld>(),
+                ComponentType.ReadOnly<CM_VcamPosition>(),
                 ComponentType.ReadOnly<CM_VcamRotation>());
         }
 
@@ -29,17 +29,17 @@ namespace Cinemachine.ECS
 
             public void Execute(int index)
             {
-                var m0 = positions[index].Value; 
+                var m0 = positions[index].Value;
                 var m = new float3x3(m0.c0.xyz, m0.c1.xyz, m0.c2.xyz);
                 var v = new float3(0.5773503f, 0.5773503f, 0.5773503f); // unit vector
                 var scale = float4x4.Scale(math.length(math.mul(m, v))); // approximate uniform scale
-                positions[index] = new LocalToWorld 
-                { 
+                positions[index] = new LocalToWorld
+                {
                     Value = math.mul(new float4x4(vcamRotations[index].raw, vcamPositions[index].raw), scale)
                 };
             }
         }
-        
+
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             var job = new PushToTransformJob

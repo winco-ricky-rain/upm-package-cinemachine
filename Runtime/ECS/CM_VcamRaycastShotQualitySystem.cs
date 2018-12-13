@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace Cinemachine.ECS
 {
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_VcamCorrectionSystem))]
     public class CM_VcamRaycastShotQualitySystem : JobComponentSystem
     {
@@ -16,12 +17,12 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamShotQuality>(), 
+                ComponentType.Create<CM_VcamShotQuality>(),
                 ComponentType.ReadOnly<CM_VcamPosition>(),
                 ComponentType.ReadOnly<CM_VcamRotation>(),
                 ComponentType.ReadOnly<CM_VcamLensState>());
         }
-       
+
         [BurstCompile]
         struct SetupRaycastsJob : IJobParallelFor
         {
@@ -39,7 +40,7 @@ namespace Cinemachine.ECS
                 float3 dir = rotations[i].lookAtPoint - positions[i].raw;
                 float distance = math.length(dir);
                 raycasts[i] = new RaycastCommand(
-                    positions[i].raw, dir / distance, 
+                    positions[i].raw, dir / distance,
                     math.max(0, distance - minDstanceFromTarget), layerMask);
             }
         }
@@ -61,7 +62,7 @@ namespace Cinemachine.ECS
 
                 float3 offset = rotations[i].lookAtPoint - new float3(raycasts[i].from);
                 offset = math.mul(math.inverse(rotations[i].raw), offset); // camera-space
-                bool isOnscreen = 
+                bool isOnscreen =
                     (!isOrthographic & IsTargetOnscreen(offset, lenses[i].fov, aspect))
                     | (isOrthographic & IsTargetOnscreenOrtho(offset, lenses[i].fov, aspect));
 
@@ -69,7 +70,7 @@ namespace Cinemachine.ECS
                 qualities[i] = new CM_VcamShotQuality { value = math.select(0f, 1f, isVisible) };
             }
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static bool IsTargetOnscreen(float3 dir, float size, float aspect)
         {
@@ -77,7 +78,7 @@ namespace Cinemachine.ECS
             float2 fov = new float2(math.atan(math.tan(fovY) * aspect), fovY);
             float2 angle = new float2(
                 MathHelpers.AngleUnit(
-                    math.normalize(dir.ProjectOntoPlane(math.up())), new float3(0, 0, 1)), 
+                    math.normalize(dir.ProjectOntoPlane(math.up())), new float3(0, 0, 1)),
                 MathHelpers.AngleUnit(
                     math.normalize(dir.ProjectOntoPlane(new float3(1, 0, 0))), new float3(0, 0, 1)));
             return math.all(angle <= fov);

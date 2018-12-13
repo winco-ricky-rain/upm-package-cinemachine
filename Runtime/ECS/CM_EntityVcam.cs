@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
 
@@ -8,13 +9,13 @@ namespace Cinemachine.ECS
         public Entity entity;
 
         public CM_EntityVcam(Entity e) { entity = e; }
+        public Entity Entity { get { return entity; } }
 
         public string Name { get { return entity.ToString(); } }
         public string Description { get { return ""; }}
         public CameraState State { get { return StateFromEntity(entity); } }
 
         public bool IsValid { get { return entity != Entity.Null; } }
-        public Entity Entity { get { return entity; } }
 
         public ICinemachineCamera ParentCamera { get { return null; } }
         public bool IsLiveChild(ICinemachineCamera vcam) { return false; }
@@ -24,12 +25,25 @@ namespace Cinemachine.ECS
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
 
+        // GML hack until I think of something better
+        static Dictionary<Entity, CM_EntityVcam> sVcamCache = new Dictionary<Entity, CM_EntityVcam>();
+        public static CM_EntityVcam GetEntityVcam(Entity e)
+        {
+            if (sVcamCache == null)
+                sVcamCache = new Dictionary<Entity, CM_EntityVcam>();
+            CM_EntityVcam vcam = null;
+            if (!sVcamCache.TryGetValue(e, out vcam))
+                sVcamCache[e] = vcam = new CM_EntityVcam(e);
+            return vcam;
+        }
+
         public static CameraState StateFromEntity(Entity e)
         {
             CameraState state = CameraState.Default;
             var m = World.Active.GetExistingManager<EntityManager>();
             if (m != null)
             {
+                bool noLens = true;
                 if (m.HasComponent<CM_VcamLensState>(e))
                 {
                     var c = m.GetComponentData<CM_VcamLensState>(e);
@@ -42,6 +56,7 @@ namespace Cinemachine.ECS
                         Dutch = c.dutch,
                         LensShift = c.lensShift
                     };
+                    noLens = false;
                 }
                 if (m.HasComponent<CM_VcamPosition>(e))
                 {
@@ -69,6 +84,8 @@ namespace Cinemachine.ECS
                 {
                     var c = m.GetComponentData<CM_VcamBlendHint>(e);
                     state.BlendHint = (CameraState.BlendHintValue)c.blendHint; // GML fixme
+                    if (noLens)
+                        state.BlendHint |= CameraState.BlendHintValue.NoLens;
                 }
                 if (m.HasComponent<CM_VcamShotQuality>(e))
                 {

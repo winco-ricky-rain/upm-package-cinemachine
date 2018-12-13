@@ -48,7 +48,7 @@ namespace Cinemachine.ECS
         /// Using different settings per axis can yield a wide range of camera behaviors</summary>
         public float3 damping;
 
-        /// <summary>How aggressively the camera tries to track the target's rotation.  
+        /// <summary>How aggressively the camera tries to track the target's rotation.
         /// Small numbers are more responsive.  Larger numbers give a more heavy slowly responding camera.</summary>
         public float angularDamping;
     }
@@ -60,7 +60,8 @@ namespace Cinemachine.ECS
         public float3 previousTargetPosition;
         public quaternion previousTargetRotation;
     }
-    
+
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_VcamBodySystem))]
     [UpdateBefore(typeof(CM_VcamAimSystem))]
     public class CM_VcamTransposerSystem : JobComponentSystem
@@ -68,20 +69,22 @@ namespace Cinemachine.ECS
         ComponentGroup m_mainGroup;
         ComponentGroup m_missingStateGroup;
 
+#pragma warning disable 649 // never assigned to
         // Used only to add missing CM_VcamTransposerState components
         [Inject] EndFrameBarrier m_missingStateBarrier;
+#pragma warning restore 649
 
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPosition>(), 
-                ComponentType.Create<CM_VcamTransposerState>(), 
+                ComponentType.Create<CM_VcamPosition>(),
+                ComponentType.Create<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
 
             m_missingStateGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPosition>(), 
-                ComponentType.Subtractive<CM_VcamTransposerState>(), 
+                ComponentType.Create<CM_VcamPosition>(),
+                ComponentType.Subtractive<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
         }
@@ -103,7 +106,7 @@ namespace Cinemachine.ECS
                 {
                     var targetPos = targetInfo.position;
                     var targetRot = GetRotationForBindingMode(
-                            targetInfo.rotation, transposers[index].bindingMode, 
+                            targetInfo.rotation, transposers[index].bindingMode,
                             targetPos - positions[index].raw);
 
                     bool applyDamping = deltaTime >= 0 && positions[index].previousFrameDataIsValid != 0;
@@ -114,9 +117,9 @@ namespace Cinemachine.ECS
                         deltaTime, math.select(float3.zero, transposers[index].damping, applyDamping),
                         transposerStates[index].previousTargetPosition, targetPos, targetRot);
 
-                    transposerStates[index] = new CM_VcamTransposerState 
-                    { 
-                        previousTargetPosition = targetPos, 
+                    transposerStates[index] = new CM_VcamTransposerState
+                    {
+                        previousTargetPosition = targetPos,
                         previousTargetRotation = targetRot
                     };
 
@@ -129,7 +132,7 @@ namespace Cinemachine.ECS
                 }
             }
         }
-        
+
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing transposer state components
@@ -175,7 +178,7 @@ namespace Cinemachine.ECS
         /// <summary>Applies damping to target position</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 ApplyPositionDamping(
-            float deltaTime, float3 damping, 
+            float deltaTime, float3 damping,
             float3 previousTargetPosition, float3 currentTargetPosition,
             quaternion currentTargetRotation)
         {
@@ -186,11 +189,11 @@ namespace Cinemachine.ECS
             return previousTargetPosition + worldOffset;
         }
 
-        /// <summary>Applies binding mode: 
+        /// <summary>Applies binding mode:
         /// Returns the axes for applying target offset and damping</summary>
         public static quaternion GetRotationForBindingMode(
-            quaternion targetRotation, 
-            CM_VcamTransposer.BindingMode bindingMode, 
+            quaternion targetRotation,
+            CM_VcamTransposer.BindingMode bindingMode,
             float3 directionCameraToTarget) // not normalized
         {
             // GML todo: optimize!  Can we get rid of the switch?
@@ -207,7 +210,7 @@ namespace Cinemachine.ECS
                     directionCameraToTarget.y = 0;
                     float len = math.length(directionCameraToTarget);
                     return math.select(
-                        quaternion.LookRotation(directionCameraToTarget / len, math.up()).value, 
+                        quaternion.LookRotation(directionCameraToTarget / len, math.up()).value,
                         targetRotation.value, len < MathHelpers.Epsilon);
                 }
                 default:

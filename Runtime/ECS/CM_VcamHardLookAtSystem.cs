@@ -12,6 +12,7 @@ namespace Cinemachine.ECS
     {
     }
 
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_VcamAimSystem))]
     [UpdateBefore(typeof(CM_VcamCorrectionSystem))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem
@@ -21,8 +22,8 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamRotation>(), 
-                ComponentType.ReadOnly<CM_VcamPosition>(), 
+                ComponentType.Create<CM_VcamRotation>(),
+                ComponentType.ReadOnly<CM_VcamPosition>(),
                 ComponentType.ReadOnly<CM_VcamHardLookAt>(),
                 ComponentType.ReadOnly<CM_VcamLookAtTarget>());
         }
@@ -52,7 +53,7 @@ namespace Cinemachine.ECS
                 }
             }
         }
-        
+
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             var targetSystem = World.GetExistingManager<CM_TargetSystem>();

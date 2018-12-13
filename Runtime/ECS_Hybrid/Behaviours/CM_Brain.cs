@@ -9,14 +9,14 @@ using UnityEngine.Events;
 namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
-//#if UNITY_2018_3_OR_NEWER
-//    [ExecuteAlways]
-//#else
-//    [ExecuteInEditMode]
-//#endif
+#if UNITY_2018_3_OR_NEWER
+    [ExecuteAlways]
+#else
+    [ExecuteInEditMode]
+#endif
     [AddComponentMenu("Cinemachine/CM_Brain")]
     [SaveDuringPlay]
-    public class CM_Brain : MonoBehaviour 
+    public class CM_Brain : MonoBehaviour
     {
         /// <summary>
         /// When enabled, the current camera and blend will be indicated in the game window, for debugging.
@@ -32,7 +32,7 @@ namespace Cinemachine.ECS_Hybrid
         public bool m_ShowCameraFrustum = true;
 
         /// <summary>
-        /// When enabled, the cameras will always respond in real-time to user input and damping, 
+        /// When enabled, the cameras will always respond in real-time to user input and damping,
         /// even if the game is running in slow motion
         /// </summary>
         [Tooltip("When enabled, the cameras will always respond in real-time to user input and damping, "
@@ -41,7 +41,7 @@ namespace Cinemachine.ECS_Hybrid
 
         /// <summary>
         /// If set, this object's Y axis will define the worldspace Up vector for all the
-        /// virtual cameras.  This is useful in top-down game environments.  If not set, Up is 
+        /// virtual cameras.  This is useful in top-down game environments.  If not set, Up is
         /// worldspace Y.
         /// </summary>
         [Tooltip("If set, this object's Y axis will define the worldspace Up vector for all the "
@@ -91,7 +91,7 @@ namespace Cinemachine.ECS_Hybrid
         [Tooltip("This event will fire whenever a virtual camera goes live and there is no blend")]
         public BrainEvent m_CameraCutEvent = new BrainEvent();
 
-        /// <summary>This event will fire whenever a virtual camera goes live.  If a blend is involved, 
+        /// <summary>This event will fire whenever a virtual camera goes live.  If a blend is involved,
         /// then the event will fire on the first frame of the blend</summary>
         [Tooltip("This event will fire whenever a virtual camera goes live.  If a blend is involved, then the event will fire on the first frame of the blend.")]
         public VcamActivatedEvent m_CameraActivatedEvent = new VcamActivatedEvent();
@@ -103,11 +103,11 @@ namespace Cinemachine.ECS_Hybrid
         /// API for the Unity Editor.
         /// Show this camera no matter what.  This is static, and so affects all Cinemachine brains.
         /// </summary>
-        public static ICinemachineCamera SoloCamera 
-        { 
-            get { return mSoloCamera; } 
-            set 
-            { 
+        public static ICinemachineCamera SoloCamera
+        {
+            get { return mSoloCamera; }
+            set
+            {
                 if (value != null && !CinemachineCore.Instance.IsLive(value))
                     value.OnTransitionFromCamera(null, Vector3.up, Time.deltaTime);
                 mSoloCamera = value;
@@ -120,12 +120,12 @@ namespace Cinemachine.ECS_Hybrid
 
         /// <summary>Get the default world up for the virtual cameras.</summary>
         public Vector3 DefaultWorldUp
-            { get { return (m_WorldUpOverride != null) 
+            { get { return (m_WorldUpOverride != null)
                 ? m_WorldUpOverride.up : Vector3.up; } }
 
         /// <summary>Get the default world orientation for the virtual cameras.</summary>
         public Quaternion DefaultWorldOrientation
-            { get { return (m_WorldUpOverride != null) 
+            { get { return (m_WorldUpOverride != null)
                 ? m_WorldUpOverride.rotation : Quaternion.identity; } }
 
         private static ICinemachineCamera mSoloCamera;
@@ -140,8 +140,6 @@ namespace Cinemachine.ECS_Hybrid
             sActiveBrains.Insert(0, this);
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
-
-            mVcamCache.Clear();
         }
 
         private void OnDisable()
@@ -231,7 +229,7 @@ namespace Cinemachine.ECS_Hybrid
         /// <summary>Access the array of active CinemachineBrains in the scene</summary>
         public static int BrainCount { get { return sActiveBrains.Count; } }
 
-        /// <summary>Access the array of active CinemachineBrains in the scene 
+        /// <summary>Access the array of active CinemachineBrains in the scene
         /// without gebnerating garbage</summary>
         /// <param name="index">Index of the brain to access, range 0-BrainCount</param>
         /// <returns>The brain at the specified index</returns>
@@ -321,8 +319,8 @@ namespace Cinemachine.ECS_Hybrid
             // Used by Timeline Preview for overriding the current value of deltaTime
             public float deltaTimeOverride;
             public float timeOfOverride;
-            public bool TimeOverrideExpired 
-            { 
+            public bool TimeOverrideExpired
+            {
                 get { return Time.realtimeSinceStartup - timeOfOverride > Time.maximumDeltaTime; }
             }
         }
@@ -342,7 +340,7 @@ namespace Cinemachine.ECS_Hybrid
             mFrameStack.Add(new BrainFrame() { id = withId });
             return mFrameStack.Count - 1;
         }
-        
+
         // Current Brain State - result of all frames.  Blend camB is "current" camera always
         CinemachineBlend mCurrentLiveCameras = new CinemachineBlend(null, null, null, 0, 0);
 
@@ -453,7 +451,7 @@ namespace Cinemachine.ECS_Hybrid
                         else // chain to existing blend
                             frame.blend.CamA = new BlendSourceVirtualCamera(
                                 new CinemachineBlend(
-                                    frame.blend.CamA, frame.blend.CamB, 
+                                    frame.blend.CamA, frame.blend.CamB,
                                     frame.blend.BlendCurve, frame.blend.Duration, frame.blend.TimeInBlend));
 
                         frame.blend.BlendCurve = blendDef.BlendCurve;
@@ -574,19 +572,11 @@ namespace Cinemachine.ECS_Hybrid
                 {
                     var e = queue[i];
                     if ((mask & (1 << e.vcamPriority.vcamLayer)) != 0)
-                    {
-                        CM_EntityVcam vcam = null;
-                        if (!mVcamCache.TryGetValue(e.entity, out vcam))
-                            mVcamCache[e.entity] = vcam = new CM_EntityVcam(e.entity);
-                        return vcam;
-                    }
+                        return CM_EntityVcam.GetEntityVcam(e.entity);
                 }
             }
             return null;
         }
-
-        // GML hack until I think of something better
-        Dictionary<Entity, CM_EntityVcam> mVcamCache = new Dictionary<Entity, CM_EntityVcam>();
 
         /// <summary>
         /// Create a blend curve for blending from one ICinemachineCamera to another.

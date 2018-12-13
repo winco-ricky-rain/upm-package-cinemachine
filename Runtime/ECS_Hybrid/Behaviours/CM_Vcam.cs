@@ -7,12 +7,12 @@ using Unity.Mathematics;
 namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
-//    [RequireComponent(typeof(GameObjectEntity))]
-//#if UNITY_2018_3_OR_NEWER
-//    [ExecuteAlways]
-//#else
-//    [ExecuteInEditMode]
-//#endif
+    [RequireComponent(typeof(GameObjectEntity))]
+#if UNITY_2018_3_OR_NEWER
+    [ExecuteAlways]
+#else
+    [ExecuteInEditMode]
+#endif
     [AddComponentMenu("Cinemachine/CM_Vcam")]
     public class CM_Vcam : MonoBehaviour, ICinemachineCamera
     {
@@ -42,7 +42,7 @@ namespace Cinemachine.ECS_Hybrid
         [LensSettingsProperty]
         public LensSettings m_Lens = LensSettings.Default;
 
-        /// <summary> Collection of parameters that influence how this virtual camera transitions from 
+        /// <summary> Collection of parameters that influence how this virtual camera transitions from
         /// other virtual cameras </summary>
         public CinemachineVirtualCameraBase.TransitionParams m_Transitions; // GML fixme
 
@@ -51,12 +51,12 @@ namespace Cinemachine.ECS_Hybrid
 
         GameObjectEntity m_gameObjectEntityComponent;
 
-        Entity Entity 
-        { 
-            get 
-            { 
-                return m_gameObjectEntityComponent == null 
-                    ? Entity.Null : m_gameObjectEntityComponent.Entity; 
+        Entity Entity
+        {
+            get
+            {
+                return m_gameObjectEntityComponent == null
+                    ? Entity.Null : m_gameObjectEntityComponent.Entity;
             }
         }
 
@@ -72,7 +72,7 @@ namespace Cinemachine.ECS_Hybrid
         /// <summary>Get the name of the Virtual Camera</summary>
         public string Name { get { return name; } }
 
-        /// <summary>Gets a brief debug description of this virtual camera, for 
+        /// <summary>Gets a brief debug description of this virtual camera, for
         /// use when displayiong debug info</summary>
         public virtual string Description { get { return string.Empty; }}
 
@@ -80,9 +80,9 @@ namespace Cinemachine.ECS_Hybrid
 
         /// <summary>The CameraState object holds all of the information
         /// necessary to position the Unity camera.  It is the output of this class.</summary>
-        public CameraState State 
-        { 
-            get { return (CM_EntityVcam.StateFromEntity(Entity)); } 
+        public CameraState State
+        {
+            get { return (CM_EntityVcam.StateFromEntity(Entity)); }
         }
 
         public ICinemachineCamera ParentCamera { get { return null; } }
@@ -90,7 +90,7 @@ namespace Cinemachine.ECS_Hybrid
         public void UpdateCameraState(Vector3 worldUp, float deltaTime) {}
 
         /// <summary>This is called to notify the vcam that a target got warped,
-        /// so that the vcam can update its internal state to make the camera 
+        /// so that the vcam can update its internal state to make the camera
         /// also warp seamlessy.</summary>
         /// <param name="target">The object that was warped</param>
         /// <param name="positionDelta">The amount the target's position changed</param>
@@ -121,7 +121,7 @@ namespace Cinemachine.ECS_Hybrid
         /// <param name="worldUp">Default world Up, set by the CinemachineBrain</param>
         /// <param name="deltaTime">Delta time for time-based effects (ignore if less than or equal to 0)</param>
         public void OnTransitionFromCamera(
-            ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) 
+            ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime)
         {
             var m = ActiveEntityManager;
             if (m == null)
@@ -143,7 +143,7 @@ namespace Cinemachine.ECS_Hybrid
 /* GML todo: how to push this to other systems that need it?
             for (int i = 0; i < m_Components.Length; ++i)
             {
-                if (m_Components[i] != null 
+                if (m_Components[i] != null
                         && m_Components[i].OnTransitionFromCamera(
                             fromCam, worldUp, deltaTime, ref m_Transitions))
                     forceUpdate = true;
@@ -162,7 +162,7 @@ namespace Cinemachine.ECS_Hybrid
         /// and a blend calculated, depending on the value of the Y axis.</summary>
         /// <param name="worldUp">Default world Up, set by the CinemachineBrain</param>
         /// <param name="deltaTime">Delta time for time-based effects (ignore if less than 0)</param>
-        public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime) 
+        public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime)
         {
 #if false
             if (!PreviousStateIsValid)
@@ -198,14 +198,14 @@ namespace Cinemachine.ECS_Hybrid
             UpdateComponentCache();
 
             // Apply the component pipeline
-            for (CinemachineCore.Stage stage = CinemachineCore.Stage.Body; 
+            for (CinemachineCore.Stage stage = CinemachineCore.Stage.Body;
                 stage < CinemachineCore.Stage.Finalize; ++stage)
             {
                 var c = m_Components[(int)stage];
                 if (c != null)
                     c.PrePipelineMutateCameraState(ref state);
             }
-            for (CinemachineCore.Stage stage = CinemachineCore.Stage.Body; 
+            for (CinemachineCore.Stage stage = CinemachineCore.Stage.Body;
                 stage < CinemachineCore.Stage.Finalize; ++stage)
             {
                 var c = m_Components[(int)stage];
@@ -263,8 +263,8 @@ namespace Cinemachine.ECS_Hybrid
                 dutch = m_Lens.Dutch,
                 lensShift = m_Lens.LensShift
             });
-            m.SetComponentData(Entity, new CM_VcamPriority 
-            { 
+            m.SetComponentData(Entity, new CM_VcamPriority
+            {
                 vcamLayer = gameObject.layer,
                 priority = m_Priority
                 // GML todo: vcamSequence
@@ -282,6 +282,7 @@ namespace Cinemachine.ECS_Hybrid
         // GML: Needed in editor only, probably, only if something is dirtied
         void Update()
         {
+            CreateEntityComponents();
             PushValuesToEntityComponents();
         }
     }

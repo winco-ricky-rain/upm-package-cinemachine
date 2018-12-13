@@ -11,7 +11,7 @@ namespace Cinemachine.ECS
     [Serializable]
     public struct CM_VcamPriority : IComponentData
     {
-        /// <summary>GameObjet layer mask, brain will only see the vcams that pass 
+        /// <summary>GameObjet layer mask, brain will only see the vcams that pass
         /// its layer filter</summary>
         public int vcamLayer;
 
@@ -23,7 +23,8 @@ namespace Cinemachine.ECS
         /// <summary>Used as second key for priority sorting</summary>
         public int vcamSequence;
     }
-    
+
+    [UnityEngine.ExecuteInEditMode]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
     public class CM_VcamPrioritySystem : JobComponentSystem
     {
@@ -58,7 +59,7 @@ namespace Cinemachine.ECS
 
             public void Execute(int index)
             {
-                priorityQueue[index] = new QueueEntry 
+                priorityQueue[index] = new QueueEntry
                 {
                     entity = entities[index],
                     vcamPriority = priorities[index],
@@ -78,7 +79,7 @@ namespace Cinemachine.ECS
 
             public void Execute(int index)
             {
-                priorityQueue[index + arrayOffset] = new QueueEntry 
+                priorityQueue[index + arrayOffset] = new QueueEntry
                 {
                     entity = entities[index],
                     vcamPriority = priorities[index],
@@ -86,7 +87,7 @@ namespace Cinemachine.ECS
                 };
             }
         }
-        
+
         [BurstCompile]
         struct SortQueueJob : IJobParallelFor
         {
@@ -108,14 +109,14 @@ namespace Cinemachine.ECS
                     int s = y.vcamPriority.vcamSequence - x.vcamPriority.vcamSequence; // high-to-low
                     int e = x.entity.Index - y.entity.Index;
                     int v = x.entity.Version - y.entity.Version;
-                    return math.select(a, 
-                        math.select(p, 
-                            math.select(q, 
-                                math.select(s, 
-                                    math.select(e, v, e == 0), 
-                                    s == 0), 
+                    return math.select(a,
+                        math.select(p,
+                            math.select(q,
+                                math.select(s,
+                                    math.select(e, v, e == 0),
+                                    s == 0),
                                 q == 0),
-                            p == 0), 
+                            p == 0),
                         a == 0);
                 }
             }
@@ -191,7 +192,7 @@ namespace Cinemachine.ECS
             return h;
         }
 
-        /// <summary>Get the vcam priority queue for immediate access. 
+        /// <summary>Get the vcam priority queue for immediate access.
         /// Waits for queue write jobs to complete.</summary>
         /// <returns>The queue</returns>
         public NativeArray<QueueEntry> GetPriorityQueueNow()
