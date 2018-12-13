@@ -9,15 +9,15 @@ namespace Cinemachine.ECS
     {
         public Entity target;
     }
-    
+
     [Serializable]
     public struct CM_VcamLookAtTarget : IComponentData
     {
         public Entity target;
     }
-    
+
     /// <summary>
-    /// Describes the FOV and clip planes for a camera.  This generally mirrors the Unity Camera's 
+    /// Describes the FOV and clip planes for a camera.  This generally mirrors the Unity Camera's
     /// lens settings, and will be used to drive the Unity camera when the vcam is active.
     /// </summary>
     [Serializable]
@@ -26,7 +26,7 @@ namespace Cinemachine.ECS
         /// <summary>
         /// This is the camera view in vertical degrees. For cinematic people, a 50mm lens
         /// on a super-35mm sensor would equal a 19.6 degree FOV.
-        /// When using an orthographic camera, this defines the height, in world 
+        /// When using an orthographic camera, this defines the height, in world
         /// co-ordinates, of the camera view.
         /// </summary>
         public float fov;
@@ -43,7 +43,7 @@ namespace Cinemachine.ECS
         /// <summary> For physical cameras only: position of the gate relative to the film back </summary>
         public float2 lensShift;
     }
-    
+
     [Serializable]
     public struct CM_VcamBlendHint : IComponentData
     {
@@ -86,8 +86,15 @@ namespace Cinemachine.ECS
         /// <summary> Raw (un-corrected) world space position of this camera </summary>
         public float3 raw;
 
+        /// <summary>
+        /// Position correction.  This will be added to the raw position.
+        /// This value doesn't get fed back into the system when calculating the next frame.
+        /// Can be noise, or smoothing, or both, or something else.
+        /// </summary>
+        public float3 correction;
+
         /// <summary>This is a way for the Body component to bypass aim damping,
-        /// useful for when the body need to rotate its point of view, but does not
+        /// useful for when the body needs to rotate its point of view, but does not
         /// want interference from the aim damping</summary>
         public float3 dampingBypass;
 
@@ -103,35 +110,20 @@ namespace Cinemachine.ECS
     {
         /// <summary>
         /// The world space focus point of the camera.  What the camera wants to look at.
-        /// There is a special constant define to represent "nothing".  Be careful to 
+        /// There is a special constant define to represent "nothing".  Be careful to
         /// check for that (or check the HasLookAt property).
         /// </summary>
         public float3 lookAtPoint;
 
         /// <summary> Raw (un-corrected) world space orientation of this camera </summary>
         public quaternion raw;
-    }
 
-    [Serializable]
-    public struct CM_VcamPositionCorrection : IComponentData
-    {
-        /// <summary>
-        /// Position correction.  This will be added to the raw position.
-        /// This value doesn't get fed back into the system when calculating the next frame.
-        /// Can be noise, or smoothing, or both, or something else.
-        /// </summary>
-        public float3 value;
-    }
-
-    [Serializable]
-    public struct CM_VcamRotationCorrection : IComponentData
-    {
         /// <summary>
         /// Rotation correction.  This will be added to the raw orientation.
         /// This value doesn't get fed back into the system when calculating the next frame.
         /// Can be noise, or smoothing, or both, or something else.
         /// </summary>
-        public quaternion value;
+        public quaternion correction;
     }
 
     /// <summary>

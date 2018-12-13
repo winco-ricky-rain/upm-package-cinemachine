@@ -47,7 +47,7 @@ namespace Cinemachine.ECS
                 if (m.HasComponent<CM_VcamLensState>(e))
                 {
                     var c = m.GetComponentData<CM_VcamLensState>(e);
-                    state.Lens = new LensSettings 
+                    state.Lens = new LensSettings
                     {
                         FieldOfView = c.fov,
                         OrthographicSize = c.fov,
@@ -64,21 +64,11 @@ namespace Cinemachine.ECS
                     state.RawPosition = c.raw;
                     state.ReferenceUp = c.up;
                 }
-                if (m.HasComponent<CM_VcamPositionCorrection>(e))
-                {
-                    var c = m.GetComponentData<CM_VcamPositionCorrection>(e);
-                    state.PositionCorrection = c.value;
-                }
                 if (m.HasComponent<CM_VcamRotation>(e))
                 {
                     var c = m.GetComponentData<CM_VcamRotation>(e);
                     state.ReferenceLookAt = c.lookAtPoint;
                     state.RawOrientation = c.raw;
-                }
-                if (m.HasComponent<CM_VcamRotationCorrection>(e))
-                {
-                    var c = m.GetComponentData<CM_VcamRotationCorrection>(e);
-                    state.OrientationCorrection = c.value;
                 }
                 if (m.HasComponent<CM_VcamBlendHint>(e))
                 {

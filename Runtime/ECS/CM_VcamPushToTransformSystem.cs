@@ -23,17 +23,17 @@ namespace Cinemachine.ECS
         [BurstCompile]
         struct PushToTransformJob : IJobParallelFor
         {
-            public ComponentDataArray<LocalToWorld> positions;
+            public ComponentDataArray<LocalToWorld> localToWorld;
             [ReadOnly] public ComponentDataArray<CM_VcamPosition> vcamPositions;
             [ReadOnly] public ComponentDataArray<CM_VcamRotation> vcamRotations;
 
             public void Execute(int index)
             {
-                var m0 = positions[index].Value;
+                var m0 = localToWorld[index].Value;
                 var m = new float3x3(m0.c0.xyz, m0.c1.xyz, m0.c2.xyz);
                 var v = new float3(0.5773503f, 0.5773503f, 0.5773503f); // unit vector
                 var scale = float4x4.Scale(math.length(math.mul(m, v))); // approximate uniform scale
-                positions[index] = new LocalToWorld
+                localToWorld[index] = new LocalToWorld
                 {
                     Value = math.mul(new float4x4(vcamRotations[index].raw, vcamPositions[index].raw), scale)
                 };
@@ -44,7 +44,7 @@ namespace Cinemachine.ECS
         {
             var job = new PushToTransformJob
             {
-                positions = m_mainGroup.GetComponentDataArray<LocalToWorld>(),
+                localToWorld = m_mainGroup.GetComponentDataArray<LocalToWorld>(),
                 vcamPositions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
                 vcamRotations = m_mainGroup.GetComponentDataArray<CM_VcamRotation>()
             };
