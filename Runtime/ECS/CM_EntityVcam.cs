@@ -63,12 +63,14 @@ namespace Cinemachine.ECS
                     var c = m.GetComponentData<CM_VcamPosition>(e);
                     state.RawPosition = c.raw;
                     state.ReferenceUp = c.up;
+                    state.PositionCorrection = c.correction;
                 }
                 if (m.HasComponent<CM_VcamRotation>(e))
                 {
                     var c = m.GetComponentData<CM_VcamRotation>(e);
                     state.ReferenceLookAt = c.lookAtPoint;
                     state.RawOrientation = c.raw;
+                    state.OrientationCorrection = c.correction;
                 }
                 if (m.HasComponent<CM_VcamBlendHint>(e))
                 {

@@ -48,7 +48,8 @@ namespace Cinemachine.ECS
                     rotations[index] = new CM_VcamRotation
                     {
                         lookAtPoint = targetInfo.position,
-                        raw = q
+                        raw = q,
+                        correction = quaternion.identity
                     };
                 }
             }
