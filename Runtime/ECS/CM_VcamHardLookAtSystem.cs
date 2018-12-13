@@ -13,8 +13,8 @@ namespace Cinemachine.ECS
     }
 
     [UnityEngine.ExecuteInEditMode]
-    [UpdateAfter(typeof(CM_VcamAimSystem))]
-    [UpdateBefore(typeof(CM_VcamCorrectionSystem))]
+    [UpdateAfter(typeof(CM_VcamPreAimSystem))]
+    [UpdateBefore(typeof(CM_VcamPreCorrectionSystem))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;

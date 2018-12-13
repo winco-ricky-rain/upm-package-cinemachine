@@ -62,8 +62,8 @@ namespace Cinemachine.ECS
     }
 
     [UnityEngine.ExecuteInEditMode]
-    [UpdateAfter(typeof(CM_VcamBodySystem))]
-    [UpdateBefore(typeof(CM_VcamAimSystem))]
+    [UpdateAfter(typeof(CM_VcamPreBodySystem))]
+    [UpdateBefore(typeof(CM_VcamPreAimSystem))]
     public class CM_VcamTransposerSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -93,6 +93,7 @@ namespace Cinemachine.ECS
         struct TrackTargetJob : IJobParallelFor
         {
             public float deltaTime;
+            public float fixedDelta;
             public ComponentDataArray<CM_VcamPosition> positions;
             public ComponentDataArray<CM_VcamTransposerState> transposerStates;
             [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
@@ -111,10 +112,12 @@ namespace Cinemachine.ECS
 
                     bool applyDamping = deltaTime >= 0 && positions[index].previousFrameDataIsValid != 0;
                     targetRot = ApplyRotationDamping(
-                        deltaTime, math.select(0, transposers[index].angularDamping, applyDamping),
+                        deltaTime, fixedDelta,
+                        math.select(0, transposers[index].angularDamping, applyDamping),
                         transposerStates[index].previousTargetRotation, targetRot);
                     targetPos = ApplyPositionDamping(
-                        deltaTime, math.select(float3.zero, transposers[index].damping, applyDamping),
+                        deltaTime, fixedDelta,
+                        math.select(float3.zero, transposers[index].damping, applyDamping),
                         transposerStates[index].previousTargetPosition, targetPos, targetRot);
 
                     transposerStates[index] = new CM_VcamTransposerState
@@ -155,6 +158,7 @@ namespace Cinemachine.ECS
             var job = new TrackTargetJob()
             {
                 deltaTime = Time.deltaTime, // GML todo: use correct value
+                fixedDelta = Time.fixedDeltaTime,
                 positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
                 transposers = m_mainGroup.GetComponentDataArray<CM_VcamTransposer>(),
                 transposerStates = m_mainGroup.GetComponentDataArray<CM_VcamTransposerState>(),
@@ -168,23 +172,23 @@ namespace Cinemachine.ECS
         /// <summary>Applies damping to target rotation</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static quaternion ApplyRotationDamping(
-            float deltaTime, float angularDamping,
+            float deltaTime, float fixedDelta, float angularDamping,
             quaternion previousTargetRotation, quaternion currentTargetRotation)
         {
-            float t = MathHelpers.Damp(1, angularDamping, deltaTime);
+            float t = MathHelpers.Damp(1, angularDamping, deltaTime, fixedDelta);
             return math.slerp(previousTargetRotation, currentTargetRotation, t);
         }
 
         /// <summary>Applies damping to target position</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 ApplyPositionDamping(
-            float deltaTime, float3 damping,
+            float deltaTime, float fixedDelta, float3 damping,
             float3 previousTargetPosition, float3 currentTargetPosition,
             quaternion currentTargetRotation)
         {
             var worldOffset = currentTargetPosition - previousTargetPosition;
             float3 localOffset = math.mul(math.inverse(currentTargetRotation), worldOffset);
-            localOffset = MathHelpers.Damp(localOffset, damping, deltaTime);
+            localOffset = MathHelpers.Damp(localOffset, damping, deltaTime, fixedDelta);
             worldOffset = math.mul(currentTargetRotation, localOffset);
             return previousTargetPosition + worldOffset;
         }

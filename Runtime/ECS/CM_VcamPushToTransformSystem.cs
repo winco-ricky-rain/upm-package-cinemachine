@@ -1,3 +1,5 @@
+#if false
+
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -52,3 +54,5 @@ namespace Cinemachine.ECS
         }
     }
 }
+#endif
+

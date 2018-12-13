@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 namespace Cinemachine.ECS
 {
     [UnityEngine.ExecuteInEditMode]
-    [UpdateAfter(typeof(CM_VcamCorrectionSystem))]
+    [UpdateAfter(typeof(CM_VcamPreCorrectionSystem))]
     public class CM_VcamRaycastShotQualitySystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -37,10 +37,13 @@ namespace Cinemachine.ECS
             public void Execute(int i)
             {
                 // GML todo: check for no lookAt condition
-                float3 dir = rotations[i].lookAtPoint - positions[i].raw;
+
+                // cast back towards the camera to filter out target's collider
+                float3 dir = positions[i].raw - rotations[i].lookAtPoint;
                 float distance = math.length(dir);
+                dir /= distance;
                 raycasts[i] = new RaycastCommand(
-                    positions[i].raw, dir / distance,
+                    rotations[i].lookAtPoint + minDstanceFromTarget * dir, dir,
                     math.max(0, distance - minDstanceFromTarget), layerMask);
             }
         }
@@ -53,6 +56,7 @@ namespace Cinemachine.ECS
             public ComponentDataArray<CM_VcamShotQuality> qualities;
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastHit> hits;
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastCommand> raycasts;
+            [ReadOnly] public ComponentDataArray<CM_VcamPosition> positions;
             [ReadOnly] public ComponentDataArray<CM_VcamRotation> rotations;
             [ReadOnly] public ComponentDataArray<CM_VcamLensState> lenses;
 
@@ -60,7 +64,7 @@ namespace Cinemachine.ECS
             {
                 bool noObstruction = hits[i].normal == Vector3.zero;
 
-                float3 offset = rotations[i].lookAtPoint - new float3(raycasts[i].from);
+                float3 offset = rotations[i].lookAtPoint - positions[i].raw; // GML todo: use corrected
                 offset = math.mul(math.inverse(rotations[i].raw), offset); // camera-space
                 bool isOnscreen =
                     (!isOrthographic & IsTargetOnscreen(offset, lenses[i].fov, aspect))
@@ -121,6 +125,7 @@ namespace Cinemachine.ECS
                 qualities = m_mainGroup.GetComponentDataArray<CM_VcamShotQuality>(),
                 hits = raycastHits,         // deallocates on completion
                 raycasts = raycastCommands, // deallocates on completion
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
                 rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotation>(),
                 lenses = m_mainGroup.GetComponentDataArray<CM_VcamLensState>(),
             };
