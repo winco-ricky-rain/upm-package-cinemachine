@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 namespace Cinemachine.ECS
 {
     [UnityEngine.ExecuteInEditMode]
-    [UpdateAfter(typeof(CM_VcamPreCorrectionSystem))]
+    [UpdateBefore(typeof(CM_VcamFinalizeSystem))]
     public class CM_VcamRaycastShotQualitySystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;

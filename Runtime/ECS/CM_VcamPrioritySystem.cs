@@ -107,8 +107,8 @@ namespace Cinemachine.ECS
                     float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
                     int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
                     int s = y.vcamPriority.vcamSequence - x.vcamPriority.vcamSequence; // high-to-low
-                    int e = x.entity.Index - y.entity.Index;
-                    int v = x.entity.Version - y.entity.Version;
+                    int e = y.entity.Index - x.entity.Index;    // high-to-low
+                    int v = y.entity.Version - x.entity.Version; // high-to-low
                     return math.select(a,
                         math.select(p,
                             math.select(q,

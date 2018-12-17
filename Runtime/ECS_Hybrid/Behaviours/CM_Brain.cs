@@ -267,23 +267,8 @@ namespace Cinemachine.ECS_Hybrid
             {
                 if (SoloCamera != null)
                     return SoloCamera;
-                return DeepCamBFromBlend(mCurrentLiveCameras);
+                return mCurrentLiveCameras.DeepCamB();
             }
-        }
-
-        static ICinemachineCamera DeepCamBFromBlend(CinemachineBlend blend)
-        {
-            ICinemachineCamera vcam = blend.CamB;
-            while (vcam != null)
-            {
-                if (!vcam.IsValid)
-                    return null;    // deleted!
-                BlendSourceVirtualCamera bs = vcam as BlendSourceVirtualCamera;
-                if (bs == null)
-                    break;
-                vcam = bs.Blend.CamB;
-            }
-            return vcam;
         }
 
         /// <summary>

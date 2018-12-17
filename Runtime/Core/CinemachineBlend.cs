@@ -28,13 +28,13 @@ namespace Cinemachine
         /// BlendCurve at the current time relative to the start of the blend.
         /// 0 means camA, 1 means camB.</summary>
         public float BlendWeight
-        { 
-            get 
-            { 
+        {
+            get
+            {
                 if (BlendCurve == null || BlendCurve.length < 2 || IsComplete)
                     return 1;
-                return Mathf.Clamp01(BlendCurve.Evaluate(TimeInBlend / Duration)); 
-            } 
+                return Mathf.Clamp01(BlendCurve.Evaluate(TimeInBlend / Duration));
+            }
         }
 
         /// <summary>Validity test for the blend.  True if either camera is defined.</summary>
@@ -72,8 +72,8 @@ namespace Cinemachine
                     sb.Append(CamA.Name);
                     sb.Append("]");
                 }
-                string text = sb.ToString(); 
-                CinemachineDebug.ReturnToPool(sb); 
+                string text = sb.ToString();
+                CinemachineDebug.ReturnToPool(sb);
                 return text;
             }
         }
@@ -125,10 +125,10 @@ namespace Cinemachine
         }
 
         /// <summary>Compute the blended CameraState for the current time in the blend.</summary>
-        public CameraState State 
-        { 
-            get 
-            { 
+        public CameraState State
+        {
+            get
+            {
                 if (CamA == null || !CamA.IsValid)
                 {
                     if (CamB == null || !CamB.IsValid)
@@ -139,6 +139,21 @@ namespace Cinemachine
                     return CamA.State;
                 return CameraState.Lerp(CamA.State, CamB.State, BlendWeight);
             }
+        }
+
+        public ICinemachineCamera DeepCamB()
+        {
+            ICinemachineCamera vcam = CamB;
+            while (vcam != null)
+            {
+                if (!vcam.IsValid)
+                    return null;    // deleted!
+                BlendSourceVirtualCamera bs = vcam as BlendSourceVirtualCamera;
+                if (bs == null)
+                    break;
+                vcam = bs.Blend.CamB;
+            }
+            return vcam;
         }
     }
 
@@ -189,7 +204,7 @@ namespace Cinemachine
         }
 
         /// <summary>
-        /// A user-defined AnimationCurve, used only if style is Custom.  
+        /// A user-defined AnimationCurve, used only if style is Custom.
         /// Curve MUST be normalized, i.e. time range [0...1], value range [0...1].
         /// </summary>
         public AnimationCurve m_CustomCurve;
@@ -217,7 +232,7 @@ namespace Cinemachine
             keys[0].outTangent = 0;
             keys[1].inTangent = 1.5708f; // pi/2 = up
             sStandardCurves[(int)Style.HardIn].keys = keys;
-                        
+
             sStandardCurves[(int)Style.HardOut] = AnimationCurve.Linear(0f, 0f, 1, 1f);
             keys = sStandardCurves[(int)Style.HardOut].keys;
             keys[0].outTangent = 1.5708f; // pi/2 = up
@@ -228,7 +243,7 @@ namespace Cinemachine
         }
 
         /// <summary>
-        /// A normalized AnimationCurve specifying the interpolation curve 
+        /// A normalized AnimationCurve specifying the interpolation curve
         /// for this camera blend. Y-axis values must be in range [0,1] (internally clamped
         /// within Blender) and time must be in range of [0, 1].
         /// </summary>
