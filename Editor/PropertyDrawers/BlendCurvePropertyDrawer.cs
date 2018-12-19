@@ -11,11 +11,11 @@ namespace Cinemachine.Editor
         public override void OnGUI(Rect rect, SerializedProperty property, GUIContent label)
         {
             Rect r = rect;
-            if (property.isExpanded)
-                r.width = r.height = EditorGUIUtility.singleLineHeight;
-            property.isExpanded = EditorGUI.Foldout(
-                r, property.isExpanded, property.isExpanded ? GUIContent.none : label);
-            if (property.isExpanded)
+            bool isExpanded = property.isExpanded;
+            if (isExpanded)
+                r.width = r.height = EditorGUIUtility.singleLineHeight; // little arrow only
+            property.isExpanded = EditorGUI.Foldout(r, isExpanded, isExpanded ? GUIContent.none : label);
+            if (isExpanded)
             {
                 var propA = property.FindPropertyRelative(() => myClass.A);
                 var propB = property.FindPropertyRelative(() => myClass.B);
@@ -26,7 +26,8 @@ namespace Cinemachine.Editor
                 EditorGUI.PropertyField(r, propB); r.y += r.height + vSpace;
                 EditorGUI.PropertyField(r, propBias); r.y += r.height + vSpace;
 
-                rect.height -= r.y - rect.y; rect.y += r.y - rect.y;
+                rect.height -= r.y - rect.y;
+                rect.y += r.y - rect.y;
                 DrawSample(rect, new BlendCurve
                 {
                     A = propA.floatValue,
@@ -47,16 +48,13 @@ namespace Cinemachine.Editor
             {
                 float x = (float)i / (float)(numSamples - 1);
                 float y = 1 - curve.Evaluate(x);
-                mSamples[i] = new Vector3(x * r.width, y * r.height, 0);
+                mSamples[i] = new Vector3(r.position.x + x * r.width, r.position.y + y * r.height, 0);
             }
 
             // Draw
             EditorGUI.DrawRect(r, Color.black);
-            var oldMatrix = Handles.matrix;
-            Handles.matrix = Handles.matrix * Matrix4x4.Translate(r.position);
             Handles.color = new Color(0, 1, 0, 1);
             Handles.DrawPolyLine(mSamples);
-            Handles.matrix = oldMatrix;
         }
 
         const float vSpace = 2;

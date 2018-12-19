@@ -427,9 +427,9 @@ namespace Cinemachine.ECS_Hybrid
                 if (activeCamera != null && activeCamera.IsValid
                     && outGoingCamera != null && outGoingCamera.IsValid && deltaTime >= 0)
                 {
-                    // Create a blend (time will be 0 if a cut)
+                    // Create a blend
                     var blendDef = LookupBlend(outGoingCamera, activeCamera);
-                    if (blendDef.m_Time > 0)
+                    if (blendDef.m_Style != CinemachineBlendDefinition.Style.Cut && blendDef.m_Time > 0)
                     {
                         if (frame.blend.IsComplete)
                             frame.blend.CamA = outGoingCamera;  // new blend

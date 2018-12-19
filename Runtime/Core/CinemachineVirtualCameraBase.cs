@@ -441,7 +441,8 @@ namespace Cinemachine
             CinemachineBlendDefinition blendDef,
             CinemachineBlend activeBlend)
         {
-            if (blendDef.m_Time <= 0 || (camA == null && camB == null))
+            if (blendDef.m_Style == CinemachineBlendDefinition.Style.Cut
+                    || blendDef.m_Time <= 0 || (camA == null && camB == null))
                 return null;
             if (activeBlend != null)
             {
