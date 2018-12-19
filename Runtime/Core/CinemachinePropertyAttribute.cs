@@ -16,7 +16,7 @@ namespace Cinemachine
     /// Property applied to LensSettings.  Used for custom drawing in the inspector.
     /// </summary>
     public sealed class LensSettingsPropertyAttribute : PropertyAttribute {}
-    
+
     /// <summary>
     /// Property applied to CinemachineBlendDefinition.  Used for custom drawing in the inspector.
     /// </summary>
@@ -31,7 +31,7 @@ namespace Cinemachine
     public sealed class SaveDuringPlayAttribute : System.Attribute {}
 
     /// <summary>
-    /// Suppresses play-mode-save for a field.  Use it if the calsee has [SaveDuringPlay] 
+    /// Suppresses play-mode-save for a field.  Use it if the calsee has [SaveDuringPlay]
     /// attribute but there are fields in the class that shouldn't be saved.
     /// </summary>
     public sealed class NoSaveDuringPlayAttribute : PropertyAttribute {}
@@ -40,12 +40,12 @@ namespace Cinemachine
     public sealed class TagFieldAttribute : PropertyAttribute {}
 
     /// <summary>Property field is a NoiseSettings asset.</summary>
-    public sealed class NoiseSettingsPropertyAttribute : PropertyAttribute {}    
-    
+    public sealed class NoiseSettingsPropertyAttribute : PropertyAttribute {}
+
     /// <summary>
     /// Used for custom drawing in the inspector.
     /// </summary>
-    public sealed class CinemachineEmbeddedAssetPropertyAttribute : PropertyAttribute 
+    public sealed class CinemachineEmbeddedAssetPropertyAttribute : PropertyAttribute
     {
         public bool WarnIfNull;
         public CinemachineEmbeddedAssetPropertyAttribute(bool warnIfNull = false)
@@ -53,7 +53,7 @@ namespace Cinemachine
             WarnIfNull = warnIfNull;
         }
     }
-    
+
     /// <summary>
     /// Atrtribute to control the automatic generation of documentation.
     /// </summary>
@@ -61,14 +61,14 @@ namespace Cinemachine
     public sealed class DocumentationSortingAttribute : System.Attribute
     {
         /// <summary>Refinement level of the documentation</summary>
-        public enum Level 
-        { 
+        public enum Level
+        {
             /// <summary>Type is excluded from documentation</summary>
-            Undoc, 
+            Undoc,
             /// <summary>Type is documented in the API reference</summary>
-            API, 
+            API,
             /// <summary>Type is documented in the highly-refined User Manual</summary>
-            UserRef 
+            UserRef
         };
         /// <summary>Refinement level of the documentation.  The more refined, the more is excluded.</summary>
         public Level Category { get; private set; }

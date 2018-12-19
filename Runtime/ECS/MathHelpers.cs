@@ -16,7 +16,7 @@ namespace Cinemachine.ECS
         {
             return math.lengthsq(v) < 0.000001f;
         }
-        
+
         /// <summary>
         /// Returns a non-normalized projection of the supplied vector onto a plane
         /// as described by its normal
@@ -30,7 +30,7 @@ namespace Cinemachine.ECS
             return (vector - math.dot(vector, planeNormal) * planeNormal);
         }
 
-        /// <summary>Much more stable for small angles than Unity's native implementation.  
+        /// <summary>Much more stable for small angles than Unity's native implementation.
         /// Directions must be unit length.  Returns radians</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float AngleUnit(float3 fromUnit, float3 toUnit)
@@ -48,14 +48,14 @@ namespace Cinemachine.ECS
             return math.select(defaultAxisUnit, cross / len, len > Epsilon);
         }
 
-        /// <summary>Much more stable for small angles than Unity's native implementation.  
+        /// <summary>Much more stable for small angles than Unity's native implementation.
         /// Directions must be unit length.  Returns radians</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float SignedAngleUnit(float3 fromUnit, float3 toUnit, float3 upUnit)
         {
             float angle = AngleUnit(fromUnit, toUnit);
             return math.select(
-                angle, -angle, 
+                angle, -angle,
                 math.sign(math.dot(upUnit, math.cross(fromUnit, toUnit))) < 0);
         }
 
@@ -66,7 +66,7 @@ namespace Cinemachine.ECS
             float3 fromUnit, float3 toUnit, float3 defaultAxisUnit)
         {
             return quaternion.AxisAngle(
-                Axis(fromUnit, toUnit, defaultAxisUnit), 
+                Axis(fromUnit, toUnit, defaultAxisUnit),
                 AngleUnit(fromUnit, toUnit));
         }
 
@@ -80,7 +80,7 @@ namespace Cinemachine.ECS
                 FromToRotationUnit(math.forward(q), fwdUnit, math.mul(q, new float3(1, 0, 0))).value,
                 crossLen < Epsilon);
         }
-        
+
         /// <summary>Returns the quaternion that will rotate from one orientation to another</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static quaternion FromToRotation(quaternion from, quaternion to)
@@ -102,16 +102,16 @@ namespace Cinemachine.ECS
         /// <summary>Get a damped version of a quantity.  This is the portion of the
         /// quantity that will take effect over the given time.</summary>
         /// <param name="initial">The amount that will be damped</param>
-        /// <param name="dampTime">The rate of damping.  This is the time it would 
+        /// <param name="dampTime">The rate of damping.  This is the time it would
         /// take to apply the entire amount</param>
         /// <param name="deltaTime">The time over which to damp</param>
-        /// <param name="fixedDeltaTime">If nonzero, this indicates how to break down 
+        /// <param name="fixedDeltaTime">If nonzero, this indicates how to break down
         /// deltaTime to give more consistent results in situations of variable framerate</param>
-        /// <returns>The damped amount.  This will be the original amount scaled by 
+        /// <returns>The damped amount.  This will be the original amount scaled by
         /// a value between 0 and 1.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Damp(
-            float initial, float dampTime, 
+            float initial, float dampTime,
             float deltaTime, float fixedDeltaTime = 0)
         {
             /// GML todo: optimize! get rid of those ifs!
@@ -122,7 +122,7 @@ namespace Cinemachine.ECS
 
             // Try to reduce damage caused by deltaTime variability
             float step = math.select(
-                fixedDeltaTime / 5, deltaTime, 
+                fixedDeltaTime / 5, deltaTime,
                 fixedDeltaTime == 0 || fixedDeltaTime == deltaTime);
 
             const float kLogNegligibleResidual = -4.605170186f; // == math.Log(kNegligibleResidual=0.01f);
@@ -144,16 +144,16 @@ namespace Cinemachine.ECS
         /// <summary>Get a damped version of a quantity.  This is the portion of the
         /// quantity that will take effect over the given time.</summary>
         /// <param name="initial">The amount that will be damped</param>
-        /// <param name="dampTime">The rate of damping.  This is the time it would 
+        /// <param name="dampTime">The rate of damping.  This is the time it would
         /// take to apply the entire amount</param>
         /// <param name="deltaTime">The time over which to damp</param>
-        /// <param name="fixedDeltaTime">If nonzero, this indicates how to break down 
+        /// <param name="fixedDeltaTime">If nonzero, this indicates how to break down
         /// deltaTime to give more consistent results in situations of variable framerate</param>
-        /// <returns>The damped amount.  This will be the original amount scaled by 
+        /// <returns>The damped amount.  This will be the original amount scaled by
         /// a value between 0 and 1.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 Damp(
-            float3 initial, float3 dampTime, 
+            float3 initial, float3 dampTime,
             float deltaTime, float fixedDeltaTime = 0)
         {
             /// GML todo: optimize! get rid of those ifs!
@@ -164,7 +164,7 @@ namespace Cinemachine.ECS
 
             // Try to reduce damage caused by deltaTime variability
             float step = math.select(
-                fixedDeltaTime / 5, deltaTime, 
+                fixedDeltaTime / 5, deltaTime,
                 fixedDeltaTime == 0 || fixedDeltaTime == deltaTime);
 
             const float kLogNegligibleResidual = -4.605170186f; // == math.Log(kNegligibleResidual=0.01f);
@@ -181,6 +181,69 @@ namespace Cinemachine.ECS
             r = math.lerp(r, (r + vel) * decayConstant, d / step);
 
             return initial - r;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Bezier(float t, float p0, float p1, float p2, float p3)
+        {
+            t = math.clamp(t, 0, 1);
+            float d = 1f - t;
+            return d * d * d * p0 + 3f * d * d * t * p1
+                + 3f * d * t * t * p2 + t * t * t * p3;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float2 Bezier(float t, float2 p0, float2 p1, float2 p2, float2 p3)
+        {
+            t = math.clamp(t, 0, 1);
+            float d = 1f - t;
+            return d * d * d * p0 + 3f * d * d * t * p1
+                + 3f * d * t * t * p2 + t * t * t * p3;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 Bezier(float t, float3 p0, float3 p1, float3 p2, float3 p3)
+        {
+            t = math.clamp(t, 0, 1);
+            float d = 1f - t;
+            return d * d * d * p0 + 3f * d * d * t * p1
+                + 3f * d * t * t * p2 + t * t * t * p3;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float BezierTangent(
+            float t, float p0, float p1, float p2, float p3)
+        {
+            t = math.clamp(t, 0, 1);
+            return (-3f * p0 + 9f * p1 - 9f * p2 + 3f * p3) * t * t
+                +  (6f * p0 - 12f * p1 + 6f * p2) * t
+                -  3f * p0 + 3f * p1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float2 BezierTangent(
+            float t, float2 p0, float2 p1, float2 p2, float2 p3)
+        {
+            t = math.clamp(t, 0, 1);
+            return (-3f * p0 + 9f * p1 - 9f * p2 + 3f * p3) * t * t
+                +  (6f * p0 - 12f * p1 + 6f * p2) * t
+                -  3f * p0 + 3f * p1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 BezierTangent(
+            float t, float3 p0, float3 p1, float3 p2, float3 p3)
+        {
+            t = math.clamp(t, 0, 1);
+            return (-3f * p0 + 9f * p1 - 9f * p2 + 3f * p3) * t * t
+                +  (6f * p0 - 12f * p1 + 6f * p2) * t
+                -  3f * p0 + 3f * p1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Bias(float t, float b)
+        {
+            return (math.clamp(t, 0, 1) / ((((1f/math.clamp(b, 0, 1)) - 2f) * (1f - t)) + 1f));
         }
     }
 }

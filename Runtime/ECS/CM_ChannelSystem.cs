@@ -14,8 +14,6 @@ namespace Cinemachine.ECS
         /// When enabled, the cameras will always respond in real-time to user input and damping,
         /// even if the game is running in slow motion
         /// </summary>
-        [Tooltip("When enabled, the cameras will always respond in real-time to user input and damping, "
-            + "even if the game is running in slow motion")]
         public bool m_IgnoreTimeScale = false;
 
         /// <summary>
@@ -23,10 +21,6 @@ namespace Cinemachine.ECS
         /// virtual cameras.  This is useful in top-down game environments.  If not set, Up is
         /// worldspace Y.
         /// </summary>
-        [Tooltip("If set, this object's Y axis will define the worldspace Up vector for all the "
-            + "virtual cameras.  This is useful for instance in top-down game environments.  "
-            + "If not set, Up is worldspace Y.  Setting this appropriately is important, because "
-            + "Virtual Cameras don't like looking straight up or straight down.")]
         public quaternion m_WorldOrientationOverride = quaternion.identity;
 
         /// <summary>Get the default world up for the virtual cameras.</summary>
@@ -39,17 +33,13 @@ namespace Cinemachine.ECS
         /// The blend which is used if you don't explicitly define a blend between two Virtual Cameras.
         /// </summary>
         [CinemachineBlendDefinitionProperty]
-        [Tooltip("The blend that is used in cases where you haven't explicitly defined a blend "
-            + "between two Virtual Cameras")]
         public CinemachineBlendDefinition m_DefaultBlend
             = new CinemachineBlendDefinition(CinemachineBlendDefinition.Style.EaseInOut, 2f);
 
         /// <summary>
         /// This is the asset which contains custom settings for specific blends.
         /// </summary>
-        [Tooltip("This is the asset that contains custom settings for blends between specific "
-            + "virtual cameras in your scene")]
-        public CinemachineBlenderSettings m_CustomBlends = null;
+        public ICinemachineBlendProvider m_CustomBlends = null;
 
         /// <summary>Called when the current live vcam changes.  If a blend is involved,
         /// then this will be called on the first frame of the blend</summary>
@@ -170,7 +160,7 @@ namespace Cinemachine.ECS
             frame.timeOfOverride = Time.realtimeSinceStartup;
             frame.blend.CamA = camA;
             frame.blend.CamB = camB;
-            frame.blend.BlendCurve = AnimationCurve.Linear(0, 0, 1, 1);
+            frame.blend.BlendCurve = BlendCurve.Linear;
             frame.blend.Duration = 1;
             frame.blend.TimeInBlend = weightB;
 
@@ -200,11 +190,11 @@ namespace Cinemachine.ECS
         private class VcamStackFrame
         {
             public int id;
-            public CinemachineBlend blend = new CinemachineBlend(null, null, null, 0, 0);
+            public CinemachineBlend blend = new CinemachineBlend(null, null, BlendCurve.Default, 0, 0);
             public bool Active { get { return blend.IsValid; } }
 
             // Working data - updated every frame
-            public CinemachineBlend workingBlend = new CinemachineBlend(null, null, null, 0, 0);
+            public CinemachineBlend workingBlend = new CinemachineBlend(null, null, BlendCurve.Default, 0, 0);
             public BlendSourceVirtualCamera workingBlendSource = new BlendSourceVirtualCamera(null);
 
             // Used by Timeline Preview for overriding the current value of deltaTime
@@ -233,7 +223,7 @@ namespace Cinemachine.ECS
         }
 
         // Current Brain State - result of all frames.  Blend camB is "current" camera always
-        CinemachineBlend mCurrentLiveCameras = new CinemachineBlend(null, null, null, 0, 0);
+        CinemachineBlend mCurrentLiveCameras = new CinemachineBlend(null, null, BlendCurve.Default, 0, 0);
 
         private void UpdateFrame0(float deltaTime)
         {
@@ -249,9 +239,9 @@ namespace Cinemachine.ECS
                 if (activeCamera != null && activeCamera.IsValid
                     && outGoingCamera != null && outGoingCamera.IsValid && deltaTime >= 0)
                 {
-                    // Create a blend (curve will be null if a cut)
+                    // Create a blend (time will be 0 if a cut)
                     var blendDef = LookupBlend(outGoingCamera, activeCamera);
-                    if (blendDef.BlendCurve != null && blendDef.m_Time > 0)
+                    if (blendDef.m_Time > 0)
                     {
                         if (frame.blend.IsComplete)
                             frame.blend.CamA = outGoingCamera;  // new blend
@@ -278,7 +268,6 @@ namespace Cinemachine.ECS
                 {
                     // No more blend
                     frame.blend.CamA = null;
-                    frame.blend.BlendCurve = null;
                     frame.blend.Duration = 0;
                     frame.blend.TimeInBlend = 0;
                 }
@@ -384,12 +373,7 @@ namespace Cinemachine.ECS
             // Get the blend curve that's most appropriate for these cameras
             CinemachineBlendDefinition blend = m_DefaultBlend;
             if (m_CustomBlends != null)
-            {
-                string fromCameraName = (fromKey != null) ? fromKey.Name : string.Empty;
-                string toCameraName = (toKey != null) ? toKey.Name : string.Empty;
-                blend = m_CustomBlends.GetBlendForVirtualCameras(
-                        fromCameraName, toCameraName, blend);
-            }
+                blend = m_CustomBlends.GetBlendForVirtualCameras(fromKey, toKey, blend);
             return blend;
         }
 

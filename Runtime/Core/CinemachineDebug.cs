@@ -46,13 +46,13 @@ namespace Cinemachine.Utility
         }
 
         /// <summary>
-        /// Delegate for OnGUI debugging.  
+        /// Delegate for OnGUI debugging.
         /// This will be called by the CinemachineBrain in its OnGUI (editor only)
         /// </summary>
         public delegate void OnGUIDelegate();
 
         /// <summary>
-        /// Delegate for OnGUI debugging.  
+        /// Delegate for OnGUI debugging.
         /// This will be called by the CinemachineBrain in its OnGUI (editor only)
         /// </summary>
         public static OnGUIDelegate OnGUIHandlers;
@@ -76,6 +76,37 @@ namespace Cinemachine.Utility
             if (mAvailableStringBuilders == null)
                 mAvailableStringBuilders = new List<StringBuilder>();
             mAvailableStringBuilders.Add(sb);
+        }
+    }
+
+    public static class DebugHelpers
+    {
+        /// <summary>Text description of a blend, for debugging</summary>
+        public static string Description(this CinemachineBlend blend)
+        {
+            var sb = CinemachineDebug.SBFromPool();
+            if (blend.CamB == null || !blend.CamB.IsValid)
+                sb.Append("(none)");
+            else
+            {
+                sb.Append("[");
+                sb.Append(blend.CamB.Name);
+                sb.Append("]");
+            }
+            sb.Append(" ");
+            sb.Append((int)(blend.BlendWeight * 100f));
+            sb.Append("% from ");
+            if (blend.CamA == null || !blend.CamA.IsValid)
+                sb.Append("(none)");
+            else
+            {
+                sb.Append("[");
+                sb.Append(blend.CamA.Name);
+                sb.Append("]");
+            }
+            string text = sb.ToString();
+            CinemachineDebug.ReturnToPool(sb);
+            return text;
         }
     }
 }

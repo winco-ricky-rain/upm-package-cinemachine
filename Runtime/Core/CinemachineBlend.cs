@@ -1,6 +1,8 @@
 using Cinemachine.Utility;
 using System;
 using UnityEngine;
+using Cinemachine.ECS;
+using Unity.Mathematics;
 
 namespace Cinemachine
 {
@@ -19,7 +21,7 @@ namespace Cinemachine
         /// <summary>The curve that describes the way the blend transitions over time
         /// from the first camera to the second.  X-axis is normalized time (0...1) over which
         /// the blend takes place and Y axis is blend weight (0..1)</summary>
-        public AnimationCurve BlendCurve { get; set; }
+        public BlendCurve BlendCurve { get; set; }
 
         /// <summary>The current time relative to the start of the blend</summary>
         public float TimeInBlend { get; set; }
@@ -29,12 +31,7 @@ namespace Cinemachine
         /// 0 means camA, 1 means camB.</summary>
         public float BlendWeight
         {
-            get
-            {
-                if (BlendCurve == null || BlendCurve.length < 2 || IsComplete)
-                    return 1;
-                return Mathf.Clamp01(BlendCurve.Evaluate(TimeInBlend / Duration));
-            }
+            get { return math.select(BlendCurve.Evaluate(TimeInBlend / Duration), 1, IsComplete); }
         }
 
         /// <summary>Validity test for the blend.  True if either camera is defined.</summary>
@@ -46,37 +43,6 @@ namespace Cinemachine
         /// <summary>True if the time relative to the start of the blend is greater
         /// than or equal to the blend duration</summary>
         public bool IsComplete { get { return TimeInBlend >= Duration || !IsValid; } }
-
-        /// <summary>Text description of the blend, for debugging</summary>
-        public string Description
-        {
-            get
-            {
-                var sb = CinemachineDebug.SBFromPool();
-                if (CamB == null || !CamB.IsValid)
-                    sb.Append("(none)");
-                else
-                {
-                    sb.Append("[");
-                    sb.Append(CamB.Name);
-                    sb.Append("]");
-                }
-                sb.Append(" ");
-                sb.Append((int)(BlendWeight * 100f));
-                sb.Append("% from ");
-                if (CamA == null || !CamA.IsValid)
-                    sb.Append("(none)");
-                else
-                {
-                    sb.Append("[");
-                    sb.Append(CamA.Name);
-                    sb.Append("]");
-                }
-                string text = sb.ToString();
-                CinemachineDebug.ReturnToPool(sb);
-                return text;
-            }
-        }
 
         /// <summary>Does the blend use a specific Cinemachine Virtual Camera?</summary>
         /// <param name="cam">The camera to test</param>
@@ -101,7 +67,7 @@ namespace Cinemachine
         /// <param name="duration">Duration of the blend, in seconds</param>
         /// <param name="t">Current time in blend, relative to the start of the blend</param>
         public CinemachineBlend(
-            ICinemachineCamera a, ICinemachineCamera b, AnimationCurve curve, float duration, float t)
+            ICinemachineCamera a, ICinemachineCamera b, BlendCurve curve, float duration, float t)
         {
             CamA = a;
             CamB = b;
@@ -200,66 +166,36 @@ namespace Cinemachine
         {
             m_Style = style;
             m_Time = time;
-            m_CustomCurve = null;
+            m_CustomCurve = BlendCurve.Default;
         }
 
         /// <summary>
         /// A user-defined AnimationCurve, used only if style is Custom.
         /// Curve MUST be normalized, i.e. time range [0...1], value range [0...1].
         /// </summary>
-        public AnimationCurve m_CustomCurve;
-
-        static AnimationCurve[] sStandardCurves;
-        void CreateStandardCurves()
-        {
-            sStandardCurves = new AnimationCurve[(int)Style.Custom];
-
-            sStandardCurves[(int)Style.Cut] = null;
-            sStandardCurves[(int)Style.EaseInOut] = AnimationCurve.EaseInOut(0f, 0f, 1, 1f);
-
-            sStandardCurves[(int)Style.EaseIn] = AnimationCurve.Linear(0f, 0f, 1, 1f);
-            Keyframe[] keys = sStandardCurves[(int)Style.EaseIn].keys;
-            keys[1].inTangent = 0;
-            sStandardCurves[(int)Style.EaseIn].keys = keys;
-
-            sStandardCurves[(int)Style.EaseOut] = AnimationCurve.Linear(0f, 0f, 1, 1f);
-            keys = sStandardCurves[(int)Style.EaseOut].keys;
-            keys[0].outTangent = 0;
-            sStandardCurves[(int)Style.EaseOut].keys = keys;
-
-            sStandardCurves[(int)Style.HardIn] = AnimationCurve.Linear(0f, 0f, 1, 1f);
-            keys = sStandardCurves[(int)Style.HardIn].keys;
-            keys[0].outTangent = 0;
-            keys[1].inTangent = 1.5708f; // pi/2 = up
-            sStandardCurves[(int)Style.HardIn].keys = keys;
-
-            sStandardCurves[(int)Style.HardOut] = AnimationCurve.Linear(0f, 0f, 1, 1f);
-            keys = sStandardCurves[(int)Style.HardOut].keys;
-            keys[0].outTangent = 1.5708f; // pi/2 = up
-            keys[1].inTangent = 0;
-            sStandardCurves[(int)Style.HardOut].keys = keys;
-
-            sStandardCurves[(int)Style.Linear] = AnimationCurve.Linear(0f, 0f, 1, 1f);
-        }
+        [BlendCurveProperty]
+        public BlendCurve m_CustomCurve;
 
         /// <summary>
         /// A normalized AnimationCurve specifying the interpolation curve
         /// for this camera blend. Y-axis values must be in range [0,1] (internally clamped
         /// within Blender) and time must be in range of [0, 1].
         /// </summary>
-        public AnimationCurve BlendCurve
+        public BlendCurve BlendCurve
         {
             get
             {
-                if (m_Style == Style.Custom)
+                switch (m_Style)
                 {
-                    if (m_CustomCurve == null)
-                        m_CustomCurve = AnimationCurve.EaseInOut(0f, 0f, 1, 1f);
-                    return m_CustomCurve;
+                    case Style.EaseInOut: return BlendCurve.Default;
+                    case Style.EaseIn: return new BlendCurve { A = 0.5f, B = 0, bias = 0 };
+                    case Style.EaseOut: return new BlendCurve { A = 0, B = 0.5f, bias = 0 };
+                    case Style.HardIn: return new BlendCurve { A = 0, B = 1, bias = 0 };
+                    case Style.HardOut: return new BlendCurve { A = 1, B = 0, bias = 0 };
+                    case Style.Linear: return BlendCurve.Linear;
+                    default: break;
                 }
-                if (sStandardCurves == null)
-                    CreateStandardCurves();
-                return sStandardCurves[(int)m_Style];
+                return m_CustomCurve;
             }
         }
     }
@@ -296,7 +232,7 @@ namespace Cinemachine
         public CinemachineBlend Blend { get; set; }
 
         public string Name { get { return "Mid-blend"; }}
-        public string Description { get { return Blend == null ? "(null)" : Blend.Description; }}
+        public string Description { get { return Blend == null ? "(null)" : Blend.Description(); }}
         public CameraState State { get; private set; }
         public bool IsValid { get { return Blend != null && Blend.IsValid; } }
         public ICinemachineCamera ParentCamera { get { return null; } }

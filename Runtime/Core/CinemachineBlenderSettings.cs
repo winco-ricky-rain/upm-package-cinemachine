@@ -8,7 +8,7 @@ namespace Cinemachine
     /// </summary>
     [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
     [Serializable]
-    public sealed class CinemachineBlenderSettings : ScriptableObject
+    public sealed class CinemachineBlenderSettings : ScriptableObject, ICinemachineBlendProvider
     {
         /// <summary>
         /// Container specifying how two specific Cinemachine Virtual Cameras
@@ -93,6 +93,15 @@ namespace Cinemachine
                 return meToAny;
 
             return defaultBlend;
+        }
+
+        public CinemachineBlendDefinition GetBlendForVirtualCameras(
+            ICinemachineCamera fromCam, ICinemachineCamera toCam,
+            CinemachineBlendDefinition defaultBlend)
+        {
+            var fromName = fromCam == null ? string.Empty : fromCam.Name;
+            var toName = toCam == null ? string.Empty : toCam.Name;
+            return GetBlendForVirtualCameras(fromName, toName, defaultBlend);
         }
     }
 }

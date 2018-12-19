@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using Cinemachine.ECS;
 
 namespace Cinemachine
 {
@@ -195,7 +196,7 @@ namespace Cinemachine
                 }
 
                 if (IsBlending)
-                    sb.Append(ActiveBlend.Description);
+                    sb.Append(ActiveBlend.Description());
                 else
                 {
                     ICinemachineCamera vcam = ActiveVirtualCamera;
@@ -371,11 +372,11 @@ namespace Cinemachine
         private class BrainFrame
         {
             public int id;
-            public CinemachineBlend blend = new CinemachineBlend(null, null, null, 0, 0);
+            public CinemachineBlend blend = new CinemachineBlend(null, null, BlendCurve.Default, 0, 0);
             public bool Active { get { return blend.IsValid; } }
 
             // Working data - updated every frame
-            public CinemachineBlend workingBlend = new CinemachineBlend(null, null, null, 0, 0);
+            public CinemachineBlend workingBlend = new CinemachineBlend(null, null, BlendCurve.Default, 0, 0);
             public BlendSourceVirtualCamera workingBlendSource = new BlendSourceVirtualCamera(null);
 
             // Used by Timeline Preview for overriding the current value of deltaTime
@@ -404,7 +405,7 @@ namespace Cinemachine
         }
 
         // Current Brain State - result of all frames.  Blend camB is "current" camera always
-        CinemachineBlend mCurrentLiveCameras = new CinemachineBlend(null, null, null, 0, 0);
+        CinemachineBlend mCurrentLiveCameras = new CinemachineBlend(null, null, BlendCurve.Default, 0, 0);
 
         /// <summary>
         /// This API is specifically for Timeline.  Do not use it.
@@ -438,7 +439,7 @@ namespace Cinemachine
             frame.timeOfOverride = Time.realtimeSinceStartup;
             frame.blend.CamA = camA;
             frame.blend.CamB = camB;
-            frame.blend.BlendCurve = AnimationCurve.Linear(0, 0, 1, 1);
+            frame.blend.BlendCurve = BlendCurve.Linear;
             frame.blend.Duration = 1;
             frame.blend.TimeInBlend = weightB;
 
@@ -504,9 +505,9 @@ namespace Cinemachine
                 if ((UnityEngine.Object)activeCamera != null
                     && (UnityEngine.Object)outGoingCamera != null && deltaTime >= 0)
                 {
-                    // Create a blend (curve will be null if a cut)
+                    // Create a blend (blend time will be 0 if a cut)
                     var blendDef = LookupBlend(outGoingCamera, activeCamera);
-                    if (blendDef.BlendCurve != null && blendDef.m_Time > 0)
+                    if (blendDef.m_Time > 0)
                     {
                         if (frame.blend.IsComplete)
                             frame.blend.CamA = outGoingCamera;  // new blend
@@ -533,7 +534,6 @@ namespace Cinemachine
                 {
                     // No more blend
                     frame.blend.CamA = null;
-                    frame.blend.BlendCurve = null;
                     frame.blend.Duration = 0;
                     frame.blend.TimeInBlend = 0;
                 }

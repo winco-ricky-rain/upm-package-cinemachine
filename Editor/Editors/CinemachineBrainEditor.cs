@@ -51,7 +51,7 @@ namespace Cinemachine.Editor
             EditorGUILayout.ObjectField("Live Camera", activeCam, typeof(Transform), true);
             EditorGUILayout.DelayedTextField(
                 "Live Blend", Target.ActiveBlend != null
-                ? Target.ActiveBlend.Description : string.Empty);
+                ? Target.ActiveBlend.Description() : string.Empty);
             GUI.enabled = true;
 
             // Normal properties
@@ -78,14 +78,14 @@ namespace Cinemachine.Editor
             if (brain.OutputCamera != null && brain.m_ShowCameraFrustum)
             {
                 DrawCameraFrustumGizmo(
-                    brain, LensSettings.FromCamera(brain.OutputCamera), 
-                    brain.transform.localToWorldMatrix, 
+                    brain, LensSettings.FromCamera(brain.OutputCamera),
+                    brain.transform.localToWorldMatrix,
                     Color.white); // GML why is this color hardcoded?
             }
         }
 
         internal static void DrawCameraFrustumGizmo(
-            CinemachineBrain brain, LensSettings lens, 
+            CinemachineBrain brain, LensSettings lens,
             Matrix4x4 transform, Color color)
         {
             float aspect = 1;
@@ -103,8 +103,8 @@ namespace Cinemachine.Editor
             if (ortho)
             {
                 Vector3 size = new Vector3(
-                        aspect * lens.OrthographicSize * 2, 
-                        lens.OrthographicSize * 2, 
+                        aspect * lens.OrthographicSize * 2,
+                        lens.OrthographicSize * 2,
                         lens.NearClipPlane + lens.FarClipPlane);
                 Gizmos.DrawWireCube(
                     new Vector3(0, 0, (size.z / 2) + lens.NearClipPlane), size);
@@ -156,7 +156,7 @@ namespace Cinemachine.Editor
                     if (!Directory.Exists(dstFile))
                         Directory.CreateDirectory(dstFile);
                     dstFile += "/" + kGizmoFileName;
-                    if (!File.Exists(dstFile) 
+                    if (!File.Exists(dstFile)
                         || (File.GetLastWriteTime(dstFile) < File.GetLastWriteTime(srcFile)
                             && (File.GetAttributes(dstFile) & FileAttributes.ReadOnly) == 0))
                     {

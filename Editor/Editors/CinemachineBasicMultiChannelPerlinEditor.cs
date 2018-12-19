@@ -4,7 +4,7 @@ using UnityEditor;
 namespace Cinemachine.Editor
 {
     [CustomEditor(typeof(CinemachineBasicMultiChannelPerlin))]
-    internal sealed class CinemachineBasicMultiChannelPerlinEditor 
+    internal sealed class CinemachineBasicMultiChannelPerlinEditor
         : BaseEditor<CinemachineBasicMultiChannelPerlin>
     {
         private void OnEnable()
