@@ -32,7 +32,7 @@ namespace Cinemachine.Editor
                 EditorGUIUtility.labelWidth = oldWidth;
             }
 
-            if (styleProp.enumValueIndex == (int)CinemachineBlendDefinition.Style.Custom)
+            if (styleProp.intValue == (int)CinemachineBlendDefinition.Style.Custom)
             {
                 ++EditorGUI.indentLevel;
                 SerializedProperty curveProp = property.FindPropertyRelative(() => myClass.m_CustomCurve);
@@ -48,12 +48,17 @@ namespace Cinemachine.Editor
         {
             float height = EditorGUIUtility.singleLineHeight + vSpace;
             SerializedProperty styleProp = property.FindPropertyRelative(() => myClass.m_Style);
-            if (styleProp.enumValueIndex == (int)CinemachineBlendDefinition.Style.Custom)
+            if (styleProp.intValue == (int)CinemachineBlendDefinition.Style.Custom)
             {
                 SerializedProperty curveProp = property.FindPropertyRelative(() => myClass.m_CustomCurve);
                 height += vSpace + EditorGUI.GetPropertyHeight(curveProp, true);
             }
             return height;
+        }
+
+        public override bool CanCacheInspectorGUI(SerializedProperty property)
+        {
+              return false;
         }
     }
 }

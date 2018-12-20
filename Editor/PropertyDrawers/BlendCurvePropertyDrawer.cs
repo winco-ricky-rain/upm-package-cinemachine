@@ -66,5 +66,10 @@ namespace Cinemachine.Editor
                 height += (height + vSpace) * 3 + kPreviewHeight;
             return height;
         }
+
+        public override bool CanCacheInspectorGUI(SerializedProperty property)
+        {
+              return false;
+        }
     }
 }
