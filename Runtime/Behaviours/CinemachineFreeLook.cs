@@ -300,6 +300,15 @@ namespace Cinemachine
             if (fromCam != null && m_Transitions.m_InheritPosition)
             {
                 var cameraPos = fromCam.State.RawPosition;
+
+                // Special handling for FreeLook: get an undamped outgoing position
+                if (fromCam is CinemachineFreeLook)
+                {
+                    var flFrom = (fromCam as CinemachineFreeLook);
+                    var orbital = flFrom.mOrbitals != null ? flFrom.mOrbitals[1] : null;
+                    if (orbital != null)
+                        cameraPos = orbital.GetTargetCameraPosition(worldUp);
+                }
                 UpdateRigCache();
                 if (m_BindingMode != CinemachineTransposer.BindingMode.SimpleFollowWithWorldUp)
                     m_XAxis.Value = mOrbitals[1].GetAxisClosestValue(cameraPos, worldUp);
