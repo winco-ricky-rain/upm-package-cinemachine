@@ -89,6 +89,9 @@ namespace Cinemachine.ECS_Hybrid
         public bool IsLiveChild(ICinemachineCamera vcam) { return false; }
         public void UpdateCameraState(Vector3 worldUp, float deltaTime) {}
 
+        // GML todo: this is wrong - getting rid of CinemachineCore
+        public bool IsLive { get { return CinemachineCore.Instance.IsLive(this); } }
+
         /// <summary>This is called to notify the vcam that a target got warped,
         /// so that the vcam can update its internal state to make the camera
         /// also warp seamlessy.</summary>
@@ -157,7 +160,7 @@ namespace Cinemachine.ECS_Hybrid
                 m_Transitions.m_OnCameraLive.Invoke(this, fromCam);
         }
 
-        /// <summary>Internal use only.  Called by CinemachineCore at designated update time
+        /// <summary>Internal use only.  Called at designated update time
         /// so the vcam can position itself and track its targets.  All 3 child rigs are updated,
         /// and a blend calculated, depending on the value of the Y axis.</summary>
         /// <param name="worldUp">Default world Up, set by the CinemachineBrain</param>

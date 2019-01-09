@@ -24,6 +24,7 @@ namespace Cinemachine.ECS
         public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime) {}
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
+        public bool IsLive { get { return CinemachineCore.Instance.IsLive(this); } }
 
         // GML hack until I think of something better
         static Dictionary<Entity, CM_EntityVcam> sVcamCache = new Dictionary<Entity, CM_EntityVcam>();

@@ -204,6 +204,8 @@ namespace Cinemachine
         /// <returns>True if the vcam is currently actively influencing the state of this vcam</returns>
         public virtual bool IsLiveChild(ICinemachineCamera vcam) { return false; }
 
+        public bool IsLive { get { return CinemachineCore.Instance.IsLive(this); } }
+
         /// <summary>Get the LookAt target for the Aim component in the Cinemachine pipeline.</summary>
         public abstract Transform LookAt { get; set; }
 
@@ -335,7 +337,7 @@ namespace Cinemachine
             }
             UpdateSlaveStatus();
             UpdateVcamPoolStatus();    // Add to queue
-            if (!CinemachineCore.Instance.IsLive(this))
+            if (!IsLive)
                 PreviousStateIsValid = false;
             CinemachineCore.Instance.CameraAwakened(this);
         }

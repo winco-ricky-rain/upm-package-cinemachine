@@ -219,6 +219,7 @@ namespace Cinemachine
         public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime) {}
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
+        public bool IsLive { get { return false; }}
     }
 
     /// <summary>
@@ -249,5 +250,6 @@ namespace Cinemachine
         public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime) {}
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
+        public bool IsLive { get { return false; }}
     }
 }

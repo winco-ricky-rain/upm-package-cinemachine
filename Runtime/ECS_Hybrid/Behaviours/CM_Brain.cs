@@ -511,7 +511,7 @@ namespace Cinemachine.ECS_Hybrid
         }
 
         /// <summary>
-        /// True if the ICinemachineCamera the current active camera,
+        /// True if the ICinemachineCamera is the current active camera,
         /// or part of a current blend, either directly or indirectly because its parents are live.
         /// </summary>
         /// <param name="vcam">The camera to test whether it is live</param>
