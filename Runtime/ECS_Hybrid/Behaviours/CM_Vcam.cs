@@ -8,11 +8,7 @@ namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(GameObjectEntity))]
-#if UNITY_2018_3_OR_NEWER
     [ExecuteAlways]
-#else
-    [ExecuteInEditMode]
-#endif
     [AddComponentMenu("Cinemachine/CM_Vcam")]
     public class CM_Vcam : MonoBehaviour, ICinemachineCamera
     {
@@ -268,7 +264,7 @@ namespace Cinemachine.ECS_Hybrid
             });
             m.SetComponentData(Entity, new CM_VcamPriority
             {
-                vcamLayer = gameObject.layer,
+                channel = gameObject.layer,
                 priority = m_Priority
                 // GML todo: vcamSequence
             });

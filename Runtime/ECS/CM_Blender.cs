@@ -185,6 +185,8 @@ namespace Cinemachine.ECS
         public void PreUpdate()
         {
             mNativeFrame.EnsureCapacity(mNativeFrame.numActiveFrames + 1);
+            if (mFrameStack == null)
+                mFrameStack = new List<Frame>();
             mCurrentBlend.EnsureCapacity(mFrameStack.Count + mNativeFrame.numActiveFrames + 2);
         }
 

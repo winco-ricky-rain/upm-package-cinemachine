@@ -9,11 +9,7 @@ using UnityEngine.Events;
 namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
-#if UNITY_2018_3_OR_NEWER
     [ExecuteAlways]
-#else
-    [ExecuteInEditMode]
-#endif
     [AddComponentMenu("Cinemachine/CM_Brain")]
     [SaveDuringPlay]
     public class CM_Brain : MonoBehaviour
@@ -57,7 +53,8 @@ namespace Cinemachine.ECS_Hybrid
         [Tooltip("The blend that is used in cases where you haven't explicitly defined a blend "
             + "between two Virtual Cameras")]
         public CinemachineBlendDefinition m_DefaultBlend
-            = new CinemachineBlendDefinition(CinemachineBlendDefinition.Style.EaseInOut, 2f);
+            = new CinemachineBlendDefinition
+                { m_Style = CinemachineBlendDefinition.Style.EaseInOut, m_Time = 2f };
 
         /// <summary>
         /// This is the asset which contains custom settings for specific blends.
@@ -555,7 +552,7 @@ namespace Cinemachine.ECS_Hybrid
                 for (int i = 0; i < queue.Length; ++i)
                 {
                     var e = queue[i];
-                    if ((mask & (1 << e.vcamPriority.vcamLayer)) != 0)
+                    if ((mask & (1 << e.vcamPriority.channel)) != 0)
                         return CM_EntityVcam.GetEntityVcam(e.entity);
                 }
             }

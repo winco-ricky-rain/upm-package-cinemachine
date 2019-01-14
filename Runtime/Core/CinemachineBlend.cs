@@ -159,16 +159,6 @@ namespace Cinemachine
         [Tooltip("Duration of the blend, in seconds")]
         public float m_Time;
 
-        /// <summary>Constructor</summary>
-        /// <param name="style">The shape of the blend curve.</param>
-        /// <param name="time">The duration (in seconds) of the blend</param>
-        public CinemachineBlendDefinition(Style style, float time)
-        {
-            m_Style = style;
-            m_Time = time;
-            m_CustomCurve = BlendCurve.Default;
-        }
-
         /// <summary>
         /// A user-defined AnimationCurve, used only if style is Custom.
         /// Curve MUST be normalized, i.e. time range [0...1], value range [0...1].

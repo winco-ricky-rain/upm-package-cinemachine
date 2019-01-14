@@ -88,7 +88,8 @@ namespace Cinemachine
         [CinemachineBlendDefinitionProperty]
         [Tooltip("The blend which is used if you don't explicitly define a blend between two Virtual Camera children")]
         public CinemachineBlendDefinition m_DefaultBlend
-            = new CinemachineBlendDefinition(CinemachineBlendDefinition.Style.EaseInOut, 0.5f);
+            = new CinemachineBlendDefinition
+                { m_Style = CinemachineBlendDefinition.Style.EaseInOut, m_Time = 0.5f };
 
         /// <summary>
         /// This is the asset which contains custom settings for specific child blends.

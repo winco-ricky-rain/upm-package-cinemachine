@@ -5,6 +5,7 @@ using Unity.Transforms;
 using Unity.Burst;
 using Unity.Mathematics;
 using System;
+using UnityEngine;
 
 namespace Cinemachine.ECS
 {
@@ -14,7 +15,7 @@ namespace Cinemachine.ECS
         public float radius;
     }
 
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(EndFrameTransformSystem))]
     public class CM_TargetSystem : JobComponentSystem
     {

@@ -5,15 +5,16 @@ using Unity.Burst;
 using Unity.Mathematics;
 using System.Collections.Generic;
 using System;
+using UnityEngine;
 
 namespace Cinemachine.ECS
 {
     [Serializable]
     public struct CM_VcamPriority : IComponentData
     {
-        /// <summary>GameObjet layer mask, brain will only see the vcams that pass
-        /// its layer filter</summary>
-        public int vcamLayer;
+        /// <summary>Like GameObjet layer, brain will only see the vcams that pass
+        /// its channel filter</summary>
+        public int channel;
 
         /// <summary>The priority will determine which camera becomes active based on the
         /// state of other cameras and this camera.  Higher numbers have greater priority.
@@ -24,7 +25,8 @@ namespace Cinemachine.ECS
         public int vcamSequence;
     }
 
-    [UnityEngine.ExecuteInEditMode]
+    // GML todo: use shared component for channel and parallelize sort
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
     public class CM_VcamPrioritySystem : JobComponentSystem
     {
@@ -48,6 +50,41 @@ namespace Cinemachine.ECS
         protected override void OnDestroyManager()
         {
             m_priorityQueue.Dispose();
+        }
+
+        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        {
+            // Make sure all readers have finished with the queue
+            QueueReadJobHandle.Complete();
+            QueueReadJobHandle = default(JobHandle);
+
+            var lengthA = m_groupA.CalculateLength();
+            var lengthB = m_groupB.CalculateLength();
+            if (m_priorityQueue.Length != lengthA + lengthB)
+            {
+                m_priorityQueue.Dispose();
+                m_priorityQueue = new NativeArray<QueueEntry>(lengthA + lengthB, Allocator.Persistent);
+            }
+
+            var depsA = new PopulateQueueDefaultQualityJob
+            {
+                entities = m_groupA.GetEntityArray(),
+                priorities = m_groupA.GetComponentDataArray<CM_VcamPriority>(),
+                priorityQueue = m_priorityQueue
+            }.Schedule(lengthA, 32, inputDeps);
+
+            var depsB = new PopulateQueueJob
+            {
+                entities = m_groupB.GetEntityArray(),
+                priorities = m_groupB.GetComponentDataArray<CM_VcamPriority>(),
+                qualities = m_groupB.GetComponentDataArray<CM_VcamShotQuality>(),
+                priorityQueue = m_priorityQueue,
+                arrayOffset = lengthA
+            }.Schedule(lengthB, 32, inputDeps);
+
+            var depsC = JobHandle.CombineDependencies(depsA, depsB);
+            QueueWriteHandle = new SortQueueJob { priorityQueue = m_priorityQueue }.Schedule(1, 1, depsC);
+            return QueueWriteHandle;
         }
 
         [BurstCompile]
@@ -102,7 +139,7 @@ namespace Cinemachine.ECS
             {
                 public int Compare(QueueEntry x, QueueEntry y)
                 {
-                    int a = x.vcamPriority.vcamLayer - y.vcamPriority.vcamLayer;
+                    int a = x.vcamPriority.channel - y.vcamPriority.channel;
                     int p = y.vcamPriority.priority - x.vcamPriority.priority; // high-to-low
                     float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
                     int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
@@ -120,41 +157,6 @@ namespace Cinemachine.ECS
                         a == 0);
                 }
             }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            // Make sure all readers have finished with the queue
-            QueueReadJobHandle.Complete();
-            QueueReadJobHandle = default(JobHandle);
-
-            var lengthA = m_groupA.CalculateLength();
-            var lengthB = m_groupB.CalculateLength();
-            if (m_priorityQueue.Length != lengthA + lengthB)
-            {
-                m_priorityQueue.Dispose();
-                m_priorityQueue = new NativeArray<QueueEntry>(lengthA + lengthB, Allocator.Persistent);
-            }
-
-            var depsA = new PopulateQueueDefaultQualityJob
-            {
-                entities = m_groupA.GetEntityArray(),
-                priorities = m_groupA.GetComponentDataArray<CM_VcamPriority>(),
-                priorityQueue = m_priorityQueue
-            }.Schedule(lengthA, 32, inputDeps);
-
-            var depsB = new PopulateQueueJob
-            {
-                entities = m_groupB.GetEntityArray(),
-                priorities = m_groupB.GetComponentDataArray<CM_VcamPriority>(),
-                qualities = m_groupB.GetComponentDataArray<CM_VcamShotQuality>(),
-                priorityQueue = m_priorityQueue,
-                arrayOffset = lengthA
-            }.Schedule(lengthB, 32, inputDeps);
-
-            var depsC = JobHandle.CombineDependencies(depsA, depsB);
-            QueueWriteHandle = new SortQueueJob { priorityQueue = m_priorityQueue }.Schedule(1, 1, depsC);
-            return QueueWriteHandle;
         }
 
         int m_vcamSequence = 1;
@@ -199,6 +201,50 @@ namespace Cinemachine.ECS
         {
             QueueWriteHandle.Complete();
             return m_priorityQueue;
+        }
+
+        public int GetChannelStartIndexInQueue(int channel)
+        {
+            QueueWriteHandle.Complete();
+            int last = m_priorityQueue.Length;
+            if (last == 0)
+                return -1;
+
+            // Most common case: it's the first one
+            int value = m_priorityQueue[0].vcamPriority.channel;
+            if (value == channel)
+                return 0;
+            if (value > channel)
+                return -1;
+
+            // Binary search
+            int first = 0;
+            int mid = first + ((last - first) >> 1);
+            while (mid != first)
+            {
+                value = m_priorityQueue[mid].vcamPriority.channel;
+                if (value < channel)
+                {
+                    first = mid;
+                    mid = first + ((last - first) >> 1);
+                }
+                else if (value > channel)
+                {
+                    last = mid;
+                    mid = first + ((last - first) >> 1);
+                }
+                else
+                {
+                    last = mid;
+                    break;
+                }
+            }
+            if (value != channel)
+                return -1;
+
+            while (m_priorityQueue[first].vcamPriority.channel != channel)
+                ++first;
+            return first;
         }
     }
 }

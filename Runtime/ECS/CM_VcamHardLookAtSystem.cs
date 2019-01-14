@@ -4,6 +4,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Burst;
 using System;
+using UnityEngine;
 
 namespace Cinemachine.ECS
 {
@@ -12,7 +13,7 @@ namespace Cinemachine.ECS
     {
     }
 
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreAimSystem))]
     [UpdateBefore(typeof(CM_VcamPreCorrectionSystem))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem

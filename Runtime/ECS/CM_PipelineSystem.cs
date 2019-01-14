@@ -4,14 +4,14 @@ using Unity.Jobs;
 using Unity.Transforms;
 using Unity.Burst;
 using Unity.Mathematics;
-using System;
+using UnityEngine;
 
 namespace Cinemachine.ECS
 {
     // These systems define the CM Vcam pipeline, in this order.
     // Use them to ensure correct ordering of CM pipeline systems
 
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_TargetSystem))]
     public class CM_VcamPreBodySystem : JobComponentSystem
     {
@@ -95,21 +95,21 @@ namespace Cinemachine.ECS
         }
     }
 
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreBodySystem))]
     public class CM_VcamPreAimSystem : ComponentSystem
     {
         protected override void OnUpdate() {} // Do nothing
     }
 
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreAimSystem))]
     public class CM_VcamPreCorrectionSystem : ComponentSystem
     {
         protected override void OnUpdate() {} // Do nothing
     }
 
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreCorrectionSystem))]
     public class CM_VcamFinalizeSystem : JobComponentSystem
     {

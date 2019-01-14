@@ -1,41 +1,75 @@
-﻿using Unity.Entities;
+﻿using System;
+using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace Cinemachine.ECS
 {
-    public class CM_ChannelSystem
+    [Serializable]
+    public struct CM_Channel : ISharedComponentData
     {
+        /// <summary>
+        /// Each vcam is associated with a specific channel.  Channels each do their
+        /// own blending and prioritization.
+        /// </summary>
+        public int channel;
+
+        /// <summary>
+        /// Because cameras need to know which way up is, it's possible to override that
+        /// </summary>
+        public quaternion worldOrientationOverride;
+
         /// <summary>
         /// When enabled, the cameras will always respond in real-time to user input and damping,
         /// even if the game is running in slow motion
         /// </summary>
-        public bool m_IgnoreTimeScale = false;
+        public int ignoreTimeScale;
 
         /// <summary>
-        /// If set, this object's Y axis will define the worldspace Up vector for all the
-        /// virtual cameras.  This is useful in top-down game environments.  If not set, Up is
-        /// worldspace Y.
+        /// GML todo
         /// </summary>
-        public quaternion m_WorldOrientationOverride = quaternion.identity;
-
-        /// <summary>Get the default world up for the virtual cameras.</summary>
-        public float3 WorldUp { get { return math.mul(m_WorldOrientationOverride, math.up()); } }
-
-        /// <summary>Get the default world orientation for the virtual cameras.</summary>
-        public quaternion WorldOrientation { get { return m_WorldOrientationOverride; } }
+        public float deltaTimeOveride;
 
         /// <summary>
         /// The blend which is used if you don't explicitly define a blend between two Virtual Cameras.
         /// </summary>
         [CinemachineBlendDefinitionProperty]
-        public CinemachineBlendDefinition m_DefaultBlend
-            = new CinemachineBlendDefinition(CinemachineBlendDefinition.Style.EaseInOut, 2f);
+        public CinemachineBlendDefinition defaultBlend;
 
         /// <summary>
         /// This is the asset which contains custom settings for specific blends.
         /// </summary>
-        public ICinemachineBlendProvider m_CustomBlends = null;
+        public CinemachineBlenderSettings customBlends;
+    }
+
+    [ExecuteAlways]
+    [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
+    public class CM_ChannelSystem : ComponentSystem
+    {
+        [Serializable]
+        class ChannelExtraState
+        {
+            /// Manages the nested blend stack and the camera override frames
+            public CM_Blender blender;
+            public ICinemachineCamera mActiveCameraPreviousFrame;
+        }
+
+        Dictionary<int, ChannelExtraState> mExtraData;
+
+        ChannelExtraState GetExtraData(int channel)
+        {
+            if (mExtraData == null)
+                mExtraData = new Dictionary<int, ChannelExtraState>();
+            if (!mExtraData.TryGetValue(channel, out ChannelExtraState extra))
+            {
+                extra = new ChannelExtraState();
+                mExtraData[channel] = extra;
+            }
+            return extra;
+        }
 
         /// <summary>Called when the current live vcam changes.  If a blend is involved,
         /// then this will be called on the first frame of the blend</summary>
@@ -47,24 +81,50 @@ namespace Cinemachine.ECS
         public VcamActivatedDelegate OnVcamActivated;
 
         /// <summary>API for the Unity Editor. Show this camera no matter what.</summary>
-        public static ICinemachineCamera SoloCamera { get; set; }
-
-        /// Manages the nested blend stack and the camera override frames
-        CM_Blender mBlender;
+        public ICinemachineCamera SoloCamera { get; set; }
 
         /// <summary>Get the current active virtual camera.</summary>
-        public ICinemachineCamera ActiveVirtualCamera { get { return mBlender.ActiveVirtualCamera; } }
+        /// <param name="channel">The CM channel id to check</param>
+        public ICinemachineCamera GetActiveVirtualCamera(int channel)
+        {
+            return GetExtraData(channel).blender.ActiveVirtualCamera;
+        }
 
         /// <summary>Is there a blend in progress?</summary>
-        public bool IsBlending { get { return mBlender.IsBlending; } }
+        /// <param name="channel">The CM channel id to check</param>
+        public bool IsBlending(int channel)
+        {
+            return GetExtraData(channel).blender.IsBlending;
+        }
 
         /// <summary>
         /// Get the current blend in progress.  May be degenerate, i.e. less than 2 cams
         /// </summary>
-        public CM_Blender.BlendState ActiveBlend { get { return mBlender.State; } }
+        /// <param name="channel">The CM channel id to check</param>
+        public CM_Blender.BlendState GetActiveBlend(int channel)
+        {
+            return GetExtraData(channel).blender.State;
+        }
 
         /// <summary>Current channel state, final result of all blends</summary>
-        public CameraState CurrentCameraState { get { return mBlender.State.cameraState; } }
+        /// <param name="channel">The CM channel id to check</param>
+        public CameraState GetCurrentCameraState(int channel)
+        {
+            return GetExtraData(channel).blender.State.cameraState;
+        }
+
+        /// <summary>
+        /// True if the ICinemachineCamera is the current active camera
+        /// or part of a current blend, either directly or indirectly because its parents are live.
+        /// </summary>
+        /// <param name="channel">The CM channel id to check</param>
+        /// <param name="vcam">The camera to test whether it is live</param>
+        /// <returns>True if the camera is live (directly or indirectly)
+        /// or part of a blend in progress.</returns>
+        public bool IsLive(int channel, ICinemachineCamera vcam)
+        {
+            return GetExtraData(channel).blender.IsLive(vcam);
+        }
 
         /// <summary>
         /// True if the ICinemachineCamera is the current active camera
@@ -73,13 +133,21 @@ namespace Cinemachine.ECS
         /// <param name="vcam">The camera to test whether it is live</param>
         /// <returns>True if the camera is live (directly or indirectly)
         /// or part of a blend in progress.</returns>
-        public bool IsLive(ICinemachineCamera vcam) { return mBlender.IsLive(vcam); }
+        public bool IsLive(ICinemachineCamera vcam)
+        {
+            var channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>();
+            for (int i = 0; i < channels.Length; ++i)
+                if (GetExtraData(channels[i].channel).blender.IsLive(vcam))
+                    return true;
+            return false;
+        }
 
         /// <summary>
         /// Override the current camera and current blend.  This setting will trump
         /// any in-game logic that sets virtual camera priorities and Enabled states.
         /// This is the main API for the timeline.
         /// </summary>
+        /// <param name="channel">The CM channel id to affect</param>
         /// <param name="overrideId">Id to represent a specific client.  An internal
         /// stack is maintained, with the most recent non-empty override taking precenence.
         /// This id must be > 0.  If you pass -1, a new id will be created, and returned.
@@ -94,64 +162,64 @@ namespace Cinemachine.ECS
         /// <returns>The oiverride ID.  Don't forget to call ReleaseCameraOverride
         /// after all overriding is finished, to free the OverideStack resources.</returns>
         public int SetCameraOverride(
+            int channel,
             int overrideId,
             ICinemachineCamera camA, ICinemachineCamera camB,
             float weightB)
         {
-            return mBlender.SetBlendableOverride(overrideId, camA, camB, weightB);
+            return GetExtraData(channel).blender.SetBlendableOverride(overrideId, camA, camB, weightB);
         }
 
         /// <summary>
         /// Release the resources used for a camera override client.
         /// See SetCameraOverride.
         /// </summary>
+        /// <param name="channel">The CM channel id to affect</param>
         /// <param name="overrideId">The ID to released.  This is the value that
         /// was returned by SetCameraOverride</param>
-        public void ReleaseCameraOverride(int overrideId)
+        public void ReleaseCameraOverride(int channel, int overrideId)
         {
-            mBlender.ReleaseBlendableOverride(overrideId);
-        }
-
-        ICinemachineCamera mActiveCameraPreviousFrame;
-        private void ProcessActiveCamera(float deltaTime)
-        {
-            var activeCamera = ActiveVirtualCamera;
-
-            // Has the current camera changed this frame?
-            if (activeCamera != mActiveCameraPreviousFrame)
-            {
-                // Notify incoming camera of transition
-                if (activeCamera != null)
-                    activeCamera.OnTransitionFromCamera(mActiveCameraPreviousFrame, WorldUp, deltaTime);
-
-                // Send transition notification to observers
-                if (OnVcamActivated != null)
-                    OnVcamActivated.Invoke(activeCamera, mActiveCameraPreviousFrame, !IsBlending);
-            }
-            mActiveCameraPreviousFrame = activeCamera;
+            GetExtraData(channel).blender.ReleaseBlendableOverride(overrideId);
         }
 
         /// <summary>
-        /// Get the highest-priority Enabled ICinemachineCamera
-        /// that is visible to my camera.  Culling Mask is used to test visibility.
+        /// Create a quick lookup for channels
         /// </summary>
-        private ICinemachineCamera TopCameraFromPriorityQueue(int layerMask = ~0)
+        public NativeHashMap<int, CM_Channel> CreateChannelsCache(Allocator allocator)
         {
-            var prioritySystem = World.Active.GetExistingManager<CM_VcamPrioritySystem>();
-            if (prioritySystem != null)
-            {
-                var queue = prioritySystem.GetPriorityQueueNow();
-                for (int i = 0; i < queue.Length; ++i)
-                {
-                    var e = queue[i];
-                    if ((layerMask & (1 << e.vcamPriority.vcamLayer)) != 0)
-                        return CM_EntityVcam.GetEntityVcam(e.entity);
-                }
-            }
-            return null;
+            var channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>();
+            int len = channels.Length;
+            var lookup = new NativeHashMap<int, CM_Channel>(len, allocator);
+            for (int i = 0; i < len; ++i)
+                lookup.TryAdd(i, channels[i]);
+            return lookup;
         }
 
-        private float GetEffectiveDeltaTime()
+        /// <summary>
+        /// Get an appropriate deltaTime to use when updating vcams on this channel.
+        /// Does a linear search for channel info, which may be suboptimal in the
+        /// unlikely event that there are a large number of channels.
+        /// <param name="channel">The id of the CM channel in question</param>
+        /// </summary>
+        public float GetEffectiveDeltaTime(int channel)
+        {
+            // We assume here a small number of channels
+            var channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>();
+            int len = channels.Length;
+            for (int i = 0; i < len; ++i)
+            {
+                var c = channels[i];
+                if (c.channel == channel)
+                    return GetEffectiveDeltaTime(c);
+            }
+            return Time.deltaTime;
+        }
+
+        /// <summary>
+        /// Get an appropriate deltaTime to use when updating vcams on this channel
+        /// <param name="channel">The CM channel in question</param>
+        /// </summary>
+        public float GetEffectiveDeltaTime(CM_Channel channel)
         {
             if (!Application.isPlaying)
             {
@@ -159,42 +227,70 @@ namespace Cinemachine.ECS
                     return Time.unscaledDeltaTime;
                 return -1; // no damping
             }
-            return m_IgnoreTimeScale ? Time.unscaledDeltaTime : Time.deltaTime;
+            return (channel.ignoreTimeScale != 0) ? Time.unscaledDeltaTime : Time.deltaTime;
+        }
+
+        /// <summary>
+        /// Get the highest-priority Enabled ICinemachineCamera
+        /// that is visible to my camera.  Culling Mask is used to test visibility.
+        /// </summary>
+        private ICinemachineCamera TopCameraFromPriorityQueue(int channel)
+        {
+            var prioritySystem = World.Active.GetExistingManager<CM_VcamPrioritySystem>();
+            if (prioritySystem != null)
+            {
+                int index = prioritySystem.GetChannelStartIndexInQueue(channel);
+                var queue = prioritySystem.GetPriorityQueueNow();
+                return CM_EntityVcam.GetEntityVcam(queue[index].entity);
+            }
+            return null;
+        }
+
+        private void ProcessActiveCamera(ChannelExtraState extra, float3 worldUp, float deltaTime)
+        {
+            var activeCamera = extra.blender.ActiveVirtualCamera;
+
+            // Has the current camera changed this frame?
+            if (activeCamera != extra.mActiveCameraPreviousFrame)
+            {
+                // Notify incoming camera of transition
+                if (activeCamera != null)
+                    activeCamera.OnTransitionFromCamera(extra.mActiveCameraPreviousFrame, worldUp, deltaTime);
+
+                // Send transition notification to observers
+                if (OnVcamActivated != null)
+                    OnVcamActivated.Invoke(
+                        activeCamera, extra.mActiveCameraPreviousFrame, !extra.blender.IsBlending);
+            }
+            extra.mActiveCameraPreviousFrame = activeCamera;
+        }
+
+        ComponentGroup m_channelsGroup;
+
+        protected override void OnCreateManager()
+        {
+            m_channelsGroup = GetComponentGroup(ComponentType.ReadOnly<CM_Channel>());
         }
 
         // GML fixme - implement this properly
-        public void Update()
+        protected override void OnUpdate()
         {
-            float deltaTime = GetEffectiveDeltaTime();
-            var activeVcam = SoloCamera != null ? SoloCamera : TopCameraFromPriorityQueue();
-            mBlender.PreUpdate();
+            var channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>();
+            int len = channels.Length;
+            for (int i = 0; i < len; ++i)
+            {
+                var c = channels[i];
+                var extra = GetExtraData(c.channel);
+                float deltaTime = GetEffectiveDeltaTime(c);
+                var activeVcam = SoloCamera ?? TopCameraFromPriorityQueue(c.channel);
+                extra.blender.PreUpdate();
 
-            // Note: this can be jobified
-            mBlender.Update(deltaTime, activeVcam, m_CustomBlends, m_DefaultBlend);
+                // GML Note: perhaps this can be jobified?  Does it matter?  Probably not.
+                extra.blender.Update(deltaTime, activeVcam, c.customBlends, c.defaultBlend);
 
-            // Choose the active vcam and apply it to the Unity camera
-            ProcessActiveCamera(deltaTime);
+                // Send activation notifications
+                ProcessActiveCamera(extra, math.mul(c.worldOrientationOverride, math.up()), deltaTime);
+            }
         }
-
-#if false
-        private void OnEnable()
-        {
-            // Make sure there is a first stack frame
-            if (mFrameStack.Count == 0)
-                mFrameStack.Add(new VcamStackFrame());
-
-            m_OutputCamera = GetComponent<Camera>();
-            sActiveBrains.Insert(0, this);
-            CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
-            CinemachineDebug.OnGUIHandlers += OnGuiHandler;
-        }
-
-        private void OnDisable()
-        {
-            CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
-            sActiveBrains.Remove(this);
-            mFrameStack.Clear();
-        }
-#endif
     }
 }

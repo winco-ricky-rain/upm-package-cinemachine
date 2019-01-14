@@ -61,7 +61,7 @@ namespace Cinemachine.ECS
         public quaternion previousTargetRotation;
     }
 
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreBodySystem))]
     [UpdateBefore(typeof(CM_VcamPreAimSystem))]
     public class CM_VcamTransposerSystem : JobComponentSystem

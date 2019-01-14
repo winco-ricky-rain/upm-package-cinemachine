@@ -4,10 +4,11 @@ using Unity.Jobs;
 using Unity.Burst;
 using UnityEngine.Jobs;
 using Cinemachine.ECS;
+using UnityEngine;
 
 namespace Cinemachine.ECS_Hybrid
 {
-    [UnityEngine.ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
     public class PushToVcamTransformSystem : JobComponentSystem
     {
@@ -16,7 +17,7 @@ namespace Cinemachine.ECS_Hybrid
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                typeof(UnityEngine.Transform),
+                typeof(Transform),
                 ComponentType.ReadOnly(typeof(CM_VcamPosition)),
                 ComponentType.ReadOnly(typeof(CM_VcamRotation)));
         }
