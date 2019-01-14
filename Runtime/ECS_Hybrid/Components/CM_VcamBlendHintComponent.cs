@@ -4,5 +4,6 @@ using Cinemachine.ECS;
 namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
-    public class CM_VcamBlendHintComponent : ComponentDataWrapper<CM_VcamBlendHint> { } 
+    [SaveDuringPlay]
+    public class CM_VcamBlendHintComponent : ComponentDataWrapper<CM_VcamBlendHint> { }
 }

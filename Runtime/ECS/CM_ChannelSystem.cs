@@ -164,8 +164,7 @@ namespace Cinemachine.ECS
         public int SetCameraOverride(
             int channel,
             int overrideId,
-            ICinemachineCamera camA, ICinemachineCamera camB,
-            float weightB)
+            ICinemachineCamera camA, ICinemachineCamera camB, float weightB)
         {
             return GetExtraData(channel).blender.SetBlendableOverride(overrideId, camA, camB, weightB);
         }
@@ -240,8 +239,11 @@ namespace Cinemachine.ECS
             if (prioritySystem != null)
             {
                 int index = prioritySystem.GetChannelStartIndexInQueue(channel);
-                var queue = prioritySystem.GetPriorityQueueNow();
-                return CM_EntityVcam.GetEntityVcam(queue[index].entity);
+                if (index >= 0)
+                {
+                    var queue = prioritySystem.GetPriorityQueueNow();
+                    return CM_EntityVcam.GetEntityVcam(queue[index].entity);
+                }
             }
             return null;
         }
@@ -272,9 +274,9 @@ namespace Cinemachine.ECS
             m_channelsGroup = GetComponentGroup(ComponentType.ReadOnly<CM_Channel>());
         }
 
-        // GML fixme - implement this properly
         protected override void OnUpdate()
         {
+            // Update all the channels
             var channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>();
             int len = channels.Length;
             for (int i = 0; i < len; ++i)

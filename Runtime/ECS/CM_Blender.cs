@@ -28,7 +28,7 @@ namespace Cinemachine.ECS
     // Support blend chaining
     public struct CM_ChainedBlend
     {
-        public List<CM_Blend> stack; // GML todo: should this be native list or something?
+        public List<CM_Blend> stack; // GML todo: should this be native array or something?
         public int numActiveFrames;
 
         // Call this from main thread, before Update() gets called.  Resizes the stack.
@@ -114,7 +114,7 @@ namespace Cinemachine.ECS
             public float weightB;
         }
 
-        private List<Frame> mFrameStack;
+        private List<Frame> mFrameStack; // GML todo: should this be native array or something?
         private int mLastFrameId;
 
         CM_ChainedBlend mNativeFrame;
@@ -281,11 +281,12 @@ namespace Cinemachine.ECS
             if (activeCamera != blend.cam)
             {
                 // Do we need to create a game-play blend?
-                if (activeCamera != null && blend.cam != null && deltaTime >= 0 && blendProvider != null)
+                if (activeCamera != null && blend.cam != null && deltaTime >= 0)
                 {
                     // Create a blend
-                    var blendDef = blendProvider.GetBlendForVirtualCameras(
-                        blend.cam, activeCamera, defaultBlend);
+                    var blendDef = defaultBlend;
+                    if (blendProvider != null)
+                        blendProvider.GetBlendForVirtualCameras(blend.cam, activeCamera, defaultBlend);
                     if (blendDef.m_Style != CinemachineBlendDefinition.Style.Cut && blendDef.m_Time > 0)
                     {
                         mNativeFrame.PushEmpty();
