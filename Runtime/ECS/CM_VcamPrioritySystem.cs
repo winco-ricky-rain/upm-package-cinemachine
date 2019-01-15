@@ -30,18 +30,12 @@ namespace Cinemachine.ECS
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
     public class CM_VcamPrioritySystem : JobComponentSystem
     {
-        ComponentGroup m_groupA;
-        ComponentGroup m_groupB;
+        ComponentGroup m_mainGroup;
 
         protected override void OnCreateManager()
         {
-            m_groupA = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamPriority>(),
-                ComponentType.Subtractive<CM_VcamShotQuality>());
-
-            m_groupB = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamPriority>(),
-                ComponentType.ReadOnly<CM_VcamShotQuality>());
+            m_mainGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_VcamPriority>());
 
             m_vcamSequence = 1;
             m_priorityQueue = new NativeArray<QueueEntry>(16, Allocator.Persistent);
@@ -58,51 +52,24 @@ namespace Cinemachine.ECS
             QueueReadJobHandle.Complete();
             QueueReadJobHandle = default(JobHandle);
 
-            var lengthA = m_groupA.CalculateLength();
-            var lengthB = m_groupB.CalculateLength();
-            if (m_priorityQueue.Length != lengthA + lengthB)
+            var length = m_mainGroup.CalculateLength();
+            if (m_priorityQueue.Length != length)
             {
                 m_priorityQueue.Dispose();
-                m_priorityQueue = new NativeArray<QueueEntry>(lengthA + lengthB, Allocator.Persistent);
+                m_priorityQueue = new NativeArray<QueueEntry>(length, Allocator.Persistent);
             }
 
-            var depsA = new PopulateQueueDefaultQualityJob
+            var populateDeps = new PopulateQueueJob
             {
-                entities = m_groupA.GetEntityArray(),
-                priorities = m_groupA.GetComponentDataArray<CM_VcamPriority>(),
+                entities = m_mainGroup.GetEntityArray(),
+                priorities = m_mainGroup.GetComponentDataArray<CM_VcamPriority>(),
+                qualities = GetComponentDataFromEntity<CM_VcamShotQuality>(true),
                 priorityQueue = m_priorityQueue
-            }.Schedule(lengthA, 32, inputDeps);
+            }.Schedule(length, 32, inputDeps);
 
-            var depsB = new PopulateQueueJob
-            {
-                entities = m_groupB.GetEntityArray(),
-                priorities = m_groupB.GetComponentDataArray<CM_VcamPriority>(),
-                qualities = m_groupB.GetComponentDataArray<CM_VcamShotQuality>(),
-                priorityQueue = m_priorityQueue,
-                arrayOffset = lengthA
-            }.Schedule(lengthB, 32, inputDeps);
-
-            var depsC = JobHandle.CombineDependencies(depsA, depsB);
-            QueueWriteHandle = new SortQueueJob { priorityQueue = m_priorityQueue }.Schedule(1, 1, depsC);
+            QueueWriteHandle = new SortQueueJob
+                { priorityQueue = m_priorityQueue }.Schedule(1, 1, populateDeps);
             return QueueWriteHandle;
-        }
-
-        [BurstCompile]
-        struct PopulateQueueDefaultQualityJob : IJobParallelFor
-        {
-            [ReadOnly] public EntityArray entities;
-            [ReadOnly] public ComponentDataArray<CM_VcamPriority> priorities;
-            public NativeArray<QueueEntry> priorityQueue;
-
-            public void Execute(int index)
-            {
-                priorityQueue[index] = new QueueEntry
-                {
-                    entity = entities[index],
-                    vcamPriority = priorities[index],
-                    shotQuality = new CM_VcamShotQuality { value = CM_VcamShotQuality.DefaultValue }
-                };
-            }
         }
 
         [BurstCompile]
@@ -110,18 +77,30 @@ namespace Cinemachine.ECS
         {
             [ReadOnly] public EntityArray entities;
             [ReadOnly] public ComponentDataArray<CM_VcamPriority> priorities;
-            [ReadOnly] public ComponentDataArray<CM_VcamShotQuality> qualities;
+            [ReadOnly] public ComponentDataFromEntity<CM_VcamShotQuality> qualities;
             public NativeArray<QueueEntry> priorityQueue;
-            public int arrayOffset;
 
             public void Execute(int index)
             {
-                priorityQueue[index + arrayOffset] = new QueueEntry
+                var entity = entities[index];
+                if (qualities.Exists(entity))
                 {
-                    entity = entities[index],
-                    vcamPriority = priorities[index],
-                    shotQuality = qualities[index]
-                };
+                    priorityQueue[index] = new QueueEntry
+                    {
+                        entity = entity,
+                        vcamPriority = priorities[index],
+                        shotQuality = qualities[entity]
+                    };
+                }
+                else
+                {
+                    priorityQueue[index] = new QueueEntry
+                    {
+                        entity = entity,
+                        vcamPriority = priorities[index],
+                        shotQuality = new CM_VcamShotQuality { value = CM_VcamShotQuality.DefaultValue }
+                    };
+                }
             }
         }
 

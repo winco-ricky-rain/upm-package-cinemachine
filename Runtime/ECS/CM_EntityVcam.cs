@@ -59,16 +59,16 @@ namespace Cinemachine.ECS
                     };
                     noLens = false;
                 }
-                if (m.HasComponent<CM_VcamPosition>(e))
+                if (m.HasComponent<CM_VcamPositionState>(e))
                 {
-                    var c = m.GetComponentData<CM_VcamPosition>(e);
+                    var c = m.GetComponentData<CM_VcamPositionState>(e);
                     state.RawPosition = c.raw;
                     state.ReferenceUp = c.up;
                     state.PositionCorrection = c.correction;
                 }
-                if (m.HasComponent<CM_VcamRotation>(e))
+                if (m.HasComponent<CM_VcamRotationState>(e))
                 {
-                    var c = m.GetComponentData<CM_VcamRotation>(e);
+                    var c = m.GetComponentData<CM_VcamRotationState>(e);
                     state.ReferenceLookAt = c.lookAtPoint;
                     state.RawOrientation = c.raw;
                     state.OrientationCorrection = c.correction;

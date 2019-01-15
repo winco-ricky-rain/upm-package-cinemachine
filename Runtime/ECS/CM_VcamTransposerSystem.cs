@@ -54,7 +54,7 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
-    public struct CM_VcamTransposerState : IComponentData
+    public struct CM_VcamTransposerState : ISystemStateComponentData
     {
         /// State information used for damping
         public float3 previousTargetPosition;
@@ -77,13 +77,13 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPosition>(),
+                ComponentType.Create<CM_VcamPositionState>(),
                 ComponentType.Create<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
 
             m_missingStateGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPosition>(),
+                ComponentType.Create<CM_VcamPositionState>(),
                 ComponentType.Subtractive<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
@@ -94,7 +94,7 @@ namespace Cinemachine.ECS
         {
             public float deltaTime;
             public float fixedDelta;
-            public ComponentDataArray<CM_VcamPosition> positions;
+            public ComponentDataArray<CM_VcamPositionState> positions;
             public ComponentDataArray<CM_VcamTransposerState> transposerStates;
             [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
             [ReadOnly] public ComponentDataArray<CM_VcamFollowTarget> targets;
@@ -126,7 +126,7 @@ namespace Cinemachine.ECS
                         previousTargetRotation = targetRot
                     };
 
-                    positions[index] = new CM_VcamPosition
+                    positions[index] = new CM_VcamPositionState
                     {
                         raw = targetPos + math.mul(targetRot, transposers[index].followOffset),
                         dampingBypass = float3.zero,
@@ -146,7 +146,7 @@ namespace Cinemachine.ECS
                 for (int i = 0; i < missingEntities.Length; ++i)
                 {
                     cb.AddComponent(missingEntities[i], new CM_VcamTransposerState());
-                    cb.SetComponent(missingEntities[i], new CM_VcamPosition()); // invalidate prev pos
+                    cb.SetComponent(missingEntities[i], new CM_VcamPositionState()); // invalidate prev pos
                 }
             }
 
@@ -159,7 +159,7 @@ namespace Cinemachine.ECS
             {
                 deltaTime = Time.deltaTime, // GML todo: use correct value
                 fixedDelta = Time.fixedDeltaTime,
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
                 transposers = m_mainGroup.GetComponentDataArray<CM_VcamTransposer>(),
                 transposerStates = m_mainGroup.GetComponentDataArray<CM_VcamTransposerState>(),
                 targets = m_mainGroup.GetComponentDataArray<CM_VcamFollowTarget>(),

@@ -9,7 +9,8 @@ using System.Runtime.CompilerServices;
 namespace Cinemachine.ECS
 {
     [ExecuteAlways]
-    [UpdateBefore(typeof(CM_VcamFinalizeSystem))]
+    [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
+    [UpdateBefore(typeof(CM_VcamPrioritySystem))]
     public class CM_VcamRaycastShotQualitySystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -18,8 +19,8 @@ namespace Cinemachine.ECS
         {
             m_mainGroup = GetComponentGroup(
                 ComponentType.Create<CM_VcamShotQuality>(),
-                ComponentType.ReadOnly<CM_VcamPosition>(),
-                ComponentType.ReadOnly<CM_VcamRotation>(),
+                ComponentType.ReadOnly<CM_VcamPositionState>(),
+                ComponentType.ReadOnly<CM_VcamRotationState>(),
                 ComponentType.ReadOnly<CM_VcamLensState>());
         }
 
@@ -29,8 +30,8 @@ namespace Cinemachine.ECS
             public int layerMask;
             public float minDstanceFromTarget;
             public NativeArray<RaycastCommand> raycasts;
-            [ReadOnly] public ComponentDataArray<CM_VcamPosition> positions;
-            [ReadOnly] public ComponentDataArray<CM_VcamRotation> rotations;
+            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
+            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> rotations;
 
             // GML todo: handle IgnoreTag or something like that ?
 
@@ -56,8 +57,8 @@ namespace Cinemachine.ECS
             public ComponentDataArray<CM_VcamShotQuality> qualities;
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastHit> hits;
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastCommand> raycasts;
-            [ReadOnly] public ComponentDataArray<CM_VcamPosition> positions;
-            [ReadOnly] public ComponentDataArray<CM_VcamRotation> rotations;
+            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
+            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> rotations;
             [ReadOnly] public ComponentDataArray<CM_VcamLensState> lenses;
 
             public void Execute(int i)
@@ -66,9 +67,10 @@ namespace Cinemachine.ECS
 
                 float3 offset = rotations[i].lookAtPoint - positions[i].raw; // GML todo: use corrected
                 offset = math.mul(math.inverse(rotations[i].raw), offset); // camera-space
+                var fov = lenses[i].fov;
                 bool isOnscreen =
-                    (!isOrthographic & IsTargetOnscreen(offset, lenses[i].fov, aspect))
-                    | (isOrthographic & IsTargetOnscreenOrtho(offset, lenses[i].fov, aspect));
+                    (!isOrthographic & IsTargetOnscreen(offset, fov, aspect))
+                    | (isOrthographic & IsTargetOnscreenOrtho(offset, fov, aspect));
 
                 bool isVisible = noObstruction && isOnscreen;
                 qualities[i] = new CM_VcamShotQuality { value = math.select(0f, 1f, isVisible) };
@@ -110,8 +112,8 @@ namespace Cinemachine.ECS
                 layerMask = -5, // GML todo: how to set this?
                 minDstanceFromTarget = 0, // GML todo: how to set this?
                 raycasts = raycastCommands,
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotation>(),
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
+                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
             };
 
             var setupDependency = setupRaycastsJob.Schedule(objectCount, 32, inputDeps);
@@ -125,8 +127,8 @@ namespace Cinemachine.ECS
                 qualities = m_mainGroup.GetComponentDataArray<CM_VcamShotQuality>(),
                 hits = raycastHits,         // deallocates on completion
                 raycasts = raycastCommands, // deallocates on completion
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotation>(),
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
+                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
                 lenses = m_mainGroup.GetComponentDataArray<CM_VcamLensState>(),
             };
 

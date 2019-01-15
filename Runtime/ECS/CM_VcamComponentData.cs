@@ -21,7 +21,7 @@ namespace Cinemachine.ECS
     /// lens settings, and will be used to drive the Unity camera when the vcam is active.
     /// </summary>
     [Serializable]
-    public struct CM_VcamLensState : IComponentData
+    public struct CM_VcamLens : IComponentData
     {
         /// <summary>
         /// This is the camera view in vertical degrees. For cinematic people, a 50mm lens
@@ -42,6 +42,37 @@ namespace Cinemachine.ECS
 
         /// <summary> For physical cameras only: position of the gate relative to the film back </summary>
         public float2 lensShift;
+
+        public static CM_VcamLens Default
+        {
+            get { return new CM_VcamLens { fov = 40, nearClip = 0.1f, farClip = 5000 }; }
+        }
+    }
+
+    /// <summary>
+    /// Exactly the same thing as CM_VcamLens, but mutable.
+    /// GML todo: yuck
+    /// </summary>
+    [Serializable]
+    public struct CM_VcamLensState : ISystemStateComponentData
+    {
+        public float fov;
+        public float nearClip;
+        public float farClip;
+        public float dutch;
+        public float2 lensShift;
+
+        public static CM_VcamLensState FromLens(CM_VcamLens v)
+        {
+            return new CM_VcamLensState
+            {
+                fov = v.fov,
+                nearClip = v.nearClip,
+                farClip = v.farClip,
+                dutch = v.dutch,
+                lensShift = v.lensShift
+            };
+        }
     }
 
     [Serializable]
@@ -81,7 +112,7 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
-    public struct CM_VcamPosition : IComponentData
+    public struct CM_VcamPositionState : ISystemStateComponentData
     {
         /// <summary> Raw (un-corrected) world space position of this camera </summary>
         public float3 raw;
@@ -106,7 +137,7 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
-    public struct CM_VcamRotation : IComponentData
+    public struct CM_VcamRotationState : ISystemStateComponentData
     {
         /// <summary>
         /// The world space focus point of the camera.  What the camera wants to look at.

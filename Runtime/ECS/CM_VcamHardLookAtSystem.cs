@@ -23,8 +23,8 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamRotation>(),
-                ComponentType.ReadOnly<CM_VcamPosition>(),
+                ComponentType.Create<CM_VcamRotationState>(),
+                ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamHardLookAt>(),
                 ComponentType.ReadOnly<CM_VcamLookAtTarget>());
         }
@@ -32,8 +32,8 @@ namespace Cinemachine.ECS
         [BurstCompile]
         struct LookAtTargetJob : IJobParallelFor
         {
-            public ComponentDataArray<CM_VcamRotation> rotations;
-            [ReadOnly] public ComponentDataArray<CM_VcamPosition> positions;
+            public ComponentDataArray<CM_VcamRotationState> rotations;
+            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
             [ReadOnly] public ComponentDataArray<CM_VcamLookAtTarget> targets;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
@@ -46,7 +46,7 @@ namespace Cinemachine.ECS
                     float3 dir = math.normalizesafe(targetInfo.position - positions[index].raw, math.forward(q));
                     float3 up = math.normalizesafe(positions[index].up, math.up());
                     q = q.LookRotationUnit(dir, up);
-                    rotations[index] = new CM_VcamRotation
+                    rotations[index] = new CM_VcamRotationState
                     {
                         lookAtPoint = targetInfo.position,
                         raw = q,
@@ -65,8 +65,8 @@ namespace Cinemachine.ECS
 
             var job = new LookAtTargetJob()
             {
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotation>(),
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
+                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
                 targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
                 targetLookup = targetLookup
             };

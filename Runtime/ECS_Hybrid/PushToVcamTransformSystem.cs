@@ -18,15 +18,15 @@ namespace Cinemachine.ECS_Hybrid
         {
             m_mainGroup = GetComponentGroup(
                 typeof(Transform),
-                ComponentType.ReadOnly(typeof(CM_VcamPosition)),
-                ComponentType.ReadOnly(typeof(CM_VcamRotation)));
+                ComponentType.ReadOnly(typeof(CM_VcamPositionState)),
+                ComponentType.ReadOnly(typeof(CM_VcamRotationState)));
         }
 
         [BurstCompile]
         struct CopyTransforms : IJobParallelForTransform
         {
-            [ReadOnly] public ComponentDataArray<CM_VcamPosition> positions;
-            [ReadOnly] public ComponentDataArray<CM_VcamRotation> rotations;
+            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
+            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> rotations;
 
             public void Execute(int index, TransformAccess transform)
             {
@@ -40,8 +40,8 @@ namespace Cinemachine.ECS_Hybrid
             var transforms = m_mainGroup.GetTransformAccessArray();
             var job = new CopyTransforms
             {
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPosition>(),
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotation>()
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
+                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>()
             };
             return job.Schedule(transforms, inputDeps);
         }

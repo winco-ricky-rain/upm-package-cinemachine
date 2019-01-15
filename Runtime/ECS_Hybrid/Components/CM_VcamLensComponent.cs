@@ -4,5 +4,6 @@ using Cinemachine.ECS;
 namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
-    public class CM_VcamPositionComponent : ComponentDataWrapper<CM_VcamPosition> { } 
+    [SaveDuringPlay]
+    public class CM_VcamLensComponent : ComponentDataWrapper<CM_VcamLens> { }
 }

@@ -9,8 +9,9 @@ namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
     [ExecuteAlways]
-    [AddComponentMenu("Cinemachine/CM_Brain")]
     [SaveDuringPlay]
+    [RequireComponent(typeof(GameObjectEntity))]
+    [AddComponentMenu("Cinemachine/CM_Brain")]
     public class CM_Brain : MonoBehaviour
     {
         /// <summary>

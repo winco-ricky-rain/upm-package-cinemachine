@@ -17,30 +17,49 @@ namespace Cinemachine.ECS
     {
         ComponentGroup m_posGroup;
         ComponentGroup m_rotGroup;
+        ComponentGroup m_lensGroup;
+        ComponentGroup m_missingPosStateGroup;
+        ComponentGroup m_missingRotStateGroup;
+        ComponentGroup m_missingLensStateGroup;
+
+#pragma warning disable 649 // never assigned to
+        // Used only to add missing state components
+        [Inject] EndFrameBarrier m_missingStateBarrier;
+#pragma warning restore 649
 
         protected override void OnCreateManager()
         {
-            m_posGroup = GetComponentGroup(ComponentType.Create<CM_VcamPosition>());
-            m_rotGroup = GetComponentGroup(ComponentType.Create<CM_VcamRotation>());
+            m_posGroup = GetComponentGroup(
+                ComponentType.Create<CM_VcamPositionState>());
+            m_rotGroup = GetComponentGroup(
+                ComponentType.Create<CM_VcamRotationState>());
+            m_lensGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_VcamLens>(),
+                ComponentType.Create<CM_VcamLensState>());
+
+            m_missingPosStateGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_VcamPriority>(),
+                ComponentType.Subtractive<CM_VcamPositionState>());
+            m_missingRotStateGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_VcamPriority>(),
+                ComponentType.Subtractive<CM_VcamRotationState>());
+            m_missingLensStateGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_VcamPriority>(),
+                ComponentType.Subtractive<CM_VcamLensState>());
         }
 
         [BurstCompile]
         struct InitPosJob : IJobParallelFor
         {
-            public ComponentDataArray<CM_VcamPosition> vcamPositions;
+            public ComponentDataArray<CM_VcamPositionState> vcamPositions;
             [ReadOnly] public ComponentDataFromEntity<Position> positions;
             [ReadOnly] public EntityArray entities;
 
             public void Execute(int index)
             {
                 var p = vcamPositions[index];
-                p = new CM_VcamPosition
-                {
-                    raw = p.raw,
-                    dampingBypass = float3.zero,
-                    up = math.up(),
-                    previousFrameDataIsValid = p.previousFrameDataIsValid
-                };
+                p.dampingBypass = float3.zero;
+                p.up = math.up(); // GML todo: fixme
 
                 var entity = entities[index];
                 if (positions.Exists(entity))
@@ -53,18 +72,16 @@ namespace Cinemachine.ECS
         [BurstCompile]
         struct InitRotJob : IJobParallelFor
         {
-            public ComponentDataArray<CM_VcamRotation> vcamRotations;
+            public ComponentDataArray<CM_VcamRotationState> vcamRotations;
             [ReadOnly] public ComponentDataFromEntity<Rotation> rotations;
             [ReadOnly] public EntityArray entities;
 
             public void Execute(int index)
             {
-                var r = new CM_VcamRotation
-                {
-                    //lookAtPoint = CM_VcamRotation.kNoPoint, // GML fixme
-                    raw = quaternion.identity,
-                    correction = quaternion.identity
-                };
+                var r = vcamRotations[index];
+                r.correction = quaternion.identity;
+                vcamRotations[index] = r;
+
                 var entity = entities[index];
                 if (rotations.Exists(entity))
                     r.raw = rotations[entity].Value;
@@ -73,11 +90,39 @@ namespace Cinemachine.ECS
             }
         }
 
+        [BurstCompile]
+        struct InitLensJob : IJobParallelFor
+        {
+            public ComponentDataArray<CM_VcamLensState> lensStates;
+            [ReadOnly] public ComponentDataArray<CM_VcamLens> lenses;
+
+            public void Execute(int index)
+            {
+                lensStates[index] = CM_VcamLensState.FromLens(lenses[index]);
+            }
+        }
+
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            // Add any missing state components
+            var missingPosEntities = m_missingPosStateGroup.GetEntityArray();
+            var missingRotEntities = m_missingRotStateGroup.GetEntityArray();
+            var missingLensEntities = m_missingLensStateGroup.GetEntityArray();
+            if (missingPosEntities.Length + missingRotEntities.Length + missingLensEntities.Length > 0)
+            {
+                var cb  = m_missingStateBarrier.CreateCommandBuffer();
+                for (int i = 0; i < missingPosEntities.Length; ++i)
+                    cb.AddComponent(missingPosEntities[i], new CM_VcamPositionState());
+                for (int i = 0; i < missingRotEntities.Length; ++i)
+                    cb.AddComponent(missingRotEntities[i], new CM_VcamRotationState
+                        { raw = quaternion.identity, correction = quaternion.identity });
+                for (int i = 0; i < missingRotEntities.Length; ++i)
+                    cb.AddComponent(missingRotEntities[i], CM_VcamLensState.FromLens(CM_VcamLens.Default));
+            }
+
             var posJob = new InitPosJob
             {
-                vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPosition>(),
+                vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPositionState>(),
                 positions = GetComponentDataFromEntity<Position>(true),
                 entities = m_posGroup.GetEntityArray()
             };
@@ -85,13 +130,20 @@ namespace Cinemachine.ECS
 
             var rotJob = new InitRotJob
             {
-                vcamRotations = m_rotGroup.GetComponentDataArray<CM_VcamRotation>(),
+                vcamRotations = m_rotGroup.GetComponentDataArray<CM_VcamRotationState>(),
                 rotations = GetComponentDataFromEntity<Rotation>(true),
                 entities = m_rotGroup.GetEntityArray()
             };
             var rotDeps = rotJob.Schedule(m_rotGroup.CalculateLength(), 32, inputDeps);
 
-            return JobHandle.CombineDependencies(posDeps, rotDeps);
+            var lensJob = new InitLensJob
+            {
+                lensStates = m_lensGroup.GetComponentDataArray<CM_VcamLensState>(),
+                lenses = m_lensGroup.GetComponentDataArray<CM_VcamLens>()
+            };
+            var lensDeps = lensJob.Schedule(m_lensGroup.CalculateLength(), 32, inputDeps);
+
+            return JobHandle.CombineDependencies(posDeps, rotDeps, lensDeps);
         }
     }
 
@@ -120,27 +172,27 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_posGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPosition>());
+                ComponentType.Create<CM_VcamPositionState>());
             m_rotGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamRotation>(),
+                ComponentType.Create<CM_VcamRotationState>(),
                 ComponentType.Create<Rotation>());
             m_transformGroup = GetComponentGroup(
                 ComponentType.Create<LocalToWorld>(),
-                ComponentType.ReadOnly<CM_VcamPosition>(),
-                ComponentType.ReadOnly<CM_VcamRotation>());
+                ComponentType.ReadOnly<CM_VcamPositionState>(),
+                ComponentType.ReadOnly<CM_VcamRotationState>());
         }
 
         [BurstCompile]
         struct FinalizePosJob : IJobParallelFor
         {
-            public ComponentDataArray<CM_VcamPosition> vcamPositions;
+            public ComponentDataArray<CM_VcamPositionState> vcamPositions;
             [NativeDisableParallelForRestriction] public ComponentDataFromEntity<Position> positions;
             [ReadOnly] public EntityArray entities;
 
             public void Execute(int index)
             {
                 var p = vcamPositions[index];
-                vcamPositions[index] = new CM_VcamPosition
+                vcamPositions[index] = new CM_VcamPositionState
                 {
                     raw = p.raw,
                     dampingBypass = float3.zero,
@@ -156,7 +208,7 @@ namespace Cinemachine.ECS
         [BurstCompile]
         struct FinalizeRotJob : IJobParallelFor
         {
-            [ReadOnly] public ComponentDataArray<CM_VcamRotation> vcamRotations;
+            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> vcamRotations;
             [NativeDisableParallelForRestriction] public ComponentDataArray<Rotation> rotations;
 
             public void Execute(int index)
@@ -169,8 +221,8 @@ namespace Cinemachine.ECS
         struct PushToTransformJob : IJobParallelFor
         {
             public ComponentDataArray<LocalToWorld> localToWorld;
-            [ReadOnly] public ComponentDataArray<CM_VcamPosition> vcamPositions;
-            [ReadOnly] public ComponentDataArray<CM_VcamRotation> vcamRotations;
+            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> vcamPositions;
+            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> vcamRotations;
 
             public void Execute(int index)
             {
@@ -189,7 +241,7 @@ namespace Cinemachine.ECS
         {
             var posJob = new FinalizePosJob
             {
-                vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPosition>(),
+                vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPositionState>(),
                 positions = GetComponentDataFromEntity<Position>(false),
                 entities = m_posGroup.GetEntityArray()
             };
@@ -197,7 +249,7 @@ namespace Cinemachine.ECS
 
             var rotJob = new FinalizeRotJob
             {
-                vcamRotations = m_rotGroup.GetComponentDataArray<CM_VcamRotation>(),
+                vcamRotations = m_rotGroup.GetComponentDataArray<CM_VcamRotationState>(),
                 rotations = m_rotGroup.GetComponentDataArray<Rotation>(),
             };
             var rotDeps = rotJob.Schedule(m_rotGroup.CalculateLength(), 32, inputDeps);
@@ -205,8 +257,8 @@ namespace Cinemachine.ECS
             var transformJob = new PushToTransformJob
             {
                 localToWorld = m_transformGroup.GetComponentDataArray<LocalToWorld>(),
-                vcamPositions = m_transformGroup.GetComponentDataArray<CM_VcamPosition>(),
-                vcamRotations = m_transformGroup.GetComponentDataArray<CM_VcamRotation>()
+                vcamPositions = m_transformGroup.GetComponentDataArray<CM_VcamPositionState>(),
+                vcamRotations = m_transformGroup.GetComponentDataArray<CM_VcamRotationState>()
             };
             var transformDeps = transformJob.Schedule(m_transformGroup.CalculateLength(), 32, posDeps);
 

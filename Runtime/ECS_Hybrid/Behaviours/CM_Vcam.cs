@@ -3,12 +3,13 @@ using System;
 using Unity.Entities;
 using Cinemachine.ECS;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(GameObjectEntity))]
     [ExecuteAlways]
+    [RequireComponent(typeof(GameObjectEntity))]
     [AddComponentMenu("Cinemachine/CM_Vcam")]
     public class CM_Vcam : MonoBehaviour, ICinemachineCamera
     {
@@ -100,7 +101,7 @@ namespace Cinemachine.ECS_Hybrid
                 var m = ActiveEntityManager;
                 if (m == null)
                     return;
-                var c = m.GetComponentData<CM_VcamPosition>(Entity);
+                var c = m.GetComponentData<CM_VcamPositionState>(Entity);
                 c.raw += new float3(positionDelta);
                 m.SetComponentData(Entity, c);
                 transform.position += positionDelta;
@@ -125,7 +126,7 @@ namespace Cinemachine.ECS_Hybrid
             var m = ActiveEntityManager;
             if (m == null)
                 return;
-            var c = m.GetComponentData<CM_VcamPosition>(Entity);
+            var c = m.GetComponentData<CM_VcamPositionState>(Entity);
             if (!gameObject.activeInHierarchy)
             {
                 c.previousFrameDataIsValid = 0;
@@ -219,42 +220,68 @@ namespace Cinemachine.ECS_Hybrid
         }
 #endif
 
-        void CreateEntityComponents()
-        {
-            var m = ActiveEntityManager;
-            if (m == null || !m.Exists(Entity))
-                return;
-            if (!m.HasComponent<CM_VcamPosition>(Entity))
-                m.AddComponentData(Entity, new CM_VcamPosition());
-            if (!m.HasComponent<CM_VcamRotation>(Entity))
-                m.AddComponentData(Entity, new CM_VcamRotation());
-            if (!m.HasComponent<CM_VcamLensState>(Entity))
-                m.AddComponentData(Entity, new CM_VcamLensState());
-            if (!m.HasComponent<CM_VcamPriority>(Entity))
-                m.AddComponentData(Entity, new CM_VcamPriority()); // GML todo: vcamSequence
-            if (!m.HasComponent<CM_VcamShotQuality>(Entity))
-                m.AddComponentData(Entity, new CM_VcamShotQuality());
 
-            if (m_FollowTarget != null)
-            {
-                var e = m_FollowTarget.GetComponent<GameObjectEntity>();
-                if (e != null && !m.HasComponent<CM_VcamFollowTarget>(Entity))
-                    m.AddComponentData(Entity, new CM_VcamFollowTarget{ target = e.Entity });
-            }
-            if (m_LookAtTarget != null)
-            {
-                var e = m_LookAtTarget.GetComponent<GameObjectEntity>();
-                if (e != null && !m.HasComponent<CM_VcamLookAtTarget>(Entity))
-                    m.AddComponentData(Entity, new CM_VcamLookAtTarget{ target = e.Entity });
-            }
+#if true // GML todo something here
+        Entity EnsureTargetCompliance(Transform target)
+        {
+            if (target == null)
+                return Entity.Null;
+
+            var m = ActiveEntityManager;
+            if (m == null)
+                return Entity.Null;
+
+            var goe = target.GetComponent<GameObjectEntity>();
+            if (goe == null)
+                goe = target.gameObject.AddComponent<GameObjectEntity>();
+
+            var e = goe.Entity;
+            if (!m.HasComponent<CM_Target>(e))
+                m.AddComponentData(e, new CM_Target());
+
+            if (!m.HasComponent<Position>(e))
+                m.AddComponentData(e, new Position());
+            if (!m.HasComponent<Rotation>(e))
+                m.AddComponentData(e, new Rotation());
+            if (!m.HasComponent<CopyTransformFromGameObject>(e))
+                m.AddComponentData(e, new CopyTransformFromGameObject());
+
+            return e;
         }
+#endif
 
         void PushValuesToEntityComponents()
         {
             var m = ActiveEntityManager;
             if (m == null || !m.Exists(Entity))
                 return;
-            m.SetComponentData(Entity, new CM_VcamLensState
+
+            if (!m.HasComponent<Position>(Entity))
+                m.AddComponentData(Entity, new Position());
+            if (!m.HasComponent<Rotation>(Entity))
+                m.AddComponentData(Entity, new Rotation());
+            if (!m.HasComponent<CopyTransformFromGameObject>(Entity))
+                m.AddComponentData(Entity, new CopyTransformFromGameObject());
+
+            if (!m.HasComponent<CM_VcamLens>(Entity))
+                m.AddComponentData(Entity, CM_VcamLens.Default);
+            if (!m.HasComponent<CM_VcamPriority>(Entity))
+                m.AddComponentData(Entity, new CM_VcamPriority()); // GML todo: vcamSequence
+            if (!m.HasComponent<CM_VcamShotQuality>(Entity))
+                m.AddComponentData(Entity, new CM_VcamShotQuality());
+
+            // GML todo: GC allocs? - cache this stuff
+            var e = EnsureTargetCompliance(m_FollowTarget);
+            if (!m.HasComponent<CM_VcamFollowTarget>(Entity))
+                m.AddComponentData(Entity, new CM_VcamFollowTarget{ target = e });
+            m.SetComponentData(Entity, new CM_VcamFollowTarget{ target = e });
+
+            e = EnsureTargetCompliance(m_LookAtTarget);
+            if (!m.HasComponent<CM_VcamLookAtTarget>(Entity))
+                m.AddComponentData(Entity, new CM_VcamLookAtTarget{ target = e });
+            m.SetComponentData(Entity, new CM_VcamLookAtTarget{ target = e });
+
+            m.SetComponentData(Entity, new CM_VcamLens
             {
                 fov = m_Lens.Orthographic ? m_Lens.OrthographicSize : m_Lens.FieldOfView,
                 nearClip = m_Lens.NearClipPlane,
@@ -262,6 +289,7 @@ namespace Cinemachine.ECS_Hybrid
                 dutch = m_Lens.Dutch,
                 lensShift = m_Lens.LensShift
             });
+
             m.SetComponentData(Entity, new CM_VcamPriority
             {
                 channel = gameObject.layer,
@@ -274,14 +302,12 @@ namespace Cinemachine.ECS_Hybrid
         void OnEnable()
         {
             m_gameObjectEntityComponent = GetComponent<GameObjectEntity>();
-            CreateEntityComponents();
             PushValuesToEntityComponents();
         }
 
         // GML: Needed in editor only, probably, only if something is dirtied
         void Update()
         {
-            CreateEntityComponents();
             PushValuesToEntityComponents();
         }
     }
