@@ -9,8 +9,10 @@ namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
     [ExecuteAlways]
+    [UpdateAfter(typeof(CM_ChannelSystem))]
     [SaveDuringPlay]
     [RequireComponent(typeof(GameObjectEntity))]
+    [RequireComponent(typeof(CM_ChannelComponent))]
     [AddComponentMenu("Cinemachine/CM_Brain")]
     public class CM_Brain : MonoBehaviour
     {
@@ -27,13 +29,11 @@ namespace Cinemachine.ECS_Hybrid
         [Tooltip("When enabled, the camera's frustum will be shown at all times in the scene view")]
         public bool m_ShowCameraFrustum = true;
 
-        /// <summary>Current channel.  Only vcams on this channel will be processed</summary>
-        public int m_Channel;
+        /// <summary>Event with a CM_Brain parameter</summary>
+        [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
 
-        static CM_ChannelSystem ActiveChannelSystem
-        {
-            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
-        }
+        /// <summary>This event will fire after a brain updates its Camera</summary>
+        public BrainEvent CameraUpdatedEvent = new BrainEvent();
 
         /// <summary>
         /// Get the Unity Camera that is attached to this GameObject.  This is the camera
@@ -50,20 +50,10 @@ namespace Cinemachine.ECS_Hybrid
         }
         private Camera m_OutputCamera = null; // never use directly - use accessor
 
-        /// <summary>Event with a ICinemachineCamera parameter</summary>
-        [Serializable] public class VcamActivatedEvent : UnityEvent<ICinemachineCamera, ICinemachineCamera, bool> {}
-
-        /// <summary>This event will fire whenever a virtual camera goes live.  If a blend is involved,
-        /// then the event will fire on the first frame of the blend</summary>
-        [Tooltip("This event will fire whenever a virtual camera goes live.  "
-            + "If a blend is involved, then the event will fire on the first frame of the blend.")]
-        public VcamActivatedEvent m_CameraActivatedEvent = new VcamActivatedEvent();
-
-        /// <summary>Event with a CM_Brain parameter</summary>
-        [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
-
-        /// <summary>This event will fire after a brain updates its Camera</summary>
-        public BrainEvent CameraUpdatedEvent = new BrainEvent();
+        static CM_ChannelSystem ActiveChannelSystem
+        {
+            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
+        }
 
         /// <summary>
         /// API for the Unity Editor.
@@ -73,10 +63,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                var channelSystem = ActiveChannelSystem;
-                if (channelSystem != null)
-                    return channelSystem.SoloCamera;
-                return null;
+                return ActiveChannelSystem?.SoloCamera;
             }
             set
             {
@@ -97,12 +84,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                if (SoloCamera != null)
-                    return SoloCamera;
-                var channelSystem = ActiveChannelSystem;
-                if (channelSystem != null)
-                    return channelSystem.GetActiveVirtualCamera(m_Channel);
-                return null;
+                return ActiveChannelSystem?.GetActiveVirtualCamera(mChannelComponent.Value.channel);
             }
         }
 
@@ -115,7 +97,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.IsBlending(m_Channel);
+                    return channelSystem.IsBlending(mChannelComponent.Value.channel);
                 return false;
             }
         }
@@ -132,7 +114,7 @@ namespace Cinemachine.ECS_Hybrid
                     return new CM_Blender.BlendState { cam = cam, weight = 1 };
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.GetActiveBlend(m_Channel);
+                    return channelSystem.GetActiveBlend(mChannelComponent.Value.channel);
                 return new CM_Blender.BlendState();
             }
         }
@@ -146,7 +128,8 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.GetCurrentCameraState(m_Channel);
+                    return channelSystem.GetCurrentCameraState(
+                        mChannelComponent.Value.channel);
                 var state = CameraState.Default;
                 var t = transform;
                 state.RawPosition = t.position;
@@ -226,9 +209,12 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
+        CM_ChannelComponent mChannelComponent;
+
         private void OnEnable()
         {
             m_OutputCamera = GetComponent<Camera>();
+            mChannelComponent = GetComponent<CM_ChannelComponent>();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }
@@ -245,7 +231,7 @@ namespace Cinemachine.ECS_Hybrid
                 CinemachineDebug.OnGUIHandlers();
         }
 #endif
-        private void LateUpdate()
+        private void OnPreCull()
         {
             PushStateToUnityCamera(CurrentCameraState);
         }

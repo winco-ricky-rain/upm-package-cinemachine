@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -43,7 +42,17 @@ namespace Cinemachine.ECS
         /// This is the asset which contains custom settings for specific blends.
         /// </summary>
         public CinemachineBlenderSettings customBlends;
+
+        /// <summary>Called when the current live vcam changes.  If a blend is involved,
+        /// then this will be called on the first frame of the blend</summary>
+        [Serializable] public class ActivationEvent
+            : UnityEngine.Events.UnityEvent<ICinemachineCamera, ICinemachineCamera, bool> {}
+
+        /// <summary>Called when the current live vcam changes.  If a blend is involved,
+        /// then this will be called on the first frame of the blend</summary>
+        public ActivationEvent VcamActivatedEvent;
     }
+
 
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
@@ -70,15 +79,6 @@ namespace Cinemachine.ECS
             }
             return extra;
         }
-
-        /// <summary>Called when the current live vcam changes.  If a blend is involved,
-        /// then this will be called on the first frame of the blend</summary>
-        public delegate void VcamActivatedDelegate(
-            ICinemachineCamera newCam, ICinemachineCamera prevCam, bool isCut);
-
-        /// <summary>Called when the current live vcam changes.  If a blend is involved,
-        /// then this will be called on the first frame of the blend</summary>
-        public VcamActivatedDelegate OnVcamActivated;
 
         /// <summary>API for the Unity Editor. Show this camera no matter what.</summary>
         public ICinemachineCamera SoloCamera { get; set; }
@@ -248,25 +248,6 @@ namespace Cinemachine.ECS
             return null;
         }
 
-        private void ProcessActiveCamera(ChannelExtraState extra, float3 worldUp, float deltaTime)
-        {
-            var activeCamera = extra.blender.ActiveVirtualCamera;
-
-            // Has the current camera changed this frame?
-            if (activeCamera != extra.mActiveCameraPreviousFrame)
-            {
-                // Notify incoming camera of transition
-                if (activeCamera != null)
-                    activeCamera.OnTransitionFromCamera(extra.mActiveCameraPreviousFrame, worldUp, deltaTime);
-
-                // Send transition notification to observers
-                if (OnVcamActivated != null)
-                    OnVcamActivated.Invoke(
-                        activeCamera, extra.mActiveCameraPreviousFrame, !extra.blender.IsBlending);
-            }
-            extra.mActiveCameraPreviousFrame = activeCamera;
-        }
-
         ComponentGroup m_channelsGroup;
 
         protected override void OnCreateManager()
@@ -290,8 +271,22 @@ namespace Cinemachine.ECS
                 // GML Note: perhaps this can be jobified?  Does it matter?  Probably not.
                 extra.blender.Update(deltaTime, activeVcam, c.customBlends, c.defaultBlend);
 
-                // Send activation notifications
-                ProcessActiveCamera(extra, math.mul(c.worldOrientationOverride, math.up()), deltaTime);
+                // Has the current camera changed this frame?
+                activeVcam = extra.blender.ActiveVirtualCamera;
+                if (activeVcam != extra.mActiveCameraPreviousFrame)
+                {
+                    // Notify incoming camera of transition
+                    if (activeVcam != null)
+                    {
+                        var worldUp = math.mul(c.worldOrientationOverride, math.up());
+                        activeVcam.OnTransitionFromCamera(extra.mActiveCameraPreviousFrame, worldUp, deltaTime);
+                    }
+                    // Send transition notification to observers
+                    if (c.VcamActivatedEvent != null)
+                        c.VcamActivatedEvent.Invoke(
+                            activeVcam, extra.mActiveCameraPreviousFrame, !extra.blender.IsBlending);
+                }
+                extra.mActiveCameraPreviousFrame = activeVcam;
             }
         }
     }

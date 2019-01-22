@@ -13,11 +13,11 @@ namespace Cinemachine.Editor
             public static bool ShowInGameGuides
             {
                 get { return EditorPrefs.GetBool(hShowInGameGuidesKey, true); }
-                set 
-                { 
+                set
+                {
                     if (ShowInGameGuides != value)
                     {
-                        EditorPrefs.SetBool(hShowInGameGuidesKey, value); 
+                        EditorPrefs.SetBool(hShowInGameGuidesKey, value);
                         UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
                     }
                 }
@@ -408,7 +408,8 @@ namespace Cinemachine.Editor
                 return;
             }
 
-            if (instance.GetComponent<CinemachineBrain>() != null)
+            if (instance.GetComponent<CinemachineBrain>() != null
+                || instance.GetComponent<ECS_Hybrid.CM_Brain>() != null)
             {
                 Rect texRect = new Rect(selectionRect.xMax - selectionRect.height, selectionRect.yMin, selectionRect.height, selectionRect.height);
                 GUI.DrawTexture(texRect, CinemachineLogoTexture, ScaleMode.ScaleAndCrop);
