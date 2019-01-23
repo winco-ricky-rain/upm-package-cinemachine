@@ -288,14 +288,12 @@ namespace Cinemachine.ECS
                     if (blendProvider != null)
                         blendProvider.GetBlendForVirtualCameras(blend.cam, activeCamera, defaultBlend);
                     if (blendDef.m_Style != CinemachineBlendDefinition.Style.Cut && blendDef.m_Time > 0)
-                    {
                         mNativeFrame.PushEmpty();
-                        blend = new CM_Blend
-                        {
-                            blendCurve = blendDef.BlendCurve,
-                            duration = blendDef.m_Time
-                        };
-                    }
+                    blend = new CM_Blend
+                    {
+                        blendCurve = blendDef.BlendCurve,
+                        duration = blendDef.m_Time
+                    };
                 }
                 // Set the current active camera
                 blend.cam = activeCamera;

@@ -177,6 +177,7 @@ namespace Cinemachine
             {
                 switch (m_Style)
                 {
+                    case Style.Cut: return BlendCurve.Linear;
                     case Style.EaseInOut: return BlendCurve.Default;
                     case Style.EaseIn: return new BlendCurve { A = 0.5f, B = 0, bias = 0 };
                     case Style.EaseOut: return new BlendCurve { A = 0, B = 0.5f, bias = 0 };
