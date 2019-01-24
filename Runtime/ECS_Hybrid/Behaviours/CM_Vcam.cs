@@ -89,6 +89,8 @@ namespace Cinemachine.ECS_Hybrid
         // GML todo: this is wrong - getting rid of CinemachineCore
         public bool IsLive { get { return CinemachineCore.Instance.IsLive(this); } }
 
+        public Entity AsEntity { get { return Entity; }}
+
         /// <summary>This is called to notify the vcam that a target got warped,
         /// so that the vcam can update its internal state to make the camera
         /// also warp seamlessy.</summary>

@@ -3,6 +3,7 @@ using System;
 using UnityEngine;
 using Cinemachine.ECS;
 using Unity.Mathematics;
+using Unity.Entities;
 
 namespace Cinemachine
 {
@@ -211,6 +212,7 @@ namespace Cinemachine
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
         public bool IsLive { get { return false; }}
+        public Entity AsEntity { get { return Entity.Null; }}
     }
 
     /// <summary>
@@ -242,5 +244,6 @@ namespace Cinemachine
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
         public bool IsLive { get { return false; }}
+        public Entity AsEntity { get { return Entity.Null; }}
     }
 }

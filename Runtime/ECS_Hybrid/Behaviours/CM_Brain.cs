@@ -111,7 +111,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var cam = SoloCamera;
                 if (cam != null)
-                    return new CM_Blender.BlendState { cam = cam, weight = 1 };
+                    return new CM_Blender.BlendState { cam = cam.AsEntity, weight = 1 };
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
                     return channelSystem.GetActiveBlend(mChannelComponent.Value.channel);

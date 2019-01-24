@@ -1,3 +1,4 @@
+using Unity.Entities;
 using UnityEngine;
 
 namespace Cinemachine
@@ -79,5 +80,10 @@ namespace Cinemachine
         /// Is this virtual camera currently actively controlling any Camera?
         /// </summary>
         bool IsLive { get; }
+
+        /// <summary>
+        /// Entity associated with this vcam
+        /// </summary>
+        Entity AsEntity { get; }
     }
 }

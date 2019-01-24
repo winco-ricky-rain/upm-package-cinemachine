@@ -25,6 +25,7 @@ namespace Cinemachine.ECS
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
         public bool IsLive { get { return CinemachineCore.Instance.IsLive(this); } }
+        public Entity AsEntity { get { return Entity; }}
 
         // GML hack until I think of something better
         static Dictionary<Entity, CM_EntityVcam> sVcamCache = new Dictionary<Entity, CM_EntityVcam>();
@@ -33,7 +34,7 @@ namespace Cinemachine.ECS
             if (sVcamCache == null)
                 sVcamCache = new Dictionary<Entity, CM_EntityVcam>();
             CM_EntityVcam vcam = null;
-            if (!sVcamCache.TryGetValue(e, out vcam))
+            if (e != Entity.Null && !sVcamCache.TryGetValue(e, out vcam))
                 sVcamCache[e] = vcam = new CM_EntityVcam(e);
             return vcam;
         }

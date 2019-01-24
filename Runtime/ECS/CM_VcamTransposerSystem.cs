@@ -83,7 +83,7 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
 
             m_missingStateGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPositionState>(),
+                ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.Subtractive<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
@@ -157,7 +157,7 @@ namespace Cinemachine.ECS
 
             var job = new TrackTargetJob()
             {
-                deltaTime = Time.deltaTime, // GML todo: use correct value
+                deltaTime = Time.deltaTime, // GML todo: use correct values
                 fixedDelta = Time.fixedDeltaTime,
                 positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
                 transposers = m_mainGroup.GetComponentDataArray<CM_VcamTransposer>(),

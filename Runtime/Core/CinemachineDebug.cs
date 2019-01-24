@@ -114,23 +114,25 @@ namespace Cinemachine.Utility
         public static string Description(this CM_Blender.BlendState blend)
         {
             var sb = CinemachineDebug.SBFromPool();
-            if (blend.cam == null || !blend.cam.IsValid)
+            var cam = CM_EntityVcam.GetEntityVcam(blend.cam);
+            if (cam == null || !cam.IsValid)
                 sb.Append("(none)");
             else
             {
                 sb.Append("[");
-                sb.Append(blend.cam.Name);
+                sb.Append(cam.Name);
                 sb.Append("]");
             }
             sb.Append(" ");
             sb.Append((int)(blend.weight * 100f));
             sb.Append("% from ");
-            if (blend.outgoingCam == null || !blend.outgoingCam.IsValid)
+            var outgoingCam = CM_EntityVcam.GetEntityVcam(blend.outgoingCam);
+            if (outgoingCam == null || !outgoingCam.IsValid)
                 sb.Append("(none)");
             else
             {
                 sb.Append("[");
-                sb.Append(blend.outgoingCam.Name);
+                sb.Append(outgoingCam.Name);
                 sb.Append("]");
             }
             string text = sb.ToString();
