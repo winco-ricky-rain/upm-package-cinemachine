@@ -11,7 +11,6 @@ namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
     [ExecuteAlways]
-    [UpdateAfter(typeof(CM_ChannelSystem))]
     [SaveDuringPlay]
     [RequireComponent(typeof(GameObjectEntity))]
     [RequireComponent(typeof(CM_ChannelComponent))]
@@ -31,8 +30,7 @@ namespace Cinemachine.ECS_Hybrid
         [Tooltip("When enabled, the camera's frustum will be shown at all times in the scene view")]
         public bool m_ShowCameraFrustum = true;
 
-        /// <summary>This enum defines the options available for the update method.</summary>
-        [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
+        /// <summary>This enum defines the options available for the Camera Transform update time.</summary>
         public enum UpdateMethod
         {
             /// <summary>Camera's transform is updated in FixedUpdate</summary>
@@ -47,7 +45,7 @@ namespace Cinemachine.ECS_Hybrid
 
         /// <summary>When the Camera gets positioned by the virtual camera.</summary>
         [Tooltip("When the Camera gets positioned by the virtual camera")]
-        public UpdateMethod m_UpdateMethod = UpdateMethod.LateUpdate;
+        public UpdateMethod m_UpdateMethod = UpdateMethod.OnPreCull;
 
         /// <summary>Event with a CM_Brain parameter</summary>
         [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
