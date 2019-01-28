@@ -1,9 +1,11 @@
 ﻿using Cinemachine.ECS;
 using Cinemachine.Utility;
 using System;
+using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Events;
+using Unity.Mathematics;
 
 namespace Cinemachine.ECS_Hybrid
 {
@@ -28,6 +30,24 @@ namespace Cinemachine.ECS_Hybrid
         /// </summary>
         [Tooltip("When enabled, the camera's frustum will be shown at all times in the scene view")]
         public bool m_ShowCameraFrustum = true;
+
+        /// <summary>This enum defines the options available for the update method.</summary>
+        [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
+        public enum UpdateMethod
+        {
+            /// <summary>Camera's transform is updated in FixedUpdate</summary>
+            FixedUpdate,
+            /// <summary>Camera's transform is updated in Update</summary>
+            Update,
+            /// <summary>Camera's transform is updated in LateUpdate</summary>
+            LateUpdate,
+            /// <summary>Camera's transform is updated in OnPreCull</summary>
+            OnPreCull
+        };
+
+        /// <summary>When the Camera gets positioned by the virtual camera.</summary>
+        [Tooltip("When the Camera gets positioned by the virtual camera")]
+        public UpdateMethod m_UpdateMethod = UpdateMethod.LateUpdate;
 
         /// <summary>Event with a CM_Brain parameter</summary>
         [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
@@ -105,17 +125,17 @@ namespace Cinemachine.ECS_Hybrid
         /// <summary>
         /// Get the current blend in progress.  Returns null if none.
         /// </summary>
-        public CM_Blender.BlendState ActiveBlend
+        public CM_BlendState ActiveBlend
         {
             get
             {
                 var cam = SoloCamera;
                 if (cam != null)
-                    return new CM_Blender.BlendState { cam = cam.AsEntity, weight = 1 };
+                    return new CM_BlendState { cam = cam.AsEntity, weight = 1 };
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
                     return channelSystem.GetActiveBlend(mChannelComponent.Value.channel);
-                return new CM_Blender.BlendState();
+                return new CM_BlendState();
             }
         }
 
@@ -231,9 +251,73 @@ namespace Cinemachine.ECS_Hybrid
                 CinemachineDebug.OnGUIHandlers();
         }
 #endif
+
+        List<Entity> liveVcamsPreviousFrame = new List<Entity>();
+        List<Entity> scratchList = new List<Entity>();
+
+        void ProcessActiveVcam()
+        {
+            var state = CurrentCameraState;
+
+            // Send activation events
+            var channelSystem = ActiveChannelSystem;
+            if (channelSystem != null)
+            {
+                var c = mChannelComponent.Value;
+                var deltaTime = channelSystem.GetEffectiveDeltaTime(c);
+                var worldUp = math.mul(c.worldOrientationOverride, math.up());
+
+                scratchList.Clear();
+                channelSystem.GetLiveVcams(c.channel, scratchList);
+                var previous = liveVcamsPreviousFrame.Count > 0
+                    ? CM_EntityVcam.GetEntityVcam(liveVcamsPreviousFrame[0]) : null;
+                bool isBlending = scratchList.Count > 1;
+                for (int i = scratchList.Count - 1; i >= 0; --i)
+                {
+                    if (!liveVcamsPreviousFrame.Contains(scratchList[i]))
+                    {
+                        var vcam = CM_EntityVcam.GetEntityVcam(scratchList[i]);
+                        if (vcam != null)
+                        {
+                            // Notify incoming camera of transition
+                            vcam.OnTransitionFromCamera(previous, worldUp, deltaTime);
+
+                            // Send transition notification to observers
+                            if (c.VcamActivatedEvent != null)
+                                c.VcamActivatedEvent.Invoke(vcam, previous, isBlending);
+                        }
+                    }
+                }
+                var temp = liveVcamsPreviousFrame;
+                liveVcamsPreviousFrame = scratchList;
+                scratchList = temp;
+            }
+            // Move the camera
+            PushStateToUnityCamera(state);
+        }
+
+        private void FixedUpdate()
+        {
+            if (m_UpdateMethod == UpdateMethod.FixedUpdate)
+                ProcessActiveVcam();
+        }
+
+        private void Update()
+        {
+            if (m_UpdateMethod == UpdateMethod.Update)
+                ProcessActiveVcam();
+        }
+
+        private void LateUpdate()
+        {
+            if (m_UpdateMethod == UpdateMethod.LateUpdate)
+                ProcessActiveVcam();
+        }
+
         private void OnPreCull()
         {
-            PushStateToUnityCamera(CurrentCameraState);
+            if (m_UpdateMethod == UpdateMethod.OnPreCull)
+                ProcessActiveVcam();
         }
     }
 }

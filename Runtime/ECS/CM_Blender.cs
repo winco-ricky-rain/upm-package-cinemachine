@@ -1,9 +1,10 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine.Assertions;
+using Unity.Collections.LowLevel.Unsafe;
+using System.Collections.Generic;
 
 namespace Cinemachine.ECS
 {
@@ -24,57 +25,81 @@ namespace Cinemachine.ECS
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsValid() { return cam != null; }
+        public bool IsValid() { return cam != Entity.Null; }
     }
 
-    // Support blend chaining
-    public struct CM_ChainedBlend
+    // Support for blend chaining
+    unsafe struct CM_ChainedBlend
     {
-        public NativeArray<CM_Blend> stack;
-        public int numActiveFrames;
+        CM_Blend* stack;
+        int capacity;
+        int length;
+
+        public int NumActiveFrames
+        {
+            get { return length; }
+            set
+            {
+#if UNITY_ASSERTIONS
+                Assert.IsTrue(value >= 0 && value <= capacity, "CM_ChainedBlend.NumAciveFrames out of range");
+#endif
+                length = value;
+            }
+        }
+
+        public ref CM_Blend ElementAt(int i)
+        {
+#if UNITY_ASSERTIONS
+            Assert.IsTrue(i < capacity, "Array access out of range");
+#endif
+            return ref stack[i];
+        }
 
         // Call this from main thread, before Update() gets called.  Resizes the stack.
-        public void EnsureCapacity(int size, JobHandle waitForTheseJobsToComplete)
+        public void EnsureCapacity(int size)
         {
-            if (!stack.IsCreated || stack.Length < size)
+            if (stack == null || capacity < size)
             {
-                waitForTheseJobsToComplete.Complete();
-                var oldStack = stack;
-                stack = new NativeArray<CM_Blend>(size, Allocator.Persistent);
-                if (oldStack.IsCreated)
+                var old = stack;
+                stack = (CM_Blend*)UnsafeUtility.Malloc(
+                    sizeof(CM_Blend) * size, UnsafeUtility.AlignOf<CM_Blend>(), Allocator.Persistent);
+                UnsafeUtility.MemClear(stack, sizeof(CM_Blend) * size);
+                if (old != null)
                 {
-                    for (int i = 0; i < oldStack.Length && i < size; ++i) // GML todo: memcpy
-                        stack[i] = oldStack[i];
-                    oldStack.Dispose();
+                    UnsafeUtility.MemCpy(stack, old, NumActiveFrames * sizeof(CM_Blend));
+                    UnsafeUtility.Free(old, Allocator.Persistent);
                 }
+                capacity = size;
             }
         }
 
         public void Dispose()
         {
-            if (stack.IsCreated)
-                stack.Dispose();
+            if (stack != null)
+                UnsafeUtility.Free(stack, Allocator.Persistent);
+            stack = null;
+            capacity = 0;
+            NumActiveFrames = 0;
         }
 
         public void PushEmpty()
         {
 #if UNITY_ASSERTIONS
-            Assert.IsTrue(stack.IsCreated, "EnsureCapacity() must be called before this");
-            Assert.IsTrue(stack.IsCreated && stack.Length > numActiveFrames, "EnsureCapacity() must be called before this, with sifficient size");
+            Assert.IsTrue(stack != null, "EnsureCapacity() must be called before this");
+            Assert.IsTrue(capacity > NumActiveFrames, "EnsureCapacity() must be called before this, with sufficient size");
 #endif
-            for (int i = numActiveFrames; i > 0; --i)
-                stack[i] = stack[i - 1];
+            UnsafeUtility.MemMove(stack + 1, stack, NumActiveFrames * sizeof(CM_Blend));
             stack[0] = new CM_Blend();
-            ++numActiveFrames;
+            ++NumActiveFrames;
         }
 
         public CameraState GetState()
         {
             CameraState state = CameraState.Default;
-            int i = numActiveFrames;
+            int i = NumActiveFrames;
             for (--i; i >= 0; --i)
             {
-                if (stack[i].cam != null)
+                if (stack[i].cam != Entity.Null)
                 {
                     state = CM_EntityVcam.StateFromEntity(stack[i].cam);
                     break;
@@ -82,9 +107,8 @@ namespace Cinemachine.ECS
             }
             for (--i; i >= 0; --i)
             {
-                var frame = stack[i];
                 state = CameraState.Lerp(
-                    state, CM_EntityVcam.StateFromEntity(frame.cam), frame.BlendWeight());
+                    state, CM_EntityVcam.StateFromEntity(stack[i].cam), stack[i].BlendWeight());
             }
             return state;
         }
@@ -94,7 +118,7 @@ namespace Cinemachine.ECS
         {
             if (cam != Entity.Null)
             {
-                int numFrames = numActiveFrames;
+                int numFrames = NumActiveFrames;
                 for (int i = 0; i < numFrames; ++i)
                     if (cam == stack[i].cam)
                         return true;
@@ -104,24 +128,30 @@ namespace Cinemachine.ECS
 
         public void AdvanceBlend(float deltaTime)
         {
-            int numFrames = numActiveFrames;
-            for (numActiveFrames = 0; numActiveFrames < numFrames; ++numActiveFrames)
+            int numFrames = NumActiveFrames;
+            for (NumActiveFrames = 0; NumActiveFrames < numFrames; ++NumActiveFrames)
             {
-                var frame = stack[numActiveFrames];
-                frame.timeInBlend += deltaTime;
-                stack[numActiveFrames] = frame;
-                if (frame.IsComplete())
+                stack[NumActiveFrames].timeInBlend += deltaTime;
+                if (stack[NumActiveFrames].IsComplete())
                     break;
             }
-            ++numActiveFrames; // include the last one
+            ++NumActiveFrames; // include the last one
 
             // Clean out any garbage created by completed blend
-            for (int i = numActiveFrames; i < numFrames; ++i)
+            for (int i = NumActiveFrames; i < numFrames; ++i)
                 stack[i] = new CM_Blend();
         }
     }
 
-    public struct CM_Blender
+    public struct CM_BlendState
+    {
+        public Entity cam;
+        public float weight;
+        public Entity outgoingCam;
+        public CameraState cameraState; // Full result of blend (can involve more cams)
+    }
+
+    internal unsafe struct CM_Blender
     {
         struct Frame
         {
@@ -131,19 +161,25 @@ namespace Cinemachine.ECS
             public float weightB;
         }
 
-        private NativeArray<Frame> mFrameStack;
+        Frame* frameStack;
+        int capacity;
+        public int NumActiveFrames { get; private set; }
+
         private int mLastFrameId;
 
         CM_ChainedBlend mNativeFrame;
         CM_ChainedBlend mCurrentBlend;
 
-        public JobHandle activeReadingJobs;
-
         public void Dispose()
         {
             mNativeFrame.Dispose();
             mCurrentBlend.Dispose();
-            mFrameStack.Dispose();
+
+            if (frameStack != null)
+                UnsafeUtility.Free(frameStack, Allocator.Persistent);
+            frameStack = null;
+            capacity = 0;
+            NumActiveFrames = 0;
         }
 
         /// <summary>Get the current active virtual camera.</summary>
@@ -151,9 +187,9 @@ namespace Cinemachine.ECS
         {
             get
             {
-                if (!mCurrentBlend.stack.IsCreated || mCurrentBlend.stack.Length == 0)
+                if (mCurrentBlend.NumActiveFrames == 0)
                     return Entity.Null;
-                return mCurrentBlend.stack[0].cam;
+                return mCurrentBlend.ElementAt(0).cam;
             }
         }
 
@@ -162,41 +198,33 @@ namespace Cinemachine.ECS
         {
             get
             {
-                if (!mCurrentBlend.stack.IsCreated || mCurrentBlend.stack.Length < 2)
+                if (mCurrentBlend.NumActiveFrames == 0)
                     return false;
-                return !mCurrentBlend.stack[0].IsComplete();
+                return !mCurrentBlend.ElementAt(0).IsComplete();
             }
         }
 
-        public struct BlendState
-        {
-            public Entity cam;
-            public float weight;
-            public Entity outgoingCam;
-            public CameraState cameraState; // Full result of blend (can involve more cams)
-        }
-
-        public BlendState State
+        public CM_BlendState State
         {
             get
             {
-                int count = mCurrentBlend.stack == null ? 0 : mCurrentBlend.numActiveFrames;
+                int count = mCurrentBlend.NumActiveFrames;
                 if (count == 0)
-                    return new BlendState { cameraState = CameraState.Default };
-                var blend0 = mCurrentBlend.stack[0];
+                    return new CM_BlendState { cameraState = CameraState.Default };
+                var blend0 = mCurrentBlend.ElementAt(0);
                 if (count == 1)
-                    return new BlendState
+                    return new CM_BlendState
                     {
                         cam = blend0.cam,
                         weight = 1,
                         outgoingCam = Entity.Null,
                         cameraState = mCurrentBlend.GetState()
                     };
-                return new BlendState
+                return new CM_BlendState
                 {
                     cam = blend0.cam,
                     weight = blend0.BlendWeight(),
-                    outgoingCam = mCurrentBlend.stack[1].cam,
+                    outgoingCam = mCurrentBlend.ElementAt(1).cam,
                     cameraState = mCurrentBlend.GetState()
                 };
             }
@@ -207,21 +235,24 @@ namespace Cinemachine.ECS
             return mCurrentBlend.Uses(vcam);
         }
 
+        public void GetLiveVcams(List<Entity> vcams)
+        {
+            int count = mCurrentBlend.NumActiveFrames;
+            for (int i = 0; i < count; ++i)
+                vcams.Add(mCurrentBlend.ElementAt(i).cam);
+        }
+
         // Call this from the main thread, before Update() gets called
         public void PreUpdate()
         {
-            mNativeFrame.EnsureCapacity(mNativeFrame.numActiveFrames + 1, activeReadingJobs);
-            if (!mFrameStack.IsCreated || mFrameStack.Length < 1)
-                mFrameStack = new NativeArray<Frame>(1, Allocator.Persistent);
-            mCurrentBlend.EnsureCapacity(
-                mFrameStack.Length + mNativeFrame.numActiveFrames + 2, activeReadingJobs);
-            activeReadingJobs = new JobHandle();
+            mNativeFrame.EnsureCapacity(mNativeFrame.NumActiveFrames + 1);
+            mCurrentBlend.EnsureCapacity(NumActiveFrames + mNativeFrame.NumActiveFrames + 2);
         }
 
         // Can be called from job
         public void Update(
             float deltaTime, Entity activeCamera,
-            ICinemachineEntityBlendProvider blendProvider,
+            ICinemachineEntityBlendProvider blendProvider, // GML todo: make this not a class
             CinemachineBlendDefinition defaultBlend)
         {
             UpdateNativeFrame(deltaTime, activeCamera, blendProvider, defaultBlend);
@@ -248,12 +279,11 @@ namespace Cinemachine.ECS
         public int SetBlendableOverride(
             int overrideId, Entity camA, Entity camB, float weightB)
         {
-            activeReadingJobs.Complete();
             if (overrideId < 0)
                 overrideId = ++mLastFrameId;
 
             int index = GetOrCreateBrainFrameIndex(overrideId);
-            mFrameStack[index] = new Frame()
+            frameStack[index] = new Frame()
             {
                 id = overrideId,
                 camA = camA,
@@ -272,21 +302,16 @@ namespace Cinemachine.ECS
         /// was returned by SetBlendableOverride</param>
         public void ReleaseBlendableOverride(int overrideId)
         {
-            activeReadingJobs.Complete();
-            if (mFrameStack.IsCreated)
+            for (int src = 0; src < NumActiveFrames; ++src)
             {
-                int dst = 0;
-                for (int src = 0; src < mFrameStack.Length; ++src)
+                if (frameStack[src].id == overrideId)
                 {
-                    if (mFrameStack[src].id == overrideId)
-                    {
-                        for (++src; src < mFrameStack.Length; ++src)
-                            mFrameStack[dst++] = mFrameStack[src];
-                        while (dst < mFrameStack.Length)
-                            mFrameStack[dst++] = new Frame();
-                        return;
-                    }
-                    ++dst;
+                    int numLeft = NumActiveFrames - src - 1;
+                    if (numLeft > 0)
+                        UnsafeUtility.MemMove(
+                            frameStack + src, frameStack + src + 1, numLeft * sizeof(Frame));
+                    --NumActiveFrames;
+                    break;
                 }
             }
         }
@@ -294,27 +319,28 @@ namespace Cinemachine.ECS
         /// Get the frame index corresponding to the ID
         int GetOrCreateBrainFrameIndex(int withId)
         {
-            if (!mFrameStack.IsCreated || mFrameStack.Length < 1)
-                mFrameStack = new NativeArray<Frame>(1, Allocator.Persistent);
-            for (int i = 0; i < mFrameStack.Length; ++i)
+            for (int i = 0; i < NumActiveFrames; ++i)
             {
-                int id = mFrameStack[i].id;
+                int id = frameStack[i].id;
                 if (id == withId)
                     return i;
-                if (id == 0)
-                {
-                    mFrameStack[i] = new Frame { id = withId };
-                    return i;
-                }
             }
             // Not found - add it
-            int newIndex = mFrameStack.Length;
-            var oldStack = mFrameStack;
-            mFrameStack = new NativeArray<Frame>(newIndex + 1, Allocator.Persistent);
-            for (int i = 0; i < oldStack.Length; ++i) // GML todo: memcpy
-                mFrameStack[i] = oldStack[i];
-            oldStack.Dispose();
-            mFrameStack[newIndex] = new Frame() { id = withId };
+            int newIndex = NumActiveFrames++;
+            if (capacity <= newIndex)
+            {
+                var old = frameStack;
+                frameStack = (Frame*)UnsafeUtility.Malloc(
+                    sizeof(Frame) * newIndex, UnsafeUtility.AlignOf<Frame>(), Allocator.Persistent);
+                UnsafeUtility.MemClear(frameStack, sizeof(Frame) * newIndex);
+                if (old != null)
+                {
+                    UnsafeUtility.MemCpy(frameStack, old, capacity * sizeof(Frame));
+                    UnsafeUtility.Free(old, Allocator.Persistent);
+                }
+                capacity = NumActiveFrames;
+            }
+            frameStack[newIndex] = new Frame() { id = withId };
             return newIndex;
         }
 
@@ -325,27 +351,28 @@ namespace Cinemachine.ECS
             CinemachineBlendDefinition defaultBlend)
         {
             // Are we transitioning cameras?
-            var blend = mNativeFrame.stack[0];
+            var blend = mNativeFrame.ElementAt(0);
             if (activeCamera != blend.cam)
             {
                 // Do we need to create a game-play blend?
-                if (activeCamera != null && blend.cam != null && deltaTime >= 0)
+                if (activeCamera != Entity.Null && blend.cam != Entity.Null && deltaTime >= 0)
                 {
                     // Create a blend
                     var blendDef = defaultBlend;
                     if (blendProvider != null)
                         blendProvider.GetBlendForVirtualCameras(blend.cam, activeCamera, defaultBlend);
-                    if (blendDef.m_Style != CinemachineBlendDefinition.Style.Cut && blendDef.m_Time > 0)
+                    bool isCut = blendDef.m_Style == CinemachineBlendDefinition.Style.Cut;
+                    if (!isCut && blendDef.m_Time > 0)
                         mNativeFrame.PushEmpty();
                     blend = new CM_Blend
                     {
                         blendCurve = blendDef.BlendCurve,
-                        duration = blendDef.m_Time
+                        duration = isCut ? 0 : blendDef.m_Time
                     };
                 }
                 // Set the current active camera
                 blend.cam = activeCamera;
-                mNativeFrame.stack[0] = blend;
+                mNativeFrame.ElementAt(0) = blend;
             }
 
             // Advance the current blend (if any)
@@ -356,42 +383,40 @@ namespace Cinemachine.ECS
         void ComputeCurrentBlend()
         {
             // Most-recent overrides dominate
-            mCurrentBlend.numActiveFrames = 0;
-            for (int i = mFrameStack.Length-1; i >= 0; --i)
+            mCurrentBlend.NumActiveFrames = 0;
+            for (int i = NumActiveFrames-1; i >= 0; --i)
             {
-                var frame = mFrameStack[i];
-                if (frame.id == 0)
-                    continue;
+                var frame = frameStack[i];
                 if (frame.camB == Entity.Null)
                     continue;
-                mCurrentBlend.stack[mCurrentBlend.numActiveFrames] = new CM_Blend
+                mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
                 {
                     cam = frame.camB,
                     blendCurve = BlendCurve.Linear,
                     duration = 1,
                     timeInBlend = frame.weightB
                 };
-                ++mCurrentBlend.numActiveFrames;
+                ++mCurrentBlend.NumActiveFrames;
 
                 if (frame.camA != Entity.Null)
                 {
-                    mCurrentBlend.stack[mCurrentBlend.numActiveFrames] = new CM_Blend
+                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
                     {
                         cam = frame.camA,
                         duration = 0
                     };
-                    ++mCurrentBlend.numActiveFrames;
+                    ++mCurrentBlend.NumActiveFrames;
                     break; // We're done, blend is complete
                 }
             }
 
             // If blend is incomplete, add the native frame
-            if (mCurrentBlend.numActiveFrames == 0
-                || !mCurrentBlend.stack[mCurrentBlend.numActiveFrames-1].IsComplete())
+            if (mCurrentBlend.NumActiveFrames == 0
+                || !mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames-1).IsComplete())
             {
-                int numFrames = math.min(mNativeFrame.numActiveFrames, mNativeFrame.stack.Length);
+                int numFrames = mNativeFrame.NumActiveFrames;
                 for (int i = 0; i < numFrames; ++i)
-                    mCurrentBlend.stack[mCurrentBlend.numActiveFrames++] = mNativeFrame.stack[i];
+                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames++) = mNativeFrame.ElementAt(i);
             }
         }
     }

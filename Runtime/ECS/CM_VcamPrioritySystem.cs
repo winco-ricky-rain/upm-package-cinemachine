@@ -48,10 +48,6 @@ namespace Cinemachine.ECS
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            // Make sure all readers have finished with the queue
-            QueueReadJobHandle.Complete();
-            QueueReadJobHandle = default(JobHandle);
-
             var length = m_mainGroup.CalculateLength();
             if (m_priorityQueue.Length != length)
             {
@@ -149,7 +145,6 @@ namespace Cinemachine.ECS
         }
         NativeArray<QueueEntry> m_priorityQueue;
 
-        JobHandle QueueReadJobHandle = default(JobHandle);
         public JobHandle QueueWriteHandle { get; private set; }
 
         /// <summary>Get the vcam priority queue, which may not be written yet, for access by jobs.</summary>
@@ -161,69 +156,14 @@ namespace Cinemachine.ECS
             return m_priorityQueue;
         }
 
-        /// <summary>
-        /// Register the jobs that are reading from the singleton priority queue, so that queue
-        /// will not be prematurely corrupted.
-        /// </summary>
-        /// <param name="h">Jobs that are reading from the queue</param>
-        /// <returns>the same h as passed in, for convenience</returns>
-        public JobHandle RegisterPriorityQueueReadJobs(JobHandle h)
-        {
-            QueueReadJobHandle = JobHandle.CombineDependencies(QueueReadJobHandle, h);
-            return h;
-        }
-
         /// <summary>Get the vcam priority queue for immediate access.
         /// Waits for queue write jobs to complete.</summary>
         /// <returns>The queue</returns>
-        public NativeArray<QueueEntry> GetPriorityQueueNow()
+        public NativeArray<QueueEntry> GetPriorityQueueNow(bool waitForWriteComplete)
         {
-            QueueWriteHandle.Complete();
+            if (waitForWriteComplete)
+                QueueWriteHandle.Complete();
             return m_priorityQueue;
-        }
-
-        public int GetChannelStartIndexInQueue(int channel)
-        {
-            QueueWriteHandle.Complete();
-            int last = m_priorityQueue.Length;
-            if (last == 0)
-                return -1;
-
-            // Most common case: it's the first one
-            int value = m_priorityQueue[0].vcamPriority.channel;
-            if (value == channel)
-                return 0;
-            if (value > channel)
-                return -1;
-
-            // Binary search
-            int first = 0;
-            int mid = first + ((last - first) >> 1);
-            while (mid != first)
-            {
-                value = m_priorityQueue[mid].vcamPriority.channel;
-                if (value < channel)
-                {
-                    first = mid;
-                    mid = first + ((last - first) >> 1);
-                }
-                else if (value > channel)
-                {
-                    last = mid;
-                    mid = first + ((last - first) >> 1);
-                }
-                else
-                {
-                    last = mid;
-                    break;
-                }
-            }
-            if (value != channel)
-                return -1;
-
-            while (m_priorityQueue[first].vcamPriority.channel != channel)
-                ++first;
-            return first;
         }
     }
 }

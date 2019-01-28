@@ -111,7 +111,7 @@ namespace Cinemachine.Utility
         }
 
         /// <summary>Text description of a blend, for debugging</summary>
-        public static string Description(this CM_Blender.BlendState blend)
+        public static string Description(this CM_BlendState blend)
         {
             var sb = CinemachineDebug.SBFromPool();
             var cam = CM_EntityVcam.GetEntityVcam(blend.cam);
