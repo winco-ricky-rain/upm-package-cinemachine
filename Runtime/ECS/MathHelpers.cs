@@ -1,5 +1,6 @@
 using Unity.Mathematics;
 using System.Runtime.CompilerServices;
+using UnityEngine.Assertions;
 
 namespace Cinemachine.ECS
 {
@@ -183,6 +184,48 @@ namespace Cinemachine.ECS
             return initial - r;
         }
 
+        /// <summary>Get a damped version of a quantity.  This is the portion of the
+        /// quantity that will take effect over the given time.</summary>
+        /// <param name="initial">The amount that will be damped</param>
+        /// <param name="dampTime">The rate of damping.  This is the time it would
+        /// take to apply the entire amount</param>
+        /// <param name="deltaTime">The time over which to damp</param>
+        /// <param name="fixedDeltaTime">If nonzero, this indicates how to break down
+        /// deltaTime to give more consistent results in situations of variable framerate</param>
+        /// <returns>The damped amount.  This will be the original amount scaled by
+        /// a value between 0 and 1.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float2 Damp(
+            float2 initial, float2 dampTime,
+            float deltaTime, float fixedDeltaTime = 0)
+        {
+            /// GML todo: optimize! get rid of those ifs!
+            if (math.cmax(math.abs(initial)) < Epsilon)
+                return initial;
+            if (deltaTime < Epsilon)
+                return 0;
+
+            // Try to reduce damage caused by deltaTime variability
+            float step = math.select(
+                fixedDeltaTime / 5, deltaTime,
+                fixedDeltaTime == 0 || fixedDeltaTime == deltaTime);
+
+            const float kLogNegligibleResidual = -4.605170186f; // == math.Log(kNegligibleResidual=0.01f);
+            float2 decayConstant = math.select(
+                0, math.exp(kLogNegligibleResidual * step / dampTime), dampTime > Epsilon);
+
+            float2 vel = initial * step / deltaTime;
+            int numSteps = (int)math.floor(deltaTime / step);
+            float2 r = 0;
+            for (int i = 0; i < numSteps; ++i)
+                r = (r + vel) * decayConstant;
+
+            float d = deltaTime - (step * numSteps);
+            r = math.lerp(r, (r + vel) * decayConstant, d / step);
+
+            return initial - r;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Bezier(float t, float p0, float p1, float p2, float p3)
         {
@@ -256,48 +299,41 @@ namespace Cinemachine.ECS
         /// This formulation makes it easy to interpolate without introducing spurious roll.
         /// </summary>
         /// <param name="orient"></param>
-        /// <param name="lookAtDir">The worldspace target direction (must be unit vector)
+        /// <param name="lookAtDirUnit">The worldspace target direction (must be unit vector)
         /// in which we want to look</param>
-        /// <param name="worldUp">Which way is up.  Must have a length of 1.</param>
-        /// <returns>Vector2.y is rotation about worldUp, and Vector2.x is second rotation,
+        /// <param name="worldUpUnit">Which way is up.  Must have a length of 1.</param>
+        /// <returns>Vector2.x is rotation about worldUp, and Vector2.y is second rotation,
         /// about local right.  All in radians.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float2 GetCameraRotationToTarget(
-            this quaternion orient, float3 lookAtDir, float3 worldUp)
+            this quaternion orient, float3 lookAtDirUnit, float3 worldUpUnit)
         {
-            if (lookAtDir.AlmostZero())
-                return float2.zero;  // degenerate
-
+/*
+#if UNITY_ASSERTIONS
+            Assert.IsTrue(math.abs(math.length(lookAtDir) - 1) < Epsilon, "lookAtDir must be unit length");
+            Assert.IsTrue(math.abs(math.length(worldUp) - 1) < Epsilon, "worldUp must be unit length");
+#endif
+*/
             // Work in local space
             quaternion toLocal = math.inverse(orient);
-            float3 up = math.mul(toLocal, worldUp);
-            lookAtDir = math.mul(toLocal, lookAtDir);
+            float3 up = math.mul(toLocal, worldUpUnit);
+            lookAtDirUnit = math.mul(toLocal, lookAtDirUnit);
 
             // Align yaw based on world up
-            float angleH = 0;
-            {
-                var targetDirH = lookAtDir.ProjectOntoPlane(up);
-                if (!targetDirH.AlmostZero())
-                {
-                    var currentDirH = new float3(0, 0, 1).ProjectOntoPlane(up);
-                    if (currentDirH.AlmostZero())
-                    {
-                        // We're looking at the north or south pole
-                        if (math.dot(currentDirH, up) > 0)
-                            currentDirH = new float3(0, -1, 0).ProjectOntoPlane(up);
-                        else
-                            currentDirH = new float3(0, 1, 0).ProjectOntoPlane(up);
-                    }
-                    angleH = SignedAngleUnit(currentDirH, targetDirH, up);
-                }
-            }
+            var d0 = lookAtDirUnit.ProjectOntoPlane(up);
+            var d = new float3(0, 0, 1).ProjectOntoPlane(up);
+            var pole = new float3(0, math.select(1, -1, math.dot(d, up) > 0), 0).ProjectOntoPlane(up);
+            float angleH = math.select(
+                SignedAngleUnit(math.select(math.normalize(d), pole, d.AlmostZero()), math.normalize(d0), up),
+                0,
+                d0.AlmostZero());
             var q = quaternion.AxisAngle(up, angleH);
 
             // Get local vertical angle
             float angleV = SignedAngleUnit(
-                math.mul(q, new float3(0, 0, 1)), lookAtDir, math.mul(q, new float3(1, 0, 0)));
+                math.mul(q, new float3(0, 0, 1)), lookAtDirUnit, math.mul(q, new float3(1, 0, 0)));
 
-            return new float2(angleV, angleH);
+            return new float2(angleH, angleV);
         }
 
         /// <summary>
@@ -305,15 +341,15 @@ namespace Cinemachine.ECS
         /// rot.y is rotation about worldUp, and rot.x is second rotation, about local right.
         /// </summary>
         /// <param name="orient"></param>
-        /// <param name="rot">Vector2.y is rotation about worldUp, and Vector2.x is second rotation,
+        /// <param name="rot">Vector2.x is rotation about worldUp, and Vector2.y is second rotation,
         /// about local right.  Angles in radians.</param>
         /// <param name="worldUp">Which way is up</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static quaternion ApplyCameraRotation(
             this quaternion orient, float2 rot, float3 up)
         {
-            quaternion q = quaternion.AxisAngle(new float3(1, 0, 0), rot.x);
-            return math.mul(math.mul(quaternion.AxisAngle(up, rot.y), orient), q);
+            quaternion q = quaternion.AxisAngle(new float3(1, 0, 0), rot.y);
+            return math.mul(math.mul(quaternion.AxisAngle(up, rot.x), orient), q);
         }
 
     }

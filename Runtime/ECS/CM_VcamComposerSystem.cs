@@ -371,35 +371,28 @@ namespace Cinemachine.ECS
                 float3 targetDir, float3 up, MathHelpers.rect2d screenRect,
                 ref quaternion rigOrientation, float2 fov, float2 damping, float deltaTime)
             {
-                //Vector3 targetDir = TrackedPoint - state.CorrectedPosition;
                 var rotToRect = rigOrientation.GetCameraRotationToTarget(targetDir, up);
 
                 // Bring it to the edge of screenRect, if outside.  Leave it alone if inside.
                 ClampVerticalBounds(ref screenRect, targetDir, up, fov.y);
                 float min = (screenRect.pos.y) * fov.y;
                 float max = (screenRect.pos.y + screenRect.size.y) * fov.y;
-                if (rotToRect.x < min)
-                    rotToRect.x -= min;
-                else if (rotToRect.x > max)
-                    rotToRect.x -= max;
-                else
-                    rotToRect.x = 0;
+                rotToRect.y = math.select(
+                    math.select(0, rotToRect.y - max, rotToRect.y > max),
+                    rotToRect.y - min,
+                    rotToRect.y < min);
+                    rotToRect.y = 0;
 
                 min = (screenRect.pos.x) * fov.x;
                 max = (screenRect.pos.x + screenRect.size.x) * fov.x;
-                if (rotToRect.y < min)
-                    rotToRect.y -= min;
-                else if (rotToRect.y > max)
-                    rotToRect.y -= max;
-                else
-                    rotToRect.y = 0;
+                rotToRect.x = math.select(
+                    math.select(0, rotToRect.x - max, rotToRect.x > max),
+                    rotToRect.x - min,
+                    rotToRect.x < min);
 
                 // Apply damping
-                if (deltaTime >= 0)
-                {
-                    rotToRect.x = MathHelpers.Damp(rotToRect.x, damping.y, deltaTime);
-                    rotToRect.y = MathHelpers.Damp(rotToRect.y, damping.x, deltaTime);
-                }
+                rotToRect = MathHelpers.Damp(
+                    rotToRect, math.select(float2.zero, damping, deltaTime >= 0), deltaTime);
 
                 // Rotate
                 rigOrientation = rigOrientation.ApplyCameraRotation(rotToRect, up);
