@@ -12,7 +12,9 @@ namespace Cinemachine.ECS
     [Serializable]
     public struct CM_Target : IComponentData
     {
+        public float3 offset;
         public float radius;
+        public float3 warpDelta; // GML todo: make use of this
     }
 
     [Serializable]
@@ -35,13 +37,14 @@ namespace Cinemachine.ECS
             public float3 position;
             public float radius;
             public quaternion rotation;
+            public float3 warpDelta;
         }
         NativeHashMap<Entity, TargetInfo> m_targetLookup;
 
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_Target>(),
+                ComponentType.Create<CM_Target>(),
                 ComponentType.ReadOnly<LocalToWorld>());
 
             m_groupGroup = GetComponentGroup(
@@ -61,18 +64,23 @@ namespace Cinemachine.ECS
         struct HashTargets : IJobParallelFor
         {
             [ReadOnly] public EntityArray entities;
-            [ReadOnly] public ComponentDataArray<CM_Target> targets;
             [ReadOnly] public ComponentDataArray<LocalToWorld> positions;
+            public ComponentDataArray<CM_Target> targets;
             public NativeHashMap<Entity, TargetInfo>.Concurrent hashMap;
 
             public void Execute(int index)
             {
+                var p = positions[index].Value;
+                var t = targets[index];
                 hashMap.TryAdd(entities[index], new TargetInfo()
                 {
-                    position = math.transform(positions[index].Value, float3.zero),
-                    rotation = new quaternion(positions[index].Value),
-                    radius = targets[index].radius
+                    position = math.transform(p, t.offset),
+                    rotation = new quaternion(p),
+                    radius = t.radius,
+                    warpDelta = t.warpDelta
                 });
+                t.warpDelta = float3.zero;
+                targets[index] = t;
             }
         }
 
@@ -87,26 +95,25 @@ namespace Cinemachine.ECS
             {
                 var buffer = groupBuffers[index];
 
-                int numTargets = 0;
                 float3 avgPos = float3.zero;
-                float avgWeight = 0;
+                float weightSum = 0;
+                float maxWeight = 0;
                 for (int i = 0; i < buffer.Length; ++i)
                 {
                     var b = buffer[i];
                     if (hashMap.TryGetValue(b.target, out TargetInfo item))
                     {
-                        ++numTargets;
                         avgPos += item.position * b.weight;
-                        avgWeight += b.weight;
+                        weightSum += b.weight;
+                        maxWeight = math.max(maxWeight, b.weight);
                     }
                 }
 
                 // This is a very approximate implementation
-                if (numTargets > 0 && avgWeight > 0.001f)
+                if (maxWeight > MathHelpers.Epsilon)
                 {
-                    avgPos /= avgWeight;
-                    avgWeight /= numTargets;
-                    numTargets = 0;
+                    avgPos /= weightSum;
+                    bool gotOne = false;
                     float3 minPos = float3.zero;
                     float3 maxPos = float3.zero;
                     for (int i = 0; i < buffer.Length; ++i)
@@ -114,14 +121,14 @@ namespace Cinemachine.ECS
                         var b = buffer[i];
                         if (hashMap.TryGetValue(b.target, out TargetInfo item))
                         {
-                            float w = math.max(1, b.weight / avgWeight);
+                            float w = math.max(1, b.weight / maxWeight);
                             float3 p = math.lerp(avgPos, item.position, w);
                             float3 r = math.lerp(0, item.radius, w) * new float3(1, 1, 1);
                             float3 p0 = p - r;
                             float3 p1 = p + r;
-                            minPos = math.select(math.min(minPos, p0), p0, numTargets == 0);
-                            maxPos = math.select(math.min(maxPos, p1), p1, numTargets == 0);
-                            ++numTargets;
+                            minPos = math.select(p0, math.min(minPos, p0), gotOne);
+                            maxPos = math.select(p1, math.min(maxPos, p1), gotOne);
+                            gotOne = true;
                         }
                         infoArray[index] = new TargetInfo
                         {

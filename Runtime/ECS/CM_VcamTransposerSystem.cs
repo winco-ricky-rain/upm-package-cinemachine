@@ -89,53 +89,6 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
         }
 
-        [BurstCompile]
-        struct TrackTargetJob : IJobParallelFor
-        {
-            public float deltaTime;
-            public float fixedDelta;
-            public ComponentDataArray<CM_VcamPositionState> positions;
-            public ComponentDataArray<CM_VcamTransposerState> transposerStates;
-            [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
-            [ReadOnly] public ComponentDataArray<CM_VcamFollowTarget> targets;
-            [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
-
-            public void Execute(int index)
-            {
-                CM_TargetSystem.TargetInfo targetInfo;
-                if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
-                {
-                    var targetPos = targetInfo.position;
-                    var targetRot = GetRotationForBindingMode(
-                            targetInfo.rotation, transposers[index].bindingMode,
-                            targetPos - positions[index].raw);
-
-                    bool applyDamping = deltaTime >= 0 && positions[index].previousFrameDataIsValid != 0;
-                    targetRot = ApplyRotationDamping(
-                        deltaTime, fixedDelta,
-                        math.select(0, transposers[index].angularDamping, applyDamping),
-                        transposerStates[index].previousTargetRotation, targetRot);
-                    targetPos = ApplyPositionDamping(
-                        deltaTime, fixedDelta,
-                        math.select(float3.zero, transposers[index].damping, applyDamping),
-                        transposerStates[index].previousTargetPosition, targetPos, targetRot);
-
-                    transposerStates[index] = new CM_VcamTransposerState
-                    {
-                        previousTargetPosition = targetPos,
-                        previousTargetRotation = targetRot
-                    };
-
-                    positions[index] = new CM_VcamPositionState
-                    {
-                        raw = targetPos + math.mul(targetRot, transposers[index].followOffset),
-                        dampingBypass = float3.zero,
-                        up = math.mul(targetRot, math.up())
-                    };
-                }
-            }
-        }
-
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing transposer state components
@@ -167,6 +120,54 @@ namespace Cinemachine.ECS
             };
             return targetSystem.RegisterTargetLookupReadJobs(
                 job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
+        }
+
+        [BurstCompile]
+        struct TrackTargetJob : IJobParallelFor
+        {
+            public float deltaTime;
+            public float fixedDelta;
+            public ComponentDataArray<CM_VcamPositionState> positions;
+            public ComponentDataArray<CM_VcamTransposerState> transposerStates;
+            [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
+            [ReadOnly] public ComponentDataArray<CM_VcamFollowTarget> targets;
+            [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+
+            public void Execute(int index)
+            {
+                CM_TargetSystem.TargetInfo targetInfo;
+                if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
+                {
+                    var targetPos = targetInfo.position;
+                    var targetRot = GetRotationForBindingMode(
+                            targetInfo.rotation, transposers[index].bindingMode,
+                            targetPos - positions[index].raw);
+
+                    bool applyDamping = deltaTime >= 0 && positions[index].previousFrameDataIsValid != 0;
+                    var prevPos = transposerStates[index].previousTargetPosition + targetInfo.warpDelta;
+                    targetRot = ApplyRotationDamping(
+                        deltaTime, fixedDelta,
+                        math.select(0, transposers[index].angularDamping, applyDamping),
+                        transposerStates[index].previousTargetRotation, targetRot);
+                    targetPos = ApplyPositionDamping(
+                        deltaTime, fixedDelta,
+                        math.select(float3.zero, transposers[index].damping, applyDamping),
+                        prevPos, targetPos, targetRot);
+
+                    transposerStates[index] = new CM_VcamTransposerState
+                    {
+                        previousTargetPosition = targetPos,
+                        previousTargetRotation = targetRot
+                    };
+
+                    positions[index] = new CM_VcamPositionState
+                    {
+                        raw = targetPos + math.mul(targetRot, transposers[index].followOffset),
+                        dampingBypass = float3.zero,
+                        up = math.mul(targetRot, math.up())
+                    };
+                }
+            }
         }
 
         /// <summary>Applies damping to target rotation</summary>

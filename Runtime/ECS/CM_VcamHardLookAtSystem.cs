@@ -29,6 +29,24 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamLookAtTarget>());
         }
 
+        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        {
+            var targetSystem = World.GetExistingManager<CM_TargetSystem>();
+            var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
+            if (!targetLookup.IsCreated)
+                return default; // no targets yet
+
+            var job = new LookAtTargetJob()
+            {
+                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
+                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
+                targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
+                targetLookup = targetLookup
+            };
+            return targetSystem.RegisterTargetLookupReadJobs(
+                job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
+        }
+
         [BurstCompile]
         struct LookAtTargetJob : IJobParallelFor
         {
@@ -54,24 +72,6 @@ namespace Cinemachine.ECS
                     };
                 }
             }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            var targetSystem = World.GetExistingManager<CM_TargetSystem>();
-            var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
-            if (!targetLookup.IsCreated)
-                return default; // no targets yet
-
-            var job = new LookAtTargetJob()
-            {
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
-                targetLookup = targetLookup
-            };
-            return targetSystem.RegisterTargetLookupReadJobs(
-                job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
         }
     }
 }

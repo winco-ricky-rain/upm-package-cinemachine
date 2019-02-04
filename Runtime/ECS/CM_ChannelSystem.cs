@@ -26,7 +26,7 @@ namespace Cinemachine.ECS
         /// When enabled, the cameras will always respond in real-time to user input and damping,
         /// even if the game is running in slow motion
         /// </summary>
-        public int ignoreTimeScale;
+        public byte ignoreTimeScale; // GML todo: flags
 
         /// <summary>
         /// GML todo
@@ -58,7 +58,7 @@ namespace Cinemachine.ECS
     {
         /// Manages the nested blend stack and the camera override frames
         public CM_Blender blender;
-        public int channelIsLive;
+        public byte channelIsLive; // GML todo: flags
     }
 
     [ExecuteAlways]

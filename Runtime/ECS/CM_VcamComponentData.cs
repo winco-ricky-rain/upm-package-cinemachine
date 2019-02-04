@@ -62,6 +62,10 @@ namespace Cinemachine.ECS
         public float dutch;
         public float2 lensShift;
 
+        // GML todo: something
+        public byte orthographic;
+        public float aspect;
+
         public static CM_VcamLensState FromLens(CM_VcamLens v)
         {
             return new CM_VcamLensState
@@ -70,7 +74,10 @@ namespace Cinemachine.ECS
                 nearClip = v.nearClip,
                 farClip = v.farClip,
                 dutch = v.dutch,
-                lensShift = v.lensShift
+                lensShift = v.lensShift,
+                // GML todo
+                orthographic = 0,
+                aspect = 1
             };
         }
     }
@@ -133,7 +140,7 @@ namespace Cinemachine.ECS
         public float3 up;
 
         /// GML not sure where to put this
-        public int previousFrameDataIsValid; // only one bit needed.  Can put more flags here
+        public byte previousFrameDataIsValid; // GML todo: flags
     }
 
     [Serializable]

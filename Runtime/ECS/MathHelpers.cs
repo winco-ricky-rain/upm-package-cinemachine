@@ -245,5 +245,76 @@ namespace Cinemachine.ECS
         {
             return (math.clamp(t, 0, 1) / ((((1f/math.clamp(b, 0, 1)) - 2f) * (1f - t)) + 1f));
         }
+
+        public struct rect2d { public float2 pos; public float2 size; }
+        public struct rect3d { public float3 pos; public float3 size; }
+
+        /// <summary>
+        /// Get the rotations, first about world up, then about (travelling) local right,
+        /// necessary to align the quaternion's forward with the target direction.
+        /// This represents the tripod head movement needed to look at the target.
+        /// This formulation makes it easy to interpolate without introducing spurious roll.
+        /// </summary>
+        /// <param name="orient"></param>
+        /// <param name="lookAtDir">The worldspace target direction (must be unit vector)
+        /// in which we want to look</param>
+        /// <param name="worldUp">Which way is up.  Must have a length of 1.</param>
+        /// <returns>Vector2.y is rotation about worldUp, and Vector2.x is second rotation,
+        /// about local right.  All in radians.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float2 GetCameraRotationToTarget(
+            this quaternion orient, float3 lookAtDir, float3 worldUp)
+        {
+            if (lookAtDir.AlmostZero())
+                return float2.zero;  // degenerate
+
+            // Work in local space
+            quaternion toLocal = math.inverse(orient);
+            float3 up = math.mul(toLocal, worldUp);
+            lookAtDir = math.mul(toLocal, lookAtDir);
+
+            // Align yaw based on world up
+            float angleH = 0;
+            {
+                var targetDirH = lookAtDir.ProjectOntoPlane(up);
+                if (!targetDirH.AlmostZero())
+                {
+                    var currentDirH = new float3(0, 0, 1).ProjectOntoPlane(up);
+                    if (currentDirH.AlmostZero())
+                    {
+                        // We're looking at the north or south pole
+                        if (math.dot(currentDirH, up) > 0)
+                            currentDirH = new float3(0, -1, 0).ProjectOntoPlane(up);
+                        else
+                            currentDirH = new float3(0, 1, 0).ProjectOntoPlane(up);
+                    }
+                    angleH = SignedAngleUnit(currentDirH, targetDirH, up);
+                }
+            }
+            var q = quaternion.AxisAngle(up, angleH);
+
+            // Get local vertical angle
+            float angleV = SignedAngleUnit(
+                math.mul(q, new float3(0, 0, 1)), lookAtDir, math.mul(q, new float3(1, 0, 0)));
+
+            return new float2(angleV, angleH);
+        }
+
+        /// <summary>
+        /// Apply rotations, first about world up, then about (travelling) local right.
+        /// rot.y is rotation about worldUp, and rot.x is second rotation, about local right.
+        /// </summary>
+        /// <param name="orient"></param>
+        /// <param name="rot">Vector2.y is rotation about worldUp, and Vector2.x is second rotation,
+        /// about local right.  Angles in radians.</param>
+        /// <param name="worldUp">Which way is up</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static quaternion ApplyCameraRotation(
+            this quaternion orient, float2 rot, float3 up)
+        {
+            quaternion q = quaternion.AxisAngle(new float3(1, 0, 0), rot.x);
+            return math.mul(math.mul(quaternion.AxisAngle(up, rot.y), orient), q);
+        }
+
     }
 }
