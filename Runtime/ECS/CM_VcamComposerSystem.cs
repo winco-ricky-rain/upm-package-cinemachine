@@ -104,6 +104,7 @@ namespace Cinemachine.ECS
         }
     }
 
+    // Internal use only
     struct CM_VcamComposerState : ISystemStateComponentData
     {
         public float3 cameraPosPrevFrame;
@@ -286,13 +287,10 @@ namespace Cinemachine.ECS
             [ReadOnly] public ComponentDataArray<CM_VcamComposer> composers;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
+            // GML todo: optimize.  Get rid of those ifs
             public void Execute(int index)
             {
-                if (!targetLookup.TryGetValue(targets[index].target,
-                    out CM_TargetSystem.TargetInfo targetInfo))
-                {
-                    return;
-                }
+                targetLookup.TryGetValue(targets[index].target, out CM_TargetSystem.TargetInfo targetInfo);
 
                 var composer = composers[index];
                 var rotState = rotations[index];
@@ -338,15 +336,13 @@ namespace Cinemachine.ECS
                     // Start with previous frame's orientation (but with current up)
                     float3 prevDir = composerState.lookAtPrevFrame - (composerState.cameraPosPrevFrame + posState.dampingBypass);
                     float prevDistance = math.length(prevDir);
-                    if (prevDistance < MathHelpers.Epsilon)
-                        rigOrientation = quaternion.LookRotation(
-                            math.mul(composerState.cameraOrientationPrevFrame, new float3(0, 0, 1)), posState.up);
-                    else
-                    {
-                        rigOrientation = quaternion.LookRotation(prevDir / prevDistance, posState.up);
-                        rigOrientation = rigOrientation.ApplyCameraRotation(
-                            -composerState.screenOffsetPrevFrame, posState.up);
-                    }
+
+                    rigOrientation = math.select(
+                            quaternion.LookRotation(prevDir / prevDistance, posState.up).ApplyCameraRotation(
+                                -composerState.screenOffsetPrevFrame, posState.up).value,
+                            quaternion.LookRotation(math.mul(composerState.cameraOrientationPrevFrame, new float3(0, 0, 1)),
+                                posState.up).value,
+                            prevDistance < MathHelpers.Epsilon);
 
                     // First force the previous rotation into the hard bounds, no damping,
                     // then move it through the soft zone, with damping
@@ -366,22 +362,21 @@ namespace Cinemachine.ECS
                 rotations[index] = rotState;
             }
 
-            //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void RotateToScreenBounds(
-                float3 targetDir, float3 up, MathHelpers.rect2d screenRect,
+                float3 targetDirUnit, float3 upUnit, MathHelpers.rect2d screenRect,
                 ref quaternion rigOrientation, float2 fov, float2 damping, float deltaTime)
             {
-                var rotToRect = rigOrientation.GetCameraRotationToTarget(targetDir, up);
+                var rotToRect = rigOrientation.GetCameraRotationToTarget(targetDirUnit, upUnit);
 
                 // Bring it to the edge of screenRect, if outside.  Leave it alone if inside.
-                ClampVerticalBounds(ref screenRect, targetDir, up, fov.y);
+                ClampVerticalBounds(ref screenRect, targetDirUnit, upUnit, fov.y);
                 float min = (screenRect.pos.y) * fov.y;
                 float max = (screenRect.pos.y + screenRect.size.y) * fov.y;
                 rotToRect.y = math.select(
                     math.select(0, rotToRect.y - max, rotToRect.y > max),
                     rotToRect.y - min,
                     rotToRect.y < min);
-                    rotToRect.y = 0;
 
                 min = (screenRect.pos.x) * fov.x;
                 max = (screenRect.pos.x + screenRect.size.x) * fov.x;
@@ -395,7 +390,7 @@ namespace Cinemachine.ECS
                     rotToRect, math.select(float2.zero, damping, deltaTime >= 0), deltaTime);
 
                 // Rotate
-                rigOrientation = rigOrientation.ApplyCameraRotation(rotToRect, up);
+                rigOrientation = rigOrientation.ApplyCameraRotation(rotToRect, upUnit);
             }
 
             /// <summary>
@@ -404,29 +399,23 @@ namespace Cinemachine.ECS
             /// beyond the vertical in order to produce the desired framing.  We prevent this by
             /// clamping the composer's vertical settings so that this situation can't happen.
             /// </summary>
-            //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static void ClampVerticalBounds(ref MathHelpers.rect2d r, float3 dirUnit, float3 up, float fov)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static void ClampVerticalBounds(ref MathHelpers.rect2d r, float3 dirUnit, float3 upUnit, float fov)
             {
-                float angle = MathHelpers.AngleUnit(dirUnit, up);
+                float angle = MathHelpers.AngleUnit(dirUnit, upUnit);
                 float halfFov = (fov / 2f) + 0.01f; // give it a little extra to accommodate precision errors
-                if (angle < halfFov)
-                {
-                    // looking up
-                    float maxY = 1f - (halfFov - angle) / fov;
-                    if (r.pos.y + r.size.y > maxY)
-                    {
-                        r.pos.y = math.min(r.pos.y, maxY);
-                        r.size.y = Mathf.Min(r.size.y, maxY - r.pos.y);
-                        return;
-                    }
-                }
                 float maxAllowed = (float)math.PI - halfFov;
-                if (angle > maxAllowed)
-                {
-                    // looking down
-                    float minY = (angle - maxAllowed) / fov;
-                    r.pos.y = Mathf.Max(r.pos.y, minY);
-                }
+                float maxY = 1f - (halfFov - angle) / fov;
+                float minY = (angle - maxAllowed) / fov;
+
+                r.pos.y = math.select(
+                    math.select(r.pos.y, Mathf.Max(r.pos.y, minY), angle > maxAllowed),
+                    math.select(r.pos.y, math.min(r.pos.y, maxY),
+                    r.pos.y + r.size.y > maxY), angle < halfFov);
+                r.size.y = math.select(
+                    r.size.y,
+                    Mathf.Min(r.size.y, maxY - r.pos.y),
+                    angle < halfFov && r.pos.y + r.size.y > maxY);
             }
         }
     }
