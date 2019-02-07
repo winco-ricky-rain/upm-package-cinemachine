@@ -1,4 +1,4 @@
-#if CINEMACHINE_EXPERIMENTAL_VCAM
+#if true || CINEMACHINE_EXPERIMENTAL_VCAM
 using UnityEngine;
 using Cinemachine.Utility;
 using System;

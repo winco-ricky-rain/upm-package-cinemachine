@@ -12,10 +12,6 @@ namespace Cinemachine.ECS
     [Serializable]
     public struct CM_VcamPriority : IComponentData
     {
-        /// <summary>Like GameObjet layer, brain will only see the vcams that pass
-        /// its channel filter</summary>
-        public int channel;
-
         /// <summary>The priority will determine which camera becomes active based on the
         /// state of other cameras and this camera.  Higher numbers have greater priority.
         /// </summary>
@@ -35,7 +31,8 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamPriority>());
+                ComponentType.ReadOnly<CM_VcamPriority>(),
+                ComponentType.ReadOnly<CM_VcamChannel>());
 
             m_vcamSequence = 1;
             m_priorityQueue = new NativeArray<QueueEntry>(16, Allocator.Persistent);
@@ -58,6 +55,7 @@ namespace Cinemachine.ECS
             var populateDeps = new PopulateQueueJob
             {
                 entities = m_mainGroup.GetEntityArray(),
+                channels = m_mainGroup.GetComponentDataArray<CM_VcamChannel>(),
                 priorities = m_mainGroup.GetComponentDataArray<CM_VcamPriority>(),
                 qualities = GetComponentDataFromEntity<CM_VcamShotQuality>(true),
                 priorityQueue = m_priorityQueue
@@ -72,18 +70,21 @@ namespace Cinemachine.ECS
         struct PopulateQueueJob : IJobParallelFor
         {
             [ReadOnly] public EntityArray entities;
+            [ReadOnly] public ComponentDataArray<CM_VcamChannel> channels;
             [ReadOnly] public ComponentDataArray<CM_VcamPriority> priorities;
             [ReadOnly] public ComponentDataFromEntity<CM_VcamShotQuality> qualities;
             public NativeArray<QueueEntry> priorityQueue;
 
             public void Execute(int index)
             {
+                // GML todo: optimize (get rid of the ifs)
                 var entity = entities[index];
                 if (qualities.Exists(entity))
                 {
                     priorityQueue[index] = new QueueEntry
                     {
                         entity = entity,
+                        vcamChannel = channels[index],
                         vcamPriority = priorities[index],
                         shotQuality = qualities[entity]
                     };
@@ -93,6 +94,7 @@ namespace Cinemachine.ECS
                     priorityQueue[index] = new QueueEntry
                     {
                         entity = entity,
+                        vcamChannel = channels[index],
                         vcamPriority = priorities[index],
                         shotQuality = new CM_VcamShotQuality { value = CM_VcamShotQuality.DefaultValue }
                     };
@@ -114,7 +116,7 @@ namespace Cinemachine.ECS
             {
                 public int Compare(QueueEntry x, QueueEntry y)
                 {
-                    int a = x.vcamPriority.channel - y.vcamPriority.channel;
+                    int a = x.vcamChannel.channel - y.vcamChannel.channel;
                     int p = y.vcamPriority.priority - x.vcamPriority.priority; // high-to-low
                     float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
                     int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
@@ -140,6 +142,7 @@ namespace Cinemachine.ECS
         public struct QueueEntry
         {
             public Entity entity;
+            public CM_VcamChannel vcamChannel;
             public CM_VcamPriority vcamPriority;
             public CM_VcamShotQuality shotQuality;
         }

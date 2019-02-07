@@ -116,7 +116,7 @@ namespace Cinemachine.ECS
             float deltaTime, float fixedDeltaTime = 0)
         {
             /// GML todo: optimize! get rid of those ifs!
-            if (math.abs(initial) < Epsilon)
+            if (math.abs(initial) < Epsilon || deltaTime < 0)
                 return initial;
             if (deltaTime < Epsilon)
                 return 0;
@@ -158,7 +158,7 @@ namespace Cinemachine.ECS
             float deltaTime, float fixedDeltaTime = 0)
         {
             /// GML todo: optimize! get rid of those ifs!
-            if (math.cmax(math.abs(initial)) < Epsilon)
+            if (math.cmax(math.abs(initial)) < Epsilon || deltaTime < 0)
                 return initial;
             if (deltaTime < Epsilon)
                 return 0;
@@ -200,7 +200,7 @@ namespace Cinemachine.ECS
             float deltaTime, float fixedDeltaTime = 0)
         {
             /// GML todo: optimize! get rid of those ifs!
-            if (math.cmax(math.abs(initial)) < Epsilon)
+            if (math.cmax(math.abs(initial)) < Epsilon || deltaTime < 0)
                 return initial;
             if (deltaTime < Epsilon)
                 return 0;

@@ -1,4 +1,4 @@
-﻿#if CINEMACHINE_EXPERIMENTAL_VCAM
+﻿#if true || CINEMACHINE_EXPERIMENTAL_VCAM
 using UnityEngine;
 using UnityEditor;
 using Cinemachine.Editor;
@@ -7,7 +7,7 @@ using Cinemachine.Utility;
 namespace Cinemachine
 {
     [CustomEditor(typeof(CinemachineNewVirtualCamera))]
-    sealed class CinemachineNewVirtualCameraEditor 
+    sealed class CinemachineNewVirtualCameraEditor
         : CinemachineVirtualCameraBaseEditor<CinemachineNewVirtualCamera>
     {
         VcamPipelineStageSubeditorSet mPipelineSet = new VcamPipelineStageSubeditorSet();

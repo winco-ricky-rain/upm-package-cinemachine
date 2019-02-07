@@ -79,6 +79,7 @@ namespace Cinemachine.ECS
             m_mainGroup = GetComponentGroup(
                 ComponentType.Create<CM_VcamPositionState>(),
                 ComponentType.Create<CM_VcamTransposerState>(),
+                ComponentType.ReadOnly<CM_VcamTimeState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
 
@@ -110,9 +111,8 @@ namespace Cinemachine.ECS
 
             var job = new TrackTargetJob()
             {
-                deltaTime = Time.deltaTime, // GML todo: use correct values
-                fixedDelta = Time.fixedDeltaTime,
                 positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
+                timeStates = m_mainGroup.GetComponentDataArray<CM_VcamTimeState>(),
                 transposers = m_mainGroup.GetComponentDataArray<CM_VcamTransposer>(),
                 transposerStates = m_mainGroup.GetComponentDataArray<CM_VcamTransposerState>(),
                 targets = m_mainGroup.GetComponentDataArray<CM_VcamFollowTarget>(),
@@ -125,10 +125,9 @@ namespace Cinemachine.ECS
         [BurstCompile]
         struct TrackTargetJob : IJobParallelFor
         {
-            public float deltaTime;
-            public float fixedDelta;
             public ComponentDataArray<CM_VcamPositionState> positions;
             public ComponentDataArray<CM_VcamTransposerState> transposerStates;
+            [ReadOnly] public ComponentDataArray<CM_VcamTimeState> timeStates;
             [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
             [ReadOnly] public ComponentDataArray<CM_VcamFollowTarget> targets;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
@@ -142,15 +141,16 @@ namespace Cinemachine.ECS
                     var targetRot = GetRotationForBindingMode(
                             targetInfo.rotation, transposers[index].bindingMode,
                             targetPos - positions[index].raw);
+                    var deltaTime = timeStates[index].deltaTime;
 
                     bool applyDamping = deltaTime >= 0 && positions[index].previousFrameDataIsValid != 0;
                     var prevPos = transposerStates[index].previousTargetPosition + targetInfo.warpDelta;
                     targetRot = ApplyRotationDamping(
-                        deltaTime, fixedDelta,
+                        deltaTime, 0,
                         math.select(0, transposers[index].angularDamping, applyDamping),
                         transposerStates[index].previousTargetRotation, targetRot);
                     targetPos = ApplyPositionDamping(
-                        deltaTime, fixedDelta,
+                        deltaTime, 0,
                         math.select(float3.zero, transposers[index].damping, applyDamping),
                         prevPos, targetPos, targetRot);
 

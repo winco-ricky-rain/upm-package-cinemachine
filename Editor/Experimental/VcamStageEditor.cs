@@ -1,4 +1,4 @@
-﻿#if CINEMACHINE_EXPERIMENTAL_VCAM
+﻿#if true || CINEMACHINE_EXPERIMENTAL_VCAM
 using UnityEngine;
 using UnityEditor;
 using System;
@@ -8,13 +8,13 @@ using System.Reflection;
 
 namespace Cinemachine.Editor
 {
-    internal class VcamStageEditor 
+    internal class VcamStageEditor
     {
         // Static state and caches - Call UpdateStaticData() to refresh this
         struct StageData
         {
             string ExpandedKey { get { return "Cinemachine_Vcam_Stage_Expanded_" + Name; } }
-            public bool IsExpanded 
+            public bool IsExpanded
             {
                 get { return EditorPrefs.GetBool(ExpandedKey, false); }
                 set { EditorPrefs.SetBool(ExpandedKey, value); }
@@ -26,11 +26,11 @@ namespace Cinemachine.Editor
         static StageData[] sStageData = null;
 
         [InitializeOnLoad]
-        class EditorInitialize 
-        { 
+        class EditorInitialize
+        {
             // This code dynamically discovers eligible classes and builds the menu
             // data for the various component pipeline stages.
-            static EditorInitialize() 
+            static EditorInitialize()
             {
                 sStageData = new StageData[Enum.GetValues(typeof(CinemachineCore.Stage)).Length];
 
@@ -256,16 +256,16 @@ namespace Cinemachine.Editor
         {
             mParentEditor = parentEditor;
             m_subeditors = new VcamStageEditor[(int)CinemachineCore.Stage.Finalize];
-            CinemachineNewVirtualCamera owner = mParentEditor == null 
+            CinemachineNewVirtualCamera owner = mParentEditor == null
                 ? null : mParentEditor.target as CinemachineNewVirtualCamera;
             if (owner == null)
                 return;
-            for (CinemachineCore.Stage stage = CinemachineCore.Stage.Body; 
+            for (CinemachineCore.Stage stage = CinemachineCore.Stage.Body;
                 stage < CinemachineCore.Stage.Finalize; ++stage)
             {
                 var ed = new VcamStageEditor(stage, owner.gameObject);
                 m_subeditors[(int)stage] = ed;
-                ed.SetComponent = (type) 
+                ed.SetComponent = (type)
                     => {
                         var vcam = mParentEditor.target as CinemachineNewVirtualCamera;
                         if (vcam != null)
@@ -275,7 +275,7 @@ namespace Cinemachine.Editor
                             vcam.InvalidateComponentCache();
                         }
                     };
-                ed.DestroyComponent = (component) 
+                ed.DestroyComponent = (component)
                     => {
                         var vcam = mParentEditor.target as CinemachineNewVirtualCamera;
                         if (vcam != null)

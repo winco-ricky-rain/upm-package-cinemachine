@@ -229,6 +229,7 @@ namespace Cinemachine.ECS
                 ComponentType.Create<CM_VcamRotationState>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamLensState>(),
+                ComponentType.ReadOnly<CM_VcamTimeState>(),
                 ComponentType.ReadOnly<CM_VcamLookAtTarget>(),
                 ComponentType.ReadOnly<CM_VcamComposer>(),
                 ComponentType.Create<CM_VcamComposerState>());
@@ -260,10 +261,9 @@ namespace Cinemachine.ECS
 
             var job = new ComposerJob
             {
-                deltaTime = Time.deltaTime, // GML todo: use correct values
-                fixedDelta = Time.fixedDeltaTime,
                 rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
                 positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
+                timeStates = m_mainGroup.GetComponentDataArray<CM_VcamTimeState>(),
                 lenses = m_mainGroup.GetComponentDataArray<CM_VcamLensState>(),
                 targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
                 composers = m_mainGroup.GetComponentDataArray<CM_VcamComposer>(),
@@ -277,10 +277,9 @@ namespace Cinemachine.ECS
         [BurstCompile]
         struct ComposerJob : IJobParallelFor
         {
-            public float deltaTime;
-            public float fixedDelta;
             public ComponentDataArray<CM_VcamRotationState> rotations;
             public ComponentDataArray<CM_VcamComposerState> composerStates;
+            [ReadOnly] public ComponentDataArray<CM_VcamTimeState> timeStates;
             [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
             [ReadOnly] public ComponentDataArray<CM_VcamLensState> lenses;
             [ReadOnly] public ComponentDataArray<CM_VcamLookAtTarget> targets;
@@ -297,7 +296,11 @@ namespace Cinemachine.ECS
                 var posState = positions[index];
                 var composerState = composerStates[index];
                 var lensState = lenses[index];
+                var deltaTime = timeStates[index].deltaTime;
+
                 rotState.lookAtPoint = targetInfo.position;
+                rotState.correction = quaternion.identity;
+
                 var camPos = posState.raw + posState.correction;
                 float targetDistance = math.length(rotState.lookAtPoint - camPos);
                 if (targetDistance < MathHelpers.Epsilon)

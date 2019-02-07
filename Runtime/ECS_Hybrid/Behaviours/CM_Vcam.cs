@@ -267,6 +267,8 @@ namespace Cinemachine.ECS_Hybrid
 
             if (!m.HasComponent<CM_VcamLens>(Entity))
                 m.AddComponentData(Entity, CM_VcamLens.Default);
+            if (!m.HasComponent<CM_VcamChannel>(Entity))
+                m.AddComponentData(Entity, new CM_VcamChannel()); // GML todo: vcamSequence
             if (!m.HasComponent<CM_VcamPriority>(Entity))
                 m.AddComponentData(Entity, new CM_VcamPriority()); // GML todo: vcamSequence
             if (!m.HasComponent<CM_VcamShotQuality>(Entity))
@@ -292,9 +294,12 @@ namespace Cinemachine.ECS_Hybrid
                 lensShift = m_Lens.LensShift
             });
 
+            m.SetComponentData(Entity, new CM_VcamChannel
+            {
+                channel = gameObject.layer // GML is this the right thing?
+            });
             m.SetComponentData(Entity, new CM_VcamPriority
             {
-                channel = gameObject.layer,
                 priority = m_Priority
                 // GML todo: vcamSequence
             });

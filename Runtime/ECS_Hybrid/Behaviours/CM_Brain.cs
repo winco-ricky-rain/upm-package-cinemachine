@@ -102,7 +102,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                return ActiveChannelSystem?.GetActiveVirtualCamera(mChannelComponent.Value.channel);
+                return ActiveChannelSystem?.GetActiveVirtualCamera(ChannelState.channel);
             }
         }
 
@@ -115,7 +115,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.IsBlending(mChannelComponent.Value.channel);
+                    return channelSystem.IsBlending(ChannelState.channel);
                 return false;
             }
         }
@@ -132,7 +132,7 @@ namespace Cinemachine.ECS_Hybrid
                     return new CM_BlendState { cam = cam.AsEntity, weight = 1 };
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.GetActiveBlend(mChannelComponent.Value.channel);
+                    return channelSystem.GetActiveBlend(ChannelState.channel);
                 return new CM_BlendState();
             }
         }
@@ -146,8 +146,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.GetCurrentCameraState(
-                        mChannelComponent.Value.channel);
+                    return channelSystem.GetCurrentCameraState(ChannelState.channel);
                 var state = CameraState.Default;
                 var t = transform;
                 state.RawPosition = t.position;
@@ -227,12 +226,54 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
-        CM_ChannelComponent mChannelComponent;
+        GameObjectEntity m_gameObjectEntityComponent;
+
+        Entity Entity
+        {
+            get
+            {
+                return m_gameObjectEntityComponent == null
+                    ? Entity.Null : m_gameObjectEntityComponent.Entity;
+            }
+        }
+
+        EntityManager ActiveEntityManager
+        {
+            get { return World.Active?.GetExistingManager<EntityManager>(); }
+        }
+
+        CM_ChannelState ChannelState
+        {
+            get
+            {
+                var m = ActiveEntityManager;
+                if (m != null && m.HasComponent<CM_ChannelState>(Entity))
+                    return m.GetComponentData<CM_ChannelState>(Entity);
+                return new CM_ChannelState();
+            }
+            set
+            {
+                var m = ActiveEntityManager;
+                if (m != null && m.HasComponent<CM_ChannelState>(Entity))
+                    m.SetComponentData(Entity, value);
+            }
+        }
+
+        CM_Channel Channel
+        {
+            get
+            {
+                var m = ActiveEntityManager;
+                if (m != null)
+                    return m.GetSharedComponentData<CM_Channel>(Entity);
+                return new CM_Channel();
+            }
+        }
 
         private void OnEnable()
         {
             m_OutputCamera = GetComponent<Camera>();
-            mChannelComponent = GetComponent<CM_ChannelComponent>();
+            m_gameObjectEntityComponent = GetComponent<GameObjectEntity>();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }
@@ -261,12 +302,12 @@ namespace Cinemachine.ECS_Hybrid
             var channelSystem = ActiveChannelSystem;
             if (channelSystem != null)
             {
-                var c = mChannelComponent.Value;
-                var deltaTime = channelSystem.GetEffectiveDeltaTime(c);
-                var worldUp = math.mul(c.worldOrientationOverride, math.up());
+                var channelState = ChannelState;
+                var deltaTime = channelState.deltaTime;
+                var worldUp = math.mul(channelState.worldOrientationOverride, math.up());
 
                 scratchList.Clear();
-                channelSystem.GetLiveVcams(c.channel, scratchList);
+                channelSystem.GetLiveVcams(channelState.channel, scratchList);
                 var previous = liveVcamsPreviousFrame.Count > 0
                     ? CM_EntityVcam.GetEntityVcam(liveVcamsPreviousFrame[0]) : null;
                 bool isBlending = scratchList.Count > 1;
@@ -281,8 +322,9 @@ namespace Cinemachine.ECS_Hybrid
                             vcam.OnTransitionFromCamera(previous, worldUp, deltaTime);
 
                             // Send transition notification to observers
-                            if (c.VcamActivatedEvent != null)
-                                c.VcamActivatedEvent.Invoke(vcam, previous, isBlending);
+                            var channel = Channel;
+                            if (channel.VcamActivatedEvent != null)
+                                channel.VcamActivatedEvent.Invoke(vcam, previous, isBlending);
                         }
                     }
                 }
@@ -302,6 +344,14 @@ namespace Cinemachine.ECS_Hybrid
 
         private void Update()
         {
+            var camera = OutputCamera;
+            if (camera != null)
+            {
+                var state = ChannelState;
+                state.aspect = camera.aspect;
+                state.orthographic = camera.orthographic ? (byte)1 : (byte)0;
+                ChannelState = state;
+            }
             if (m_UpdateMethod == UpdateMethod.Update)
                 ProcessActiveVcam();
         }
