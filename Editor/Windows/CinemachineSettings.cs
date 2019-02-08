@@ -409,7 +409,7 @@ namespace Cinemachine.Editor
             }
 
             if (instance.GetComponent<CinemachineBrain>() != null
-                || instance.GetComponent<ECS_Hybrid.CM_Brain>() != null)
+                || instance.GetComponent<Cinemachine.ECS_Hybrid.CM_Brain>() != null)
             {
                 Rect texRect = new Rect(selectionRect.xMax - selectionRect.height, selectionRect.yMin, selectionRect.height, selectionRect.height);
                 GUI.DrawTexture(texRect, CinemachineLogoTexture, ScaleMode.ScaleAndCrop);

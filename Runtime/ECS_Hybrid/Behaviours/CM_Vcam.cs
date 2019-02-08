@@ -66,6 +66,15 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
+        public T GetEntityComponentData<T>() where T : struct, IComponentData
+        {
+            var m = ActiveEntityManager;
+            if (m != null)
+                if (m.HasComponent<T>(Entity))
+                    return m.GetComponentData<T>(Entity);
+            return new T();
+        }
+
         /// <summary>Get the name of the Virtual Camera</summary>
         public string Name { get { return name; } }
 

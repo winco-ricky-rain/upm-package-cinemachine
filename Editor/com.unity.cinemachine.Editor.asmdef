@@ -1,12 +1,19 @@
 {
     "name": "com.unity.cinemachine.editor",
     "references": [
-        "Cinemachine"
+        "Cinemachine",
+        "Unity.Entities.Hybrid",
+        "Unity.Mathematics",
+        "Unity.Entities"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
-    "allowUnsafeCode": false
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": []
 }

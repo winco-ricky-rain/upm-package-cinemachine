@@ -25,6 +25,12 @@ namespace Cinemachine.ECS_Hybrid
         public bool m_ShowDebugText = false;
 
         /// <summary>
+        /// When enabled, game view guides will be drawn when vcam inspectors are active.
+        /// </summary>
+        [Tooltip("When enabled, game view guides will be drawn when vcam inspectors are active")]
+        public bool m_ShowGameViewGuides = true;
+
+        /// <summary>
         /// When enabled, shows the camera's frustum in the scene view.
         /// </summary>
         [Tooltip("When enabled, the camera's frustum will be shown at all times in the scene view")]
@@ -155,6 +161,25 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
+        public bool VcamIsLive(Entity vcam)
+        {
+            for (int i = 0; i < liveVcamsPreviousFrame.Count; ++i)
+                if (liveVcamsPreviousFrame[i] == vcam)
+                    return true;
+            return false;
+        }
+
+        // Get the first active brain on this channel
+        public static CM_Brain FindBrain(int channel)
+        {
+            for (int i = 0; i < sAllBrains.Count; ++i)
+                if (sAllBrains[i].Channel.channel == channel)
+                    return sAllBrains[i];
+            return null;
+        }
+
+        static List<CM_Brain> sAllBrains = new List<CM_Brain>();
+
         /// <summary> Apply a cref="CameraState"/> to the game object</summary>
         private void PushStateToUnityCamera(CameraState state)
         {
@@ -274,12 +299,14 @@ namespace Cinemachine.ECS_Hybrid
         {
             m_OutputCamera = GetComponent<Camera>();
             m_gameObjectEntityComponent = GetComponent<GameObjectEntity>();
+            sAllBrains.Add(this);
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }
 
         private void OnDisable()
         {
+            sAllBrains.Remove(this);
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
         }
 

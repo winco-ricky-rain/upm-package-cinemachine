@@ -5,5 +5,5 @@ namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]
-    public class CM_VcamLensComponent : ComponentDataWrapper<CM_VcamLens> { }
+    public class CM_VcamLensComponent : CM_VcamComponentBase<CM_VcamLens> { }
 }
