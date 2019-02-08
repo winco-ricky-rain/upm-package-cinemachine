@@ -321,12 +321,14 @@ namespace Cinemachine.ECS
 
             // Align yaw based on world up
             var d0 = lookAtDirUnit.ProjectOntoPlane(up);
+            var d0Len = math.length(d0);
             var d = new float3(0, 0, 1).ProjectOntoPlane(up);
+            var dLen = math.length(d);
             var pole = new float3(0, math.select(1, -1, math.dot(d, up) > 0), 0).ProjectOntoPlane(up);
             float angleH = math.select(
-                SignedAngleUnit(math.select(math.normalize(d), pole, d.AlmostZero()), math.normalize(d0), up),
+                SignedAngleUnit(math.select(d/dLen, pole, d < Epsilon), d0/d0Len, up),
                 0,
-                d0.AlmostZero());
+                d0Len < Epsilon);
             var q = quaternion.AxisAngle(up, angleH);
 
             // Get local vertical angle
