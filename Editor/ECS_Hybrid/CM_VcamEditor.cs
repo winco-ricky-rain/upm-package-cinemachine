@@ -175,15 +175,18 @@ namespace Cinemachine.Editor.ECS_Hybrid
             int selection = EditorGUI.Popup(rect, mCurrent, myNames);
             if (selection != mCurrent)
             {
+                Type type = myTypes[selection];
+                if (type != null)
+                    Undo.AddComponent(mTarget.gameObject, type);
                 if (mCurrent != 0)
                 {
                     var old = mTarget.GetComponent(myTypes[mCurrent]);
                     if (old != null)
+                    {
                         Undo.DestroyObjectImmediate(old);
+                        GUIUtility.ExitGUI();
+                    }
                 }
-                Type type = myTypes[selection];
-                if (type != null)
-                    Undo.AddComponent(mTarget.gameObject, type);
                 mCurrent = selection;
             }
         }
