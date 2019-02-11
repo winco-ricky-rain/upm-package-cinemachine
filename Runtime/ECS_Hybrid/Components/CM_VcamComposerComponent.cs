@@ -14,7 +14,8 @@ namespace Cinemachine.ECS_Hybrid
             v.damping = math.max(float2.zero, v.damping);
             v.screenPosition = math.clamp(v.screenPosition, new float2(-1, -1), new float2(1, 1));
             v.deadZoneSize = math.max(float2.zero, v.deadZoneSize);
-            v.softZoneSize = math.max(float2.zero, v.softZoneSize);
+            v.SetSoftGuideRect(v.GetSoftGuideRect());
+            v.SetHardGuideRect(v.GetHardGuideRect());
             v.softZoneBias = math.clamp(v.softZoneBias, new float2(-1, -1), new float2(1, 1));
             Value = v;
         }

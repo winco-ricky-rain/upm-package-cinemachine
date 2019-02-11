@@ -118,8 +118,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
                         "Enable the display of overlays in the Game window.  You can adjust colours and opacity in Edit/Preferences/Cinemachine."),
                     brain.m_ShowGameViewGuides);
 
-            SaveDuringPlay.SaveDuringPlay.Enabled
-                = EditorGUILayout.Toggle(
+            SaveDuringPlay.SaveDuringPlay.Enabled = EditorGUILayout.Toggle(
                     new GUIContent(
                         "Save During Play",
                         "If checked, Virtual Camera settings changes made during Play Mode will be propagated back to the scene when Play Mode is exited."),
