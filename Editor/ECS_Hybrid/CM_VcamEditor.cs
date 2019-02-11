@@ -100,7 +100,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
             if (GUI.Button(rect, "Solo", "Button"))
             {
                 isSolo = !isSolo;
-                CinemachineBrain.SoloCamera = isSolo ? Target : null;
+                CM_Brain.SoloCamera = isSolo ? Target : null;
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
             GUI.color = color;
@@ -206,7 +206,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
                 foreach (Type t in allClasses)
                 {
                     types.Add(t);
-                    names.Add(t.Name);
+                    names.Add(NicifyClassName(t.Name));
                 }
                 sAllTypes = types.ToArray();
                 sAllNames = names.ToArray();
@@ -224,7 +224,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
                     if (attr != null && attr.Stage == mStageFilter)
                     {
                         types.Add(sAllTypes[i]);
-                        names.Add(sAllTypes[i].Name);
+                        names.Add(sAllNames[i]);
                     }
                 }
                 myTypes = types.ToArray();
@@ -253,6 +253,15 @@ namespace Cinemachine.Editor.ECS_Hybrid
                     }
                 }
             }
+        }
+
+        public static string NicifyClassName(string name)
+        {
+            if (name.StartsWith("CM_Vcam"))
+                name = name.Substring(7); // Trim the prefix
+            if (name.EndsWith("Component"))
+                name = name.Substring(0, name.Length-9); // Trim the suffix
+            return ObjectNames.NicifyVariableName(name);
         }
     }
 }
