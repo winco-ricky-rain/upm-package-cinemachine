@@ -9,7 +9,7 @@ using UnityEngine;
 namespace Cinemachine.ECS
 {
     [Serializable]
-    public struct CM_Channel : ISharedComponentData
+    public struct CM_Channel : IComponentData
     {
         /// <summary>
         /// Each vcam is associated with a specific channel.  Channels each do their
