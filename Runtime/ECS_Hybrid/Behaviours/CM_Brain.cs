@@ -290,7 +290,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var m = ActiveEntityManager;
                 if (m != null)
-                    return m.GetSharedComponentData<CM_Channel>(Entity);
+                    return m.GetComponentData<CM_Channel>(Entity);
                 return new CM_Channel();
             }
         }
@@ -350,8 +350,10 @@ namespace Cinemachine.ECS_Hybrid
 
                             // Send transition notification to observers
                             var channel = Channel;
+/* GML todo
                             if (channel.VcamActivatedEvent != null)
                                 channel.VcamActivatedEvent.Invoke(vcam, previous, isBlending);
+*/
                         }
                     }
                 }

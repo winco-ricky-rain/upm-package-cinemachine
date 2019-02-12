@@ -38,7 +38,7 @@ namespace Cinemachine.ECS
         /// </summary>
         [CinemachineBlendDefinitionProperty]
         public CinemachineBlendDefinition defaultBlend;
-
+/* GML todo
         /// <summary>
         /// This is the asset which contains custom settings for specific blends.
         /// </summary>
@@ -52,6 +52,7 @@ namespace Cinemachine.ECS
         /// <summary>Called when the current live vcam changes.  If a blend is involved,
         /// then this will be called on the first frame of the blend</summary>
         public ActivationEvent VcamActivatedEvent;
+*/
     }
 
     internal struct CM_ChannelState : ISystemStateComponentData
@@ -79,7 +80,7 @@ namespace Cinemachine.ECS
 
         int GetChannelStateIndex(int channel)
         {
-            var channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>();
+            var channels = m_channelsGroup.GetComponentDataArray<CM_Channel>();
             int len = channels.Length;
             for (int i = 0; i < len; ++i)
                 if (channels[i].channel == channel)
@@ -180,7 +181,7 @@ namespace Cinemachine.ECS
         public bool IsLive(ICinemachineCamera vcam)
         {
             ActiveChannelStateJobs.Complete();
-            var channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>();
+            var channels = m_channelsGroup.GetComponentDataArray<CM_Channel>();
             for (int i = 0; i < channels.Length; ++i)
                 if (GetChannelBlendState(i).blender.IsLive(vcam.AsEntity))
                     return true;
@@ -304,7 +305,7 @@ namespace Cinemachine.ECS
             var job = new UpdateChannelJob()
             {
                 soloCamera = SoloCamera == null ? Entity.Null : SoloCamera.AsEntity,
-                channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>(),
+                channels = m_channelsGroup.GetComponentDataArray<CM_Channel>(),
                 channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
                 channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
             };
@@ -337,7 +338,7 @@ namespace Cinemachine.ECS
         {
             public Entity soloCamera;
             [ReadOnly] public NativeArray<CM_VcamPrioritySystem.QueueEntry> queue;
-            [ReadOnly] public SharedComponentDataArray<CM_Channel> channels;
+            [ReadOnly] public ComponentDataArray<CM_Channel> channels;
             [ReadOnly] public ComponentDataArray<CM_ChannelState> channelStates;
             public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
 
@@ -351,7 +352,10 @@ namespace Cinemachine.ECS
 
                 var state = channelStates[index];
                 var blendState = channelBlendStates[index];
-                blendState.blender.Update(state.deltaTime, activeVcam, c.customBlends, c.defaultBlend);
+                blendState.blender.Update(
+                    state.deltaTime, activeVcam,
+                    null, //c.customBlends,
+                    c.defaultBlend);
                 channelBlendStates[index] = blendState;
             }
 

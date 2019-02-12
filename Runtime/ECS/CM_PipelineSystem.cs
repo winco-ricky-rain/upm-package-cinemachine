@@ -301,7 +301,7 @@ namespace Cinemachine.ECS
             {
                 timeNow = Time.time,
                 isPlaying = Application.isPlaying ? 1 : 0,
-                channels = m_channelsGroup.GetSharedComponentDataArray<CM_Channel>(),
+                channels = m_channelsGroup.GetComponentDataArray<CM_Channel>(),
                 channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
                 hashMap = m_channelsLookup.ToConcurrent()
             };
@@ -324,13 +324,13 @@ namespace Cinemachine.ECS
             return JobHandle.CombineDependencies(rotDeps, initDeps);
         }
 
-        //[BurstCompile] // GML fixme
+        [BurstCompile]
         unsafe struct UpdateChannelStateJob : IJobParallelFor
         {
             public float timeNow;
             public int isPlaying;
             public fixed float deltaTimes[5];
-            [ReadOnly] public SharedComponentDataArray<CM_Channel> channels;
+            [ReadOnly] public ComponentDataArray<CM_Channel> channels;
             public ComponentDataArray<CM_ChannelState> channelStates;
             public NativeHashMap<int, CM_ChannelState>.Concurrent hashMap;
 
@@ -340,8 +340,9 @@ namespace Cinemachine.ECS
                 var state = channelStates[index];
                 state.channel = c.channel;
                 state.worldOrientationOverride = math.normalizesafe(c.worldOrientationOverride);
+                int timeModeIndex = (int)c.timeMode;
                 state.deltaTime = math.select(
-                    deltaTimes[(int)c.timeMode], -1,
+                    deltaTimes[timeModeIndex], -1,
                     (isPlaying == 0) & (timeNow < state.notPlayingTimeModeExpiry));
                 channelStates[index] = state;
 
@@ -378,18 +379,6 @@ namespace Cinemachine.ECS
 
                 // GML todo: set the lookAt point if lookAt target
                 vcamRotations[index] = r;
-            }
-        }
-
-        [BurstCompile]
-        struct InitPosJob : IJobParallelFor
-        {
-            [ReadOnly] public ComponentDataArray<CM_VcamChannel> vcamChannels;
-            [ReadOnly] public NativeHashMap<int, CM_ChannelState> channelStates;
-
-            public void Execute(int index)
-            {
-                channelStates.TryGetValue(vcamChannels[index].channel, out CM_ChannelState state);
             }
         }
 
