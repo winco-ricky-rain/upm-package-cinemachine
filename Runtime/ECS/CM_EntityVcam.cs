@@ -24,7 +24,14 @@ namespace Cinemachine.ECS
         public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime) {}
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
-        public bool IsLive { get { return CinemachineCore.Instance.IsLive(this); } }
+        public bool IsLive
+        {
+            get
+            {
+                var m = ActiveChannelSystem;
+                return m == null ? false : m.IsLive(this);
+            }
+        }
         public Entity AsEntity { get { return Entity; }}
 
         // GML hack until I think of something better
@@ -39,12 +46,29 @@ namespace Cinemachine.ECS
             return vcam;
         }
 
+        static CM_ChannelSystem ActiveChannelSystem
+        {
+            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
+        }
+
         public static CameraState StateFromEntity(Entity e)
         {
             CameraState state = CameraState.Default;
-            var m = World.Active.GetExistingManager<EntityManager>();
+            var m = World.Active?.GetExistingManager<EntityManager>();
             if (m != null)
             {
+                // Is this entity a channel?
+                if (m.HasComponent<CM_ChannelBlendState>(e) && m.HasComponent<CM_Channel>(e))
+                {
+                    if (!m.HasComponent<CM_VcamChannel>(e)
+                        || m.GetComponentData<CM_VcamChannel>(e).channel
+                            != m.GetComponentData<CM_Channel>(e).channel)
+                    {
+                        var c = m.GetComponentData<CM_ChannelBlendState>(e);
+                        return c.blender.State.cameraState;
+                    }
+                }
+
                 bool noLens = true;
                 if (m.HasComponent<CM_VcamLensState>(e))
                 {

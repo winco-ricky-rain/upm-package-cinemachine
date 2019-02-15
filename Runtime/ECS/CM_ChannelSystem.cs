@@ -33,6 +33,12 @@ namespace Cinemachine.ECS
         }
         public TimeMode timeMode;
 
+        /// <summary>Wait this many seconds before activating a new camera</summary>
+        public float activateAfter;
+
+        /// <summary>An active camera must be active for at least this many seconds</summary>
+        public float minDuration;
+
         /// <summary>
         /// The blend which is used if you don't explicitly define a blend between two Virtual Cameras.
         /// </summary>
@@ -55,7 +61,7 @@ namespace Cinemachine.ECS
 */
     }
 
-    internal struct CM_ChannelState : ISystemStateComponentData
+    public struct CM_ChannelState : ISystemStateComponentData
     {
         public int channel;
         public byte orthographic;
@@ -63,21 +69,24 @@ namespace Cinemachine.ECS
         public quaternion worldOrientationOverride;
         public float notPlayingTimeModeExpiry;
         public float deltaTime;
+        public Entity soloCamera;
+        public Entity activeVcam;
     }
 
     /// Manages the nested blend stack and the camera override frames
     internal struct CM_ChannelBlendState : ISystemStateComponentData
     {
         public CM_Blender blender;
+
+        public float activationTime;
+        public float pendingActivationTime;
+        public Entity pendingCamera;
     }
 
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPrioritySystem))]
     public class CM_ChannelSystem : JobComponentSystem
     {
-        /// <summary>API for the Unity Editor. Show this camera no matter what.</summary>
-        public ICinemachineCamera SoloCamera { get; set; }
-
         int GetChannelStateIndex(int channel)
         {
             var channels = m_channelsGroup.GetComponentDataArray<CM_Channel>();
@@ -120,6 +129,19 @@ namespace Cinemachine.ECS
                 var a = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>();
                 a[index] = state;
             }
+        }
+
+        public Entity GetSoloCamera(int channel)
+        {
+            return GetChannelState(GetChannelStateIndex(channel)).soloCamera;
+        }
+
+        public void SetSoloCamera(int channel, Entity vcam)
+        {
+            int index = GetChannelStateIndex(channel);
+            var s = GetChannelState(index);
+            s.soloCamera = vcam;
+            SetChannelState(index, s);
         }
 
         /// <summary>Get the current active virtual camera.</summary>
@@ -302,9 +324,9 @@ namespace Cinemachine.ECS
             }
 
             objectCount = m_channelsGroup.CalculateLength();
-            var job = new UpdateChannelJob()
+            var updateJob = new UpdateChannelJob()
             {
-                soloCamera = SoloCamera == null ? Entity.Null : SoloCamera.AsEntity,
+                now = Time.time,
                 channels = m_channelsGroup.GetComponentDataArray<CM_Channel>(),
                 channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
                 channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
@@ -315,9 +337,9 @@ namespace Cinemachine.ECS
             ActiveChannelStateJobs = new JobHandle();
             for (int i = 0; i < objectCount; ++i)
             {
-                var s = job.channelBlendStates[i];
+                var s = updateJob.channelBlendStates[i];
                 s.blender.PreUpdate();
-                job.channelBlendStates[i] = s;
+                updateJob.channelBlendStates[i] = s;
             }
 
             JobHandle h = inputDeps;
@@ -325,18 +347,24 @@ namespace Cinemachine.ECS
             if (prioritySystem != null)
             {
                 h = JobHandle.CombineDependencies(h, prioritySystem.QueueWriteHandle);
-                job.queue = prioritySystem.GetPriorityQueueNow(false);
+                updateJob.queue = prioritySystem.GetPriorityQueueNow(false);
             }
+            var updateDeps = updateJob.Schedule(objectCount, 1, h);
 
-            ActiveChannelStateJobs = job.Schedule(objectCount, 1, h);
+            var fetchJob = new FetchActiveVcamJob
+            {
+                channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
+                channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
+            };
+            ActiveChannelStateJobs = fetchJob.Schedule(objectCount, 1, updateDeps);
             return ActiveChannelStateJobs;
         }
 
 
-        //[BurstCompile] // GML fixme
+        //[BurstCompile] // GML todo
         struct UpdateChannelJob : IJobParallelFor
         {
-            public Entity soloCamera;
+            public float now;
             [ReadOnly] public NativeArray<CM_VcamPrioritySystem.QueueEntry> queue;
             [ReadOnly] public ComponentDataArray<CM_Channel> channels;
             [ReadOnly] public ComponentDataArray<CM_ChannelState> channelStates;
@@ -345,17 +373,66 @@ namespace Cinemachine.ECS
             public void Execute(int index)
             {
                 var c = channels[index];
-
-                Entity activeVcam = soloCamera;
-                if (activeVcam == Entity.Null)
-                    activeVcam = TopCameraFromPriorityQueue(c.channel);
+                float activateAfter = c.activateAfter;
+                float minDuration = c.minDuration;
 
                 var state = channelStates[index];
                 var blendState = channelBlendStates[index];
-                blendState.blender.Update(
-                    state.deltaTime, activeVcam,
+
+                Entity desiredVcam = state.soloCamera;
+                if (desiredVcam == Entity.Null)
+                    desiredVcam = TopCameraFromPriorityQueue(c.channel);
+                else
+                    activateAfter = minDuration = 0;
+
+
+                Entity currentVcam = blendState.blender.ActiveVirtualCamera;
+                if (blendState.activationTime != 0)
+                {
+                    // Is it active now?
+                    if (currentVcam == desiredVcam || state.deltaTime < 0)
+                    {
+                        // Yes, cancel any pending
+                        blendState.pendingActivationTime = 0;
+                        blendState.pendingCamera = Entity.Null;
+                    }
+
+                    // Is it pending?
+                    if (blendState.pendingActivationTime != 0
+                        && blendState.pendingCamera == desiredVcam)
+                    {
+                        // Has it not been pending long enough, or are we not allowed to switch away
+                        // from the active action?
+                        if ((now - blendState.pendingActivationTime) < activateAfter
+                            || (now - blendState.activationTime) < minDuration)
+                        {
+                            desiredVcam = currentVcam; // sorry, not yet
+                        }
+                    }
+
+                    if (currentVcam != desiredVcam && state.deltaTime >= 0
+                        && blendState.pendingCamera != desiredVcam
+                        && (activateAfter > 0 || (now - blendState.activationTime) < minDuration))
+                    {
+                        // Too early - make it pending
+                        blendState.pendingCamera = desiredVcam;
+                        blendState.pendingActivationTime = now;
+                        desiredVcam = currentVcam;
+                    }
+                }
+
+                if (currentVcam != desiredVcam)
+                {
+                    blendState.activationTime = now;
+                    blendState.pendingActivationTime = 0;
+                    blendState.pendingCamera = Entity.Null;
+                }
+
+                blendState.blender.Update( // GML todo: fix Update and enable burst
+                    state.deltaTime, desiredVcam,
                     null, //c.customBlends,
                     c.defaultBlend);
+
                 channelBlendStates[index] = blendState;
             }
 
@@ -409,6 +486,19 @@ namespace Cinemachine.ECS
                 while (queue[first].vcamChannel.channel != channel)
                     ++first;
                 return first;
+            }
+        }
+
+        struct FetchActiveVcamJob : IJobParallelFor
+        {
+            public ComponentDataArray<CM_ChannelState> channelStates;
+            [ReadOnly] public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
+
+            public void Execute(int index)
+            {
+                var s = channelStates[index];
+                s.activeVcam = channelBlendStates[index].blender.ActiveVirtualCamera;
+                channelStates[index] = s;
             }
         }
     }

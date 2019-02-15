@@ -342,8 +342,8 @@ namespace Cinemachine.ECS
                 state.worldOrientationOverride = math.normalizesafe(c.worldOrientationOverride);
                 int timeModeIndex = (int)c.timeMode;
                 state.deltaTime = math.select(
-                    deltaTimes[timeModeIndex], -1,
-                    (isPlaying == 0) & (timeNow < state.notPlayingTimeModeExpiry));
+                    -1, deltaTimes[timeModeIndex],
+                    (isPlaying != 0) | (timeNow < state.notPlayingTimeModeExpiry));
                 channelStates[index] = state;
 
                 hashMap.TryAdd(state.channel, state);

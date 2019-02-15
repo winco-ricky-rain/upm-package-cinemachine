@@ -12,16 +12,17 @@ namespace Cinemachine.ECS
     {
         public Entity cam;
         public BlendCurve blendCurve;
-        public float duration;
+        public float duration; // if -ve, then blend curve is inverted!
         public float timeInBlend;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsComplete() { return timeInBlend >= duration; }
+        public bool IsComplete() { return timeInBlend >= math.abs(duration); }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float BlendWeight()
         {
-            return math.select(blendCurve.Evaluate(timeInBlend / duration), 1, IsComplete());
+            var w = blendCurve.Evaluate(timeInBlend / math.abs(duration));
+            return math.select(math.select(w, 1 - w, duration < 0), 1, IsComplete());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -166,6 +167,7 @@ namespace Cinemachine.ECS
         public int NumActiveFrames { get; private set; }
 
         private int mLastFrameId;
+        private int mActiveVcamIndex;
 
         CM_ChainedBlend mNativeFrame;
         CM_ChainedBlend mCurrentBlend;
@@ -189,7 +191,7 @@ namespace Cinemachine.ECS
             {
                 if (mCurrentBlend.NumActiveFrames == 0)
                     return Entity.Null;
-                return mCurrentBlend.ElementAt(0).cam;
+                return mCurrentBlend.ElementAt(mActiveVcamIndex).cam;
             }
         }
 
@@ -384,32 +386,50 @@ namespace Cinemachine.ECS
         {
             // Most-recent overrides dominate
             mCurrentBlend.NumActiveFrames = 0;
+            mActiveVcamIndex = 0;
             for (int i = NumActiveFrames-1; i >= 0; --i)
             {
                 var frame = frameStack[i];
                 if (frame.camB == Entity.Null)
-                    continue;
-                mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
                 {
-                    cam = frame.camB,
-                    blendCurve = BlendCurve.Linear,
-                    duration = 1,
-                    timeInBlend = frame.weightB
-                };
-                ++mCurrentBlend.NumActiveFrames;
+                    if (frame.camA == Entity.Null)
+                        continue;
 
-                if (frame.camA != Entity.Null)
-                {
+                    // Special case: track is only blending out
+                    if (mActiveVcamIndex == mCurrentBlend.NumActiveFrames)
+                        ++mActiveVcamIndex;
                     mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
                     {
                         cam = frame.camA,
-                        duration = 0
+                        blendCurve = BlendCurve.Linear,
+                        duration = -1,
+                        timeInBlend = frame.weightB
                     };
                     ++mCurrentBlend.NumActiveFrames;
-                    break; // We're done, blend is complete
+                }
+                else
+                {
+                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
+                    {
+                        cam = frame.camB,
+                        blendCurve = BlendCurve.Linear,
+                        duration = 1,
+                        timeInBlend = frame.weightB
+                    };
+                    ++mCurrentBlend.NumActiveFrames;
+
+                    if (frame.camA != Entity.Null)
+                    {
+                        mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
+                        {
+                            cam = frame.camA,
+                            duration = 0
+                        };
+                        ++mCurrentBlend.NumActiveFrames;
+                        break; // We're done, blend is complete
+                    }
                 }
             }
-
             // If blend is incomplete, add the native frame
             if (mCurrentBlend.NumActiveFrames == 0
                 || !mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames-1).IsComplete())
@@ -418,6 +438,7 @@ namespace Cinemachine.ECS
                 for (int i = 0; i < numFrames; ++i)
                     mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames++) = mNativeFrame.ElementAt(i);
             }
+            mActiveVcamIndex = math.min(mActiveVcamIndex, mNativeFrame.NumActiveFrames-1);
         }
     }
 }

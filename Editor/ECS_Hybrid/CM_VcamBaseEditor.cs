@@ -6,6 +6,7 @@ using Cinemachine.Utility;
 using Cinemachine.ECS_Hybrid;
 using Cinemachine.ECS;
 using System.Reflection;
+using Unity.Entities;
 
 namespace Cinemachine.Editor.ECS_Hybrid
 {
@@ -13,8 +14,8 @@ namespace Cinemachine.Editor.ECS_Hybrid
     /// Base class for virtual camera editors.
     /// Handles drawing the header and the basic properties.
     /// </summary>
-    [CustomEditor(typeof(CM_Vcam))]
-    public class CM_VcamEditor : BaseEditor<CM_Vcam>
+    [CustomEditor(typeof(CM_VcamBase), true)]
+    public class CM_VcamBaseEditor : BaseEditor<CM_VcamBase>
     {
         ComponentManagerDropdown mBodyDropdown = new ComponentManagerDropdown();
         ComponentManagerDropdown mAimDropdown = new ComponentManagerDropdown();
@@ -41,9 +42,10 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
         protected virtual void OnDisable()
         {
-            if (CinemachineBrain.SoloCamera == (ICinemachineCamera)Target)
+            var brain = CM_Brain.FindBrain(Target.GetEntityComponentData<CM_VcamChannel>().channel);
+            if (brain != null && brain.SoloCamera == Target.AsEntity)
             {
-                CinemachineBrain.SoloCamera = null;
+                brain.SoloCamera = Entity.Null;
                 // GML is this the right thing to do?
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
@@ -87,7 +89,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
             var brain = CM_Brain.FindBrain(Target.GetEntityComponentData<CM_VcamChannel>().channel);
             Color color = GUI.color;
-            bool isSolo = (CM_Brain.SoloCamera == (ICinemachineCamera)Target);
+            bool isSolo = brain != null && brain.SoloCamera == Target.AsEntity;
             if (isSolo)
                 GUI.color = CM_Brain.GetSoloGUIColor();
 
@@ -96,13 +98,14 @@ namespace Cinemachine.Editor.ECS_Hybrid
             GUI.Label(rectLabel, isLive ? "Status: Live"
                 : (Target.isActiveAndEnabled ? "Status: Standby" : "Status: Disabled"));
             GUI.enabled = true;
-
+            GUI.enabled = brain != null;
             if (GUI.Button(rect, "Solo", "Button"))
             {
                 isSolo = !isSolo;
-                CM_Brain.SoloCamera = isSolo ? Target : null;
+                brain.SoloCamera = isSolo ? Target.AsEntity : Entity.Null;
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
+            GUI.enabled = true;
             GUI.color = color;
             if (isSolo && !Application.isPlaying)
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();

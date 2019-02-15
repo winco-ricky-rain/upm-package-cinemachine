@@ -74,32 +74,26 @@ namespace Cinemachine.ECS_Hybrid
         }
         private Camera m_OutputCamera = null; // never use directly - use accessor
 
-        static CM_ChannelSystem ActiveChannelSystem
-        {
-            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
-        }
-
-        /// <summary>
-        /// API for the Unity Editor.
-        /// Show this camera no matter what.  This is static, and so affects all Cinemachine brains.
-        /// </summary>
-        public static ICinemachineCamera SoloCamera
-        {
-            get
-            {
-                return ActiveChannelSystem?.SoloCamera;
-            }
-            set
-            {
-                var channelSystem = ActiveChannelSystem;
-                if (channelSystem != null)
-                    channelSystem.SoloCamera = value;
-            }
-        }
-
         /// <summary>API for the Unity Editor.</summary>
         /// <returns>Color used to indicate that a camera is in Solo mode.</returns>
         public static Color GetSoloGUIColor() { return Color.Lerp(Color.red, Color.yellow, 0.8f); }
+
+        public Entity SoloCamera
+        {
+            get
+            {
+                var m = ActiveChannelSystem;
+                if (m != null)
+                    return m.GetSoloCamera(Channel.channel);
+                return Entity.Null;
+            }
+            set
+            {
+                var m = ActiveChannelSystem;
+                if (m != null)
+                    m.SetSoloCamera(Channel.channel, value);
+            }
+        }
 
         /// <summary>
         /// Get the current active virtual camera.
@@ -133,9 +127,6 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                var cam = SoloCamera;
-                if (cam != null)
-                    return new CM_BlendState { cam = cam.AsEntity, weight = 1 };
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
                     return channelSystem.GetActiveBlend(ChannelState.channel);
@@ -265,6 +256,11 @@ namespace Cinemachine.ECS_Hybrid
         EntityManager ActiveEntityManager
         {
             get { return World.Active?.GetExistingManager<EntityManager>(); }
+        }
+
+        static CM_ChannelSystem ActiveChannelSystem
+        {
+            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
         }
 
         CM_ChannelState ChannelState
