@@ -285,7 +285,7 @@ namespace Cinemachine.ECS_Hybrid
             get
             {
                 var m = ActiveEntityManager;
-                if (m != null)
+                if (m != null && m.HasComponent<CM_Channel>(Entity))
                     return m.GetComponentData<CM_Channel>(Entity);
                 return new CM_Channel();
             }
