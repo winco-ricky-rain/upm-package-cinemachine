@@ -214,7 +214,7 @@ namespace Cinemachine.ECS_Hybrid
                 sb.Append("CM ");
                 sb.Append(gameObject.name);
                 sb.Append(": ");
-                if (SoloCamera != null)
+                if (SoloCamera != Entity.Null)
                 {
                     sb.Append("SOLO ");
                     GUI.color = GetSoloGUIColor();
