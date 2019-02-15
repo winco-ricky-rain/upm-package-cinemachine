@@ -44,6 +44,7 @@ namespace Cinemachine.ECS
         /// </summary>
         [CinemachineBlendDefinitionProperty]
         public CinemachineBlendDefinition defaultBlend;
+
 /* GML todo
         /// <summary>
         /// This is the asset which contains custom settings for specific blends.

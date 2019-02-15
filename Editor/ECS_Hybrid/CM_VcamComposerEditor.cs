@@ -19,8 +19,18 @@ namespace Cinemachine.Editor.ECS_Hybrid
             mScreenGuideEditor = new CinemachineScreenComposerGuides();
             mScreenGuideEditor.GetHardGuide = () => { return ToRect(Target.Value.GetHardGuideRect()); };
             mScreenGuideEditor.GetSoftGuide = () => { return ToRect(Target.Value.GetSoftGuideRect()); };
-            mScreenGuideEditor.SetHardGuide = (Rect r) => { Target.Value.SetHardGuideRect(FromRect(r)); };
-            mScreenGuideEditor.SetSoftGuide = (Rect r) => { Target.Value.SetSoftGuideRect(FromRect(r)); };
+            mScreenGuideEditor.SetHardGuide = (Rect r) =>
+            {
+                var v = Target.Value;
+                v.SetHardGuideRect(FromRect(r));
+                Target.Value = v;
+            };
+            mScreenGuideEditor.SetSoftGuide = (Rect r) =>
+            {
+                var v = Target.Value;
+                v.SetSoftGuideRect(FromRect(r));
+                Target.Value = v;
+            };
             mScreenGuideEditor.Target = () => { return serializedObject; };
 
             CinemachineDebug.OnGUIHandlers -= OnGUI;
