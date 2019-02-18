@@ -55,7 +55,6 @@ namespace Cinemachine.ECS_Hybrid
         public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
         public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime) {}
 
-
         protected GameObjectEntity m_gameObjectEntityComponent;
 
         protected Entity Entity
@@ -84,6 +83,20 @@ namespace Cinemachine.ECS_Hybrid
                     return m.GetComponentData<T>(Entity);
             return new T();
         }
+
+        protected CM_ChannelState ParentChannelState
+        {
+            get
+            {
+                var m = World.Active?.GetExistingManager<CM_ChannelSystem>();
+                if (m != null)
+                    return m.GetChannelState(ParentChannel);
+                return new CM_ChannelState();
+            }
+        }
+
+        public int ParentChannel { get { return gameObject.layer; } } // GML is this the right thing?
+
 
 #if true // GML todo something here
         protected Entity EnsureTargetCompliance(Transform target)
@@ -129,7 +142,7 @@ namespace Cinemachine.ECS_Hybrid
 
             m.SetComponentData(Entity, new CM_VcamChannel
             {
-                channel = gameObject.layer // GML is this the right thing?
+                channel = ParentChannel
             });
             m.SetComponentData(Entity, new CM_VcamPriority
             {

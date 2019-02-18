@@ -154,9 +154,10 @@ namespace Cinemachine.ECS_Hybrid
 
         public bool VcamIsLive(Entity vcam)
         {
-            for (int i = 0; i < liveVcamsPreviousFrame.Count; ++i)
-                if (liveVcamsPreviousFrame[i] == vcam)
-                    return true;
+            if (vcam != Entity.Null)
+                for (int i = 0; i < liveVcamsPreviousFrame.Count; ++i)
+                    if (liveVcamsPreviousFrame[i] == vcam)
+                        return true;
             return false;
         }
 
@@ -272,12 +273,6 @@ namespace Cinemachine.ECS_Hybrid
                     return m.GetComponentData<CM_ChannelState>(Entity);
                 return new CM_ChannelState();
             }
-            set
-            {
-                var m = ActiveEntityManager;
-                if (m != null && m.HasComponent<CM_ChannelState>(Entity))
-                    m.SetComponentData(Entity, value);
-            }
         }
 
         CM_Channel Channel
@@ -287,7 +282,13 @@ namespace Cinemachine.ECS_Hybrid
                 var m = ActiveEntityManager;
                 if (m != null && m.HasComponent<CM_Channel>(Entity))
                     return m.GetComponentData<CM_Channel>(Entity);
-                return new CM_Channel();
+                return CM_Channel.Default;
+            }
+            set
+            {
+                var m = ActiveEntityManager;
+                if (m != null && m.HasComponent<CM_Channel>(Entity))
+                    m.SetComponentData(Entity, value);
             }
         }
 
@@ -372,10 +373,15 @@ namespace Cinemachine.ECS_Hybrid
             var camera = OutputCamera;
             if (camera != null)
             {
-                var state = ChannelState;
-                state.aspect = camera.aspect;
-                state.orthographic = camera.orthographic ? (byte)1 : (byte)0;
-                ChannelState = state;
+                var c = Channel;
+                CM_Channel.Projection p = camera.orthographic
+                    ? CM_Channel.Projection.Orthographic : CM_Channel.Projection.Perspective;
+                if (c.aspect != camera.aspect || c.projection != p)
+                {
+                    c.aspect = camera.aspect;
+                    c.projection = p;
+                    Channel = c;
+                }
             }
             if (m_UpdateMethod == UpdateMethod.Update)
                 ProcessActiveVcam();

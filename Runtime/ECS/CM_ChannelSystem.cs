@@ -23,6 +23,15 @@ namespace Cinemachine.ECS
         /// </summary>
         public quaternion worldOrientationOverride;
 
+        public float aspect;
+
+        public enum Projection
+        {
+            Perspective,
+            Orthographic
+        }
+        public Projection projection;
+
         public enum TimeMode
         {
             DeltaTime,
@@ -60,18 +69,29 @@ namespace Cinemachine.ECS
         /// then this will be called on the first frame of the blend</summary>
         public ActivationEvent VcamActivatedEvent;
 */
+        public static CM_Channel Default
+        {
+            get
+            {
+                return new CM_Channel
+                {
+                    worldOrientationOverride = quaternion.identity,
+                    aspect = 1
+                };
+            }
+        }
     }
 
     public struct CM_ChannelState : ISystemStateComponentData
     {
         public int channel;
-        public byte orthographic;
-        public float aspect;
         public quaternion worldOrientationOverride;
         public float notPlayingTimeModeExpiry;
         public float deltaTime;
         public Entity soloCamera;
         public Entity activeVcam;
+        public byte orthographic;
+        public float aspect;
     }
 
     /// Manages the nested blend stack and the camera override frames
@@ -98,7 +118,7 @@ namespace Cinemachine.ECS
             return -1;
         }
 
-        CM_ChannelState GetChannelState(int index)
+        CM_ChannelState GetChannelStateAtIndex(int index)
         {
             if (index < 0)
                 return new CM_ChannelState();
@@ -106,7 +126,7 @@ namespace Cinemachine.ECS
             return a[index];
         }
 
-        void SetChannelState(int index, CM_ChannelState state)
+        void SetChannelStateAtIndex(int index, CM_ChannelState state)
         {
             if (index >= 0)
             {
@@ -115,7 +135,7 @@ namespace Cinemachine.ECS
             }
         }
 
-        CM_ChannelBlendState GetChannelBlendState(int index)
+        CM_ChannelBlendState GetChannelBlendStateAtIndex(int index)
         {
             if (index < 0)
                 return new CM_ChannelBlendState();
@@ -123,7 +143,7 @@ namespace Cinemachine.ECS
             return a[index];
         }
 
-        void SetChannelBlendState(int index, CM_ChannelBlendState state)
+        void SetChannelBlendStateAtIndex(int index, CM_ChannelBlendState state)
         {
             if (index >= 0)
             {
@@ -134,15 +154,22 @@ namespace Cinemachine.ECS
 
         public Entity GetSoloCamera(int channel)
         {
-            return GetChannelState(GetChannelStateIndex(channel)).soloCamera;
+            ActiveChannelStateJobs.Complete();
+            return GetChannelStateAtIndex(GetChannelStateIndex(channel)).soloCamera;
+        }
+
+        public CM_ChannelState GetChannelState(int channel)
+        {
+            return GetChannelStateAtIndex(GetChannelStateIndex(channel));
         }
 
         public void SetSoloCamera(int channel, Entity vcam)
         {
+            ActiveChannelStateJobs.Complete();
             int index = GetChannelStateIndex(channel);
-            var s = GetChannelState(index);
+            var s = GetChannelStateAtIndex(index);
             s.soloCamera = vcam;
-            SetChannelState(index, s);
+            SetChannelStateAtIndex(index, s);
         }
 
         /// <summary>Get the current active virtual camera.</summary>
@@ -150,7 +177,7 @@ namespace Cinemachine.ECS
         public ICinemachineCamera GetActiveVirtualCamera(int channel)
         {
             ActiveChannelStateJobs.Complete();
-            var e = GetChannelBlendState(GetChannelStateIndex(channel)).blender.ActiveVirtualCamera;
+            var e = GetChannelBlendStateAtIndex(GetChannelStateIndex(channel)).blender.ActiveVirtualCamera;
             return CM_EntityVcam.GetEntityVcam(e);
         }
 
@@ -159,7 +186,7 @@ namespace Cinemachine.ECS
         public bool IsBlending(int channel)
         {
             ActiveChannelStateJobs.Complete();
-            return GetChannelBlendState(GetChannelStateIndex(channel)).blender.IsBlending;
+            return GetChannelBlendStateAtIndex(GetChannelStateIndex(channel)).blender.IsBlending;
         }
 
         /// <summary>
@@ -169,15 +196,15 @@ namespace Cinemachine.ECS
         public CM_BlendState GetActiveBlend(int channel)
         {
             ActiveChannelStateJobs.Complete();
-            return GetChannelBlendState(GetChannelStateIndex(channel)).blender.State;
+            return GetChannelBlendStateAtIndex(GetChannelStateIndex(channel)).blender.State;
         }
 
-        /// <summary>Current channel state, final result of all blends</summary>
+        /// <summary>Current camera state, final result of all blends</summary>
         /// <param name="channel">The CM channel id to check</param>
         public CameraState GetCurrentCameraState(int channel)
         {
             ActiveChannelStateJobs.Complete();
-            return GetChannelBlendState(GetChannelStateIndex(channel)).blender.State.cameraState;
+            return GetChannelBlendStateAtIndex(GetChannelStateIndex(channel)).blender.State.cameraState;
         }
 
         /// <summary>
@@ -191,7 +218,7 @@ namespace Cinemachine.ECS
         public bool IsLive(int channel, ICinemachineCamera vcam)
         {
             ActiveChannelStateJobs.Complete();
-            return GetChannelBlendState(GetChannelStateIndex(channel)).blender.IsLive(vcam.AsEntity);
+            return GetChannelBlendStateAtIndex(GetChannelStateIndex(channel)).blender.IsLive(vcam.AsEntity);
         }
 
         /// <summary>
@@ -206,7 +233,7 @@ namespace Cinemachine.ECS
             ActiveChannelStateJobs.Complete();
             var channels = m_channelsGroup.GetComponentDataArray<CM_Channel>();
             for (int i = 0; i < channels.Length; ++i)
-                if (GetChannelBlendState(i).blender.IsLive(vcam.AsEntity))
+                if (GetChannelBlendStateAtIndex(i).blender.IsLive(vcam.AsEntity))
                     return true;
             return false;
         }
@@ -221,7 +248,7 @@ namespace Cinemachine.ECS
             if (index >= 0)
             {
                 ActiveChannelStateJobs.Complete();
-                var state = GetChannelBlendState(index);
+                var state = GetChannelBlendStateAtIndex(index);
                 state.blender.GetLiveVcams(vcams);
             }
         }
@@ -253,15 +280,15 @@ namespace Cinemachine.ECS
                 return 0;
 
             ActiveChannelStateJobs.Complete();
-            var blendState = GetChannelBlendState(index);
+            var blendState = GetChannelBlendStateAtIndex(index);
             var id = blendState.blender.SetBlendableOverride(
                 overrideId, camA.AsEntity, camB.AsEntity, weightB);
-            SetChannelBlendState(index, blendState);
+            SetChannelBlendStateAtIndex(index, blendState);
 
             // GML todo: something better
-            var state = GetChannelState(index);
+            var state = GetChannelStateAtIndex(index);
             state.notPlayingTimeModeExpiry = timeExpiry;
-            SetChannelState(index, state);
+            SetChannelStateAtIndex(index, state);
 
             return id;
         }
@@ -279,15 +306,15 @@ namespace Cinemachine.ECS
             if (index >= 0)
             {
                 ActiveChannelStateJobs.Complete();
-                var blendState = GetChannelBlendState(index);
+                var blendState = GetChannelBlendStateAtIndex(index);
                 blendState.blender.ReleaseBlendableOverride(overrideId);
                 if (blendState.blender.NumActiveFrames == 0)
                 {
-                    var state = GetChannelState(index);
+                    var state = GetChannelStateAtIndex(index);
                     state.notPlayingTimeModeExpiry = 0;
-                    SetChannelState(index, state);
+                    SetChannelStateAtIndex(index, state);
                 }
-                SetChannelBlendState(index, blendState);
+                SetChannelBlendStateAtIndex(index, blendState);
             }
         }
 

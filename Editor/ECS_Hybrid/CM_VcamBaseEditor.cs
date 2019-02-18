@@ -65,7 +65,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
             var brain = CM_Brain.FindBrain(Target.GetEntityComponentData<CM_VcamChannel>().channel);
             Color color = GUI.color;
-            bool isSolo = brain != null && brain.SoloCamera == Target.AsEntity;
+            bool isSolo = brain != null && brain.SoloCamera == Target.AsEntity && Target.AsEntity != Entity.Null;
             if (isSolo)
                 GUI.color = CM_Brain.GetSoloGUIColor();
 
@@ -107,6 +107,55 @@ namespace Cinemachine.Editor.ECS_Hybrid
                 EditorGUILayout.HelpBox(
                     " Virtual Camera settings changes made during Play Mode will be propagated back to the scene when Play Mode is exited.",
                     MessageType.Info);
+        }
+
+#if UNITY_2019_1_OR_NEWER
+        static readonly string kGizmoFileName = "Packages/com.unity.cinemachine/Gizmos/cm_logo.png";
+#else
+        static readonly string kGizmoFileName = "Cinemachine/cm_logo_lg.png";
+#endif
+        [DrawGizmo(GizmoType.Selected, typeof(CM_VcamBase))]
+        private static void DrawVcamGizmos(CM_VcamBase vcam, GizmoType drawType)
+        {
+            var color = vcam.IsLive
+                ? CinemachineSettings.CinemachineCoreSettings.ActiveGizmoColour
+                : CinemachineSettings.CinemachineCoreSettings.InactiveGizmoColour;
+            var state = vcam.State;
+            DrawCameraFrustumGizmo(state, color);
+            Gizmos.DrawIcon(state.FinalPosition, kGizmoFileName, true);
+        }
+
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected, typeof(CM_Brain))]
+        private static void DrawBrainGizmos(CM_Brain brain, GizmoType drawType)
+        {
+            if (brain.m_ShowCameraFrustum)
+                DrawCameraFrustumGizmo(brain.CurrentCameraState, Color.white); // GML why is this color hardcoded?
+        }
+
+        internal static void DrawCameraFrustumGizmo(CameraState state, Color color)
+        {
+            var lens = state.Lens;
+            Matrix4x4 originalMatrix = Gizmos.matrix;
+            Color originalGizmoColour = Gizmos.color;
+            Gizmos.color = color;
+            Gizmos.matrix = Matrix4x4.TRS(state.FinalPosition, state.FinalOrientation, Vector3.one);
+            if (lens.Orthographic)
+            {
+                Vector3 size = new Vector3(
+                        lens.Aspect * lens.OrthographicSize * 2,
+                        lens.OrthographicSize * 2,
+                        lens.NearClipPlane + lens.FarClipPlane);
+                Gizmos.DrawWireCube(
+                    new Vector3(0, 0, (size.z / 2) + lens.NearClipPlane), size);
+            }
+            else
+            {
+                Gizmos.DrawFrustum(
+                        Vector3.zero, lens.FieldOfView,
+                        lens.FarClipPlane, lens.NearClipPlane, lens.Aspect);
+            }
+            Gizmos.matrix = originalMatrix;
+            Gizmos.color = originalGizmoColour;
         }
     }
 }

@@ -340,6 +340,9 @@ namespace Cinemachine.ECS
                 var state = channelStates[index];
                 state.channel = c.channel;
                 state.worldOrientationOverride = math.normalizesafe(c.worldOrientationOverride);
+                state.aspect = c.aspect;
+                state.orthographic =
+                    c.projection == CM_Channel.Projection.Orthographic ? (byte)1 : (byte)0;
                 int timeModeIndex = (int)c.timeMode;
                 state.deltaTime = math.select(
                     -1, deltaTimes[timeModeIndex],

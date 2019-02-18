@@ -16,7 +16,8 @@ namespace Cinemachine.ECS_Hybrid
         [NoSaveDuringPlay]
         public bool m_ShowDebugText = false;
 
-        /// <summary>Gets a brief debug description of this virtual camera, for use when displayiong debug info</summary>
+        /// <summary>Gets a brief debug description of this virtual camera,
+        /// for use when displayiong debug info</summary>
         public override string Description
         {
             get
@@ -51,12 +52,6 @@ namespace Cinemachine.ECS_Hybrid
                     return m.GetComponentData<CM_ChannelState>(Entity);
                 return new CM_ChannelState();
             }
-            set
-            {
-                var m = ActiveEntityManager;
-                if (m != null && m.HasComponent<CM_ChannelState>(Entity))
-                    m.SetComponentData(Entity, value);
-            }
         }
 
         CM_Channel Channel
@@ -66,7 +61,13 @@ namespace Cinemachine.ECS_Hybrid
                 var m = ActiveEntityManager;
                 if (m != null)
                     return m.GetComponentData<CM_Channel>(Entity);
-                return new CM_Channel();
+                return CM_Channel.Default;
+            }
+            set
+            {
+                var m = ActiveEntityManager;
+                if (m != null && m.HasComponent<CM_Channel>(Entity))
+                    m.SetComponentData(Entity, value);
             }
         }
 
@@ -146,6 +147,20 @@ namespace Cinemachine.ECS_Hybrid
         {
             base.OnDisable();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
+        }
+
+        protected override void Update()
+        {
+            var c = Channel;
+            var s = ParentChannelState;
+            CM_Channel.Projection p = s.orthographic != 0
+                ? CM_Channel.Projection.Orthographic : CM_Channel.Projection.Perspective;
+            if (c.aspect != s.aspect || c.projection != p)
+            {
+                c.aspect = s.aspect;
+                c.projection = p;
+                Channel = c;
+            }
         }
     }
 }

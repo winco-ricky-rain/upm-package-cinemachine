@@ -4,9 +4,7 @@ using System;
 using System.Collections.Generic;
 using Cinemachine.Utility;
 using Cinemachine.ECS_Hybrid;
-using Cinemachine.ECS;
 using System.Reflection;
-using Unity.Entities;
 
 namespace Cinemachine.Editor.ECS_Hybrid
 {
@@ -20,23 +18,22 @@ namespace Cinemachine.Editor.ECS_Hybrid
         ComponentManagerDropdown mBodyDropdown = new ComponentManagerDropdown();
         ComponentManagerDropdown mAimDropdown = new ComponentManagerDropdown();
         ComponentManagerDropdown mNoiseDropdown = new ComponentManagerDropdown();
+        GUIContent mProcedurlaHeader;
 
         protected override void OnEnable()
         {
             base.OnEnable();
+            mProcedurlaHeader = new GUIContent("Procedural");
             mBodyDropdown.Initialize(
-                new GUIContent("Procedural"),
                 new GUIContent("Body", "Procedural algorithm for positioning the camera"),
                 "Do Nothing",
                 Target.gameObject, CinemachineCore.Stage.Body);
             mAimDropdown.Initialize(
-                GUIContent.none,
                 new GUIContent("Aim", "Procedural algorithm for orienting camera"),
                 "Do Nothing",
                 Target.gameObject, CinemachineCore.Stage.Aim);
             mNoiseDropdown.Initialize(
-                GUIContent.none, new
-                GUIContent("Noise", "Procedural algorithm for adding position or rotation noise"),
+                new GUIContent("Noise", "Procedural algorithm for adding position or rotation noise"),
                 "(none)",
                 Target.gameObject, CinemachineCore.Stage.Noise);
         }
@@ -44,9 +41,13 @@ namespace Cinemachine.Editor.ECS_Hybrid
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
-            mBodyDropdown.DrawExtensionsWidgetInInspector();
-            mAimDropdown.DrawExtensionsWidgetInInspector();
-            mNoiseDropdown.DrawExtensionsWidgetInInspector();
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField(mProcedurlaHeader, EditorStyles.boldLabel);
+
+            mBodyDropdown.DrawDropdownWidgetInInspector();
+            mAimDropdown.DrawDropdownWidgetInInspector();
+            mNoiseDropdown.DrawDropdownWidgetInInspector();
         }
     }
 
@@ -59,17 +60,15 @@ namespace Cinemachine.Editor.ECS_Hybrid
         string[] myNames;
 
         GameObject mTarget;
-        GUIContent mHeader = GUIContent.none;
         GUIContent mLabel = GUIContent.none;
         string mEmptyLabel;
         CinemachineCore.Stage mStageFilter;
 
         public void Initialize(
-            GUIContent header, GUIContent label, string emptyLabel,
+            GUIContent label, string emptyLabel,
             GameObject target,
             CinemachineCore.Stage stageFilter)
         {
-            mHeader = header;
             mLabel = label;
             mEmptyLabel = emptyLabel;
             mTarget = target;
@@ -78,15 +77,10 @@ namespace Cinemachine.Editor.ECS_Hybrid
             myNames = null;
         }
 
-        public void DrawExtensionsWidgetInInspector()
+        public void DrawDropdownWidgetInInspector()
         {
             RefreshLists();
             RefreshCurrent();
-            if (mHeader != GUIContent.none)
-            {
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField(mHeader, EditorStyles.boldLabel);
-            }
             Rect rect = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight);
             rect = EditorGUI.PrefixLabel(rect, mLabel);
 
@@ -173,7 +167,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
             }
         }
 
-        public static string NicifyClassName(string name)
+        static string NicifyClassName(string name)
         {
             if (name.StartsWith("CM_Vcam"))
                 name = name.Substring(7); // Trim the prefix
