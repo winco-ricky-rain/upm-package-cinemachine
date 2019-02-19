@@ -68,11 +68,7 @@ namespace Cinemachine.ECS_Hybrid
 
         protected EntityManager ActiveEntityManager
         {
-            get
-            {
-                var w = World.Active;
-                return w == null ? null : w.GetExistingManager<EntityManager>();
-            }
+            get { return World.Active?.GetExistingManager<EntityManager>(); }
         }
 
         public T GetEntityComponentData<T>() where T : struct, IComponentData

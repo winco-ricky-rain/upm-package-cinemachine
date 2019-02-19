@@ -10,8 +10,7 @@ namespace Cinemachine
     /// </summary>
     [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
     [Serializable]
-    public sealed class CinemachineBlenderSettings
-        : ScriptableObject, ICinemachineBlendProvider, ICinemachineEntityBlendProvider
+    public sealed class CinemachineBlenderSettings : ScriptableObject, ICinemachineBlendProvider
     {
         /// <summary>
         /// Container specifying how two specific Cinemachine Virtual Cameras

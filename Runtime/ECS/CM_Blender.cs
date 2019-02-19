@@ -42,7 +42,7 @@ namespace Cinemachine.ECS
             set
             {
 #if UNITY_ASSERTIONS
-                Assert.IsTrue(value >= 0 && value <= capacity, "CM_ChainedBlend.NumAciveFrames out of range");
+//                Assert.IsTrue(value >= 0 && value <= capacity, "CM_ChainedBlend.NumAciveFrames out of range");
 #endif
                 length = value;
             }
@@ -51,7 +51,7 @@ namespace Cinemachine.ECS
         public ref CM_Blend ElementAt(int i)
         {
 #if UNITY_ASSERTIONS
-            Assert.IsTrue(i < capacity, "Array access out of range");
+//            Assert.IsTrue(i < capacity, "Array access out of range");
 #endif
             return ref stack[i];
         }
@@ -86,8 +86,8 @@ namespace Cinemachine.ECS
         public void PushEmpty()
         {
 #if UNITY_ASSERTIONS
-            Assert.IsTrue(stack != null, "EnsureCapacity() must be called before this");
-            Assert.IsTrue(capacity > NumActiveFrames, "EnsureCapacity() must be called before this, with sufficient size");
+//            Assert.IsTrue(stack != null, "EnsureCapacity() must be called before this");
+//            Assert.IsTrue(capacity > NumActiveFrames, "EnsureCapacity() must be called before this, with sufficient size");
 #endif
             UnsafeUtility.MemMove(stack + 1, stack, NumActiveFrames * sizeof(CM_Blend));
             stack[0] = new CM_Blend();
@@ -254,8 +254,8 @@ namespace Cinemachine.ECS
         // Can be called from job
         public void Update(
             float deltaTime, Entity activeCamera,
-            ICinemachineEntityBlendProvider blendProvider, // GML todo: make this not a class
-            CinemachineBlendDefinition defaultBlend)
+            CM_BlendLookup blendProvider,
+            CM_BlendLookup.BlendDef defaultBlend)
         {
             UpdateNativeFrame(deltaTime, activeCamera, blendProvider, defaultBlend);
             ComputeCurrentBlend();
@@ -349,8 +349,8 @@ namespace Cinemachine.ECS
         // Can be called from a job
         void UpdateNativeFrame(
             float deltaTime, Entity activeCamera,
-            ICinemachineEntityBlendProvider blendProvider,
-            CinemachineBlendDefinition defaultBlend)
+            CM_BlendLookup blendProvider,
+            CM_BlendLookup.BlendDef defaultBlend)
         {
             // Are we transitioning cameras?
             var blend = mNativeFrame.ElementAt(0);
@@ -360,16 +360,14 @@ namespace Cinemachine.ECS
                 if (activeCamera != Entity.Null && blend.cam != Entity.Null && deltaTime >= 0)
                 {
                     // Create a blend
-                    var blendDef = defaultBlend;
-                    if (blendProvider != null)
-                        blendProvider.GetBlendForVirtualCameras(blend.cam, activeCamera, defaultBlend);
-                    bool isCut = blendDef.m_Style == CinemachineBlendDefinition.Style.Cut;
-                    if (!isCut && blendDef.m_Time > 0)
+                    var blendDef = blendProvider.LookupBlend(blend.cam, activeCamera, defaultBlend);
+                    bool isCut = blendDef.duration == 0;
+                    if (!isCut)
                         mNativeFrame.PushEmpty();
                     blend = new CM_Blend
                     {
-                        blendCurve = blendDef.BlendCurve,
-                        duration = isCut ? 0 : blendDef.m_Time
+                        blendCurve = blendDef.curve,
+                        duration = blendDef.duration
                     };
                 }
                 // Set the current active camera

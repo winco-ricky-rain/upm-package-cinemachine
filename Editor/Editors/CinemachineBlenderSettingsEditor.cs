@@ -45,22 +45,24 @@ namespace Cinemachine.Editor
             List<string> vcams = new List<string>();
             mCameraIndexLookup = new Dictionary<string, int>();
 
-            CinemachineVirtualCameraBase[] candidates;
+            List<ICinemachineCamera> candidates = new List<ICinemachineCamera>();
             if (GetAllVirtualCameras != null)
-                candidates = GetAllVirtualCameras();
+                candidates.AddRange(GetAllVirtualCameras());
             else
             {
                 // Get all top-level (i.e. non-slave) virtual cameras
-                candidates = Resources.FindObjectsOfTypeAll(
-                        typeof(CinemachineVirtualCameraBase)) as CinemachineVirtualCameraBase[];
+                candidates.AddRange(Resources.FindObjectsOfTypeAll(
+                        typeof(CinemachineVirtualCameraBase)) as ICinemachineCamera[]);
+                candidates.AddRange(Resources.FindObjectsOfTypeAll(
+                        typeof(Cinemachine.ECS_Hybrid.CM_VcamBase)) as ICinemachineCamera[]);
 
-                for (int i = 0; i < candidates.Length; ++i)
+                for (int i = 0; i < candidates.Count; ++i)
                     if (candidates[i].ParentCamera != null)
                         candidates[i] = null;
             }
             vcams.Add("(none)");
             vcams.Add(CinemachineBlenderSettings.kBlendFromAnyCameraLabel);
-            foreach (CinemachineVirtualCameraBase c in candidates)
+            foreach (ICinemachineCamera c in candidates)
                 if (c != null && !vcams.Contains(c.Name))
                     vcams.Add(c.Name);
 

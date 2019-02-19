@@ -53,6 +53,20 @@ namespace Cinemachine.ECS_Hybrid
         [Tooltip("When the Camera gets positioned by the virtual camera")]
         public UpdateMethod m_UpdateMethod = UpdateMethod.OnPreCull;
 
+        /// <summary>
+        /// This is the asset which contains custom settings for specific blends.
+        /// </summary>
+        public CinemachineBlenderSettings customBlends;
+
+        /// <summary>Called when the current live vcam changes.  If a blend is involved,
+        /// then this will be called on the first frame of the blend</summary>
+        [Serializable] public class ActivationEvent
+            : UnityEvent<ICinemachineCamera, ICinemachineCamera, bool> {}
+
+        /// <summary>Called when the current live vcam changes.  If a blend is involved,
+        /// then this will be called on the first frame of the blend</summary>
+        public ActivationEvent VcamActivatedEvent;
+
         /// <summary>Event with a CM_Brain parameter</summary>
         [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
 
@@ -292,6 +306,19 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
+        void SetupCustomBlends()
+        {
+            // GML todo: something more efficient
+            var m = ActiveChannelSystem;
+            if (m != null && customBlends != null)
+            {
+                List<ICinemachineCamera> allVcams = new List<ICinemachineCamera>();
+                allVcams.AddRange(Resources.FindObjectsOfTypeAll(
+                    typeof(CM_VcamBase)) as ICinemachineCamera[]);
+                m.BuildBlendLookup(Channel.channel, customBlends, allVcams);
+            }
+        }
+
         private void OnEnable()
         {
             m_OutputCamera = GetComponent<Camera>();
@@ -299,6 +326,7 @@ namespace Cinemachine.ECS_Hybrid
             sAllBrains.Add(this);
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
+            blendsSetup = false;
         }
 
         private void OnDisable()
@@ -346,11 +374,8 @@ namespace Cinemachine.ECS_Hybrid
                             vcam.OnTransitionFromCamera(previous, worldUp, deltaTime);
 
                             // Send transition notification to observers
-                            var channel = Channel;
-/* GML todo
-                            if (channel.VcamActivatedEvent != null)
-                                channel.VcamActivatedEvent.Invoke(vcam, previous, isBlending);
-*/
+                            if (VcamActivatedEvent != null)
+                                VcamActivatedEvent.Invoke(vcam, previous, isBlending);
                         }
                     }
                 }
@@ -393,8 +418,15 @@ namespace Cinemachine.ECS_Hybrid
                 ProcessActiveVcam();
         }
 
+        // GML there must be a more reliable way to do this
+        bool blendsSetup = false;
         private void OnPreCull()
         {
+            if (!blendsSetup)
+            {
+                SetupCustomBlends();
+                blendsSetup = true;
+            }
             if (m_UpdateMethod == UpdateMethod.OnPreCull)
                 ProcessActiveVcam();
         }
