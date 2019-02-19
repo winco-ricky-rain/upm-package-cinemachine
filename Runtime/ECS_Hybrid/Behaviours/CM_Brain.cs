@@ -63,15 +63,20 @@ namespace Cinemachine.ECS_Hybrid
         [Serializable] public class ActivationEvent
             : UnityEvent<ICinemachineCamera, ICinemachineCamera, bool> {}
 
-        /// <summary>Called when the current live vcam changes.  If a blend is involved,
-        /// then this will be called on the first frame of the blend</summary>
-        public ActivationEvent VcamActivatedEvent;
-
         /// <summary>Event with a CM_Brain parameter</summary>
         [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
 
-        /// <summary>This event will fire after a brain updates its Camera</summary>
-        public BrainEvent CameraUpdatedEvent = new BrainEvent();
+        [Serializable]
+        public class Events
+        {
+            /// <summary>Called when the current live vcam changes.  If a blend is involved,
+            /// then this will be called on the first frame of the blend</summary>
+            public ActivationEvent vcamActivatedEvent;
+
+            /// <summary>This event will fire after a brain updates its Camera</summary>
+            public BrainEvent cameraUpdatedEvent = new BrainEvent();
+        }
+        public Events events;
 
         /// <summary>
         /// Get the Unity Camera that is attached to this GameObject.  This is the camera
@@ -212,8 +217,8 @@ namespace Cinemachine.ECS_Hybrid
 #endif
                 }
             }
-            if (CameraUpdatedEvent != null)
-                CameraUpdatedEvent.Invoke(this);
+            if (events.cameraUpdatedEvent != null)
+                events.cameraUpdatedEvent.Invoke(this);
         }
 
         private void OnGuiHandler()
@@ -374,8 +379,8 @@ namespace Cinemachine.ECS_Hybrid
                             vcam.OnTransitionFromCamera(previous, worldUp, deltaTime);
 
                             // Send transition notification to observers
-                            if (VcamActivatedEvent != null)
-                                VcamActivatedEvent.Invoke(vcam, previous, isBlending);
+                            if (events.vcamActivatedEvent != null)
+                                events.vcamActivatedEvent.Invoke(vcam, previous, isBlending);
                         }
                     }
                 }
