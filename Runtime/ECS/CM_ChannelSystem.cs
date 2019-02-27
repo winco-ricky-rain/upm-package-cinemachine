@@ -43,6 +43,14 @@ namespace Cinemachine.ECS
         }
         public TimeMode timeMode;
 
+        public enum SortMode
+        {
+            PriorityThenQuality,
+            QualityThenPriority,
+            Custom
+        };
+        public SortMode sortMode;
+
         /// <summary>Wait this many seconds before activating a new camera</summary>
         public float activateAfter;
 
@@ -85,6 +93,7 @@ namespace Cinemachine.ECS
     {
         public CM_Blender blender;
         public CM_BlendLookup blendLookup;
+        public CM_PriorityQueue priorityQueue;
 
         public float activationTime;
         public float pendingActivationTime;
@@ -152,8 +161,7 @@ namespace Cinemachine.ECS
         {
             ActiveChannelStateJobs.Complete();
             return CM_EntityVcam.GetEntityVcam(
-                GetEntityComponentData<CM_ChannelBlendState>(
-                    GetChannelEntity(channel)).blender.ActiveVirtualCamera);
+                GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel)).activeVcam);
         }
 
         /// <summary>Is there a blend in progress?</summary>
@@ -352,8 +360,9 @@ namespace Cinemachine.ECS
                             from[x], to[y], new CM_BlendLookup.BlendDef
                             {
                                 curve = src.m_Blend.BlendCurve,
-                                duration = src.m_Blend.m_Style == CinemachineBlendDefinition.Style.Cut
-                                    ? 0 : src.m_Blend.m_Time
+                                duration = math.select(
+                                    src.m_Blend.m_Time, 0,
+                                    src.m_Blend.m_Style == CinemachineBlendDefinition.Style.Cut)
                             });
                     }
                 }
@@ -361,8 +370,10 @@ namespace Cinemachine.ECS
             SetEntityComponentData(e, blendState);
         }
 
+
         ComponentGroup m_channelsGroup;
-        ComponentGroup m_missingStateGroup;
+        ComponentGroup m_missingChannelStateGroup;
+        ComponentGroup m_missingBlendStateGroup;
 
 #pragma warning disable 649 // never assigned to
         // Used only to add missing state components
@@ -377,7 +388,10 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_Channel>(),
                 ComponentType.Create<CM_ChannelState>(),
                 ComponentType.Create<CM_ChannelBlendState>());
-            m_missingStateGroup = GetComponentGroup(
+            m_missingChannelStateGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_Channel>(),
+                ComponentType.Subtractive<CM_ChannelState>());
+            m_missingBlendStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Channel>(),
                 ComponentType.Subtractive<CM_ChannelBlendState>());
         }
@@ -389,6 +403,7 @@ namespace Cinemachine.ECS
             {
                 blendStates[i].blender.Dispose();
                 blendStates[i].blendLookup.Dispose();
+                blendStates[i].priorityQueue.Dispose();
             }
             base.OnDestroyManager();
         }
@@ -396,16 +411,18 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing state components
-            var objectCount = m_missingStateGroup.CalculateLength();
-            if (objectCount > 0)
+            var missingChannelStateEntities = m_missingChannelStateGroup.GetEntityArray();
+            var missingBlendStateEntities = m_missingBlendStateGroup.GetEntityArray();
+            if (missingChannelStateEntities.Length + missingBlendStateEntities.Length > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                var missingStateEntities = m_missingStateGroup.GetEntityArray();
-                for (int i = 0; i < objectCount; ++i)
-                    cb.AddComponent(missingStateEntities[i], new CM_ChannelBlendState());
+                for (int i = 0; i < missingChannelStateEntities.Length; ++i)
+                    cb.AddComponent(missingChannelStateEntities[i], new CM_ChannelState { aspect = 1 });
+                for (int i = 0; i < missingBlendStateEntities.Length; ++i)
+                    cb.AddComponent(missingBlendStateEntities[i], new CM_ChannelBlendState());
             }
 
-            objectCount = m_channelsGroup.CalculateLength();
+            var objectCount = m_channelsGroup.CalculateLength();
             var updateJob = new UpdateChannelJob()
             {
                 now = Time.time,
@@ -413,33 +430,16 @@ namespace Cinemachine.ECS
                 channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
                 channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
             };
-
-            // PreUpdate all the channel states
-            ActiveChannelStateJobs.Complete();
-            ActiveChannelStateJobs = new JobHandle();
-            for (int i = 0; i < objectCount; ++i)
-            {
-                var s = updateJob.channelBlendStates[i];
-                s.blender.PreUpdate();
-                updateJob.channelBlendStates[i] = s;
-            }
-
-            JobHandle h = inputDeps;
-            var prioritySystem = World.Active.GetExistingManager<CM_VcamPrioritySystem>();
-            if (prioritySystem != null)
-            {
-                h = JobHandle.CombineDependencies(h, prioritySystem.QueueWriteHandle);
-                updateJob.queue = prioritySystem.GetPriorityQueueNow(false);
-            }
-            var updateDeps = updateJob.Schedule(objectCount, 1, h);
+            var updateDeps = updateJob.Schedule(objectCount, 1, inputDeps);
 
             var fetchJob = new FetchActiveVcamJob
             {
                 channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
                 channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
             };
-            ActiveChannelStateJobs = fetchJob.Schedule(objectCount, 1, updateDeps);
-            return ActiveChannelStateJobs;
+            var fetchDeps = fetchJob.Schedule(objectCount, 1, updateDeps);
+            ActiveChannelStateJobs = fetchDeps;
+            return fetchDeps;
         }
 
 
@@ -447,7 +447,6 @@ namespace Cinemachine.ECS
         struct UpdateChannelJob : IJobParallelFor
         {
             public float now;
-            [ReadOnly] public NativeArray<CM_VcamPrioritySystem.QueueEntry> queue;
             [ReadOnly] public ComponentDataArray<CM_Channel> channels;
             [ReadOnly] public ComponentDataArray<CM_ChannelState> channelStates;
             public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
@@ -463,7 +462,7 @@ namespace Cinemachine.ECS
 
                 Entity desiredVcam = state.soloCamera;
                 if (desiredVcam == Entity.Null)
-                    desiredVcam = TopCameraFromPriorityQueue(c.channel);
+                    desiredVcam = blendState.priorityQueue.EntityAt(0);
                 else
                     activateAfter = minDuration = 0;
 
@@ -516,62 +515,12 @@ namespace Cinemachine.ECS
                     new CM_BlendLookup.BlendDef
                     {
                         curve = c.defaultBlend.BlendCurve,
-                        duration = c.defaultBlend.m_Time
+                        duration = math.select(
+                            c.defaultBlend.m_Time, 0,
+                            c.defaultBlend.m_Style == CinemachineBlendDefinition.Style.Cut)
                     });
 
                 channelBlendStates[index] = blendState;
-            }
-
-            private Entity TopCameraFromPriorityQueue(int channel)
-            {
-                int index = GetChannelStartIndexInQueue(channel);
-                if (index >= 0)
-                    return queue[index].entity;
-                return Entity.Null;
-            }
-
-            // GML todo: performance pass
-            private int GetChannelStartIndexInQueue(int channel)
-            {
-                int last = queue.Length;
-                if (last == 0)
-                    return -1;
-
-                // Most common case: it's the first one
-                int value = queue[0].vcamChannel.channel;
-                if (value == channel)
-                    return 0;
-                if (value > channel)
-                    return -1;
-
-                // Binary search
-                int first = 0;
-                int mid = first + ((last - first) >> 1);
-                while (mid != first)
-                {
-                    value = queue[mid].vcamChannel.channel;
-                    if (value < channel)
-                    {
-                        first = mid;
-                        mid = first + ((last - first) >> 1);
-                    }
-                    else if (value > channel)
-                    {
-                        last = mid;
-                        mid = first + ((last - first) >> 1);
-                    }
-                    else
-                    {
-                        last = mid;
-                        break;
-                    }
-                }
-                if (value != channel)
-                    return -1;
-
-                while (queue[first].vcamChannel.channel != channel)
-                    ++first;
-                return first;
             }
         }
 

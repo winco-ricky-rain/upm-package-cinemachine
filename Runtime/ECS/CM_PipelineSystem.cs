@@ -205,11 +205,11 @@ namespace Cinemachine.ECS
         ComponentGroup m_posGroup;
         ComponentGroup m_rotGroup;
         ComponentGroup m_lensGroup;
+        ComponentGroup m_vcamGroup;
         ComponentGroup m_missingPosStateGroup;
         ComponentGroup m_missingRotStateGroup;
         ComponentGroup m_missingLensStateGroup;
         ComponentGroup m_missingTimeStateGroup;
-        ComponentGroup m_missingChannelStateGroup;
 
 #pragma warning disable 649 // never assigned to
         // Used only to add missing state components
@@ -220,7 +220,8 @@ namespace Cinemachine.ECS
         {
             m_channelsGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Channel>(),
-                ComponentType.Create<CM_ChannelState>());
+                ComponentType.Create<CM_ChannelState>(),
+                ComponentType.Create<CM_ChannelBlendState>());
             m_posGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.Create<CM_VcamPositionState>());
@@ -232,6 +233,11 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamLens>(),
                 ComponentType.Create<CM_VcamLensState>(),
                 ComponentType.Create<CM_VcamTimeState>());
+
+            m_vcamGroup = GetComponentGroup(
+                ComponentType.Create<CM_VcamChannel>(),
+                ComponentType.ReadOnly<CM_VcamPriority>(),
+                ComponentType.ReadOnly<CM_VcamShotQuality>());
 
             m_missingPosStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
@@ -245,19 +251,7 @@ namespace Cinemachine.ECS
             m_missingTimeStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.Subtractive<CM_VcamTimeState>());
-            m_missingChannelStateGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_Channel>(),
-                ComponentType.Subtractive<CM_ChannelState>());
         }
-
-        protected override void OnDestroyManager()
-        {
-            if (m_channelsLookup.IsCreated)
-                m_channelsLookup.Dispose();
-            base.OnDestroyManager();
-        }
-
-        NativeHashMap<int, CM_ChannelState> m_channelsLookup;
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
@@ -266,9 +260,8 @@ namespace Cinemachine.ECS
             var missingRotEntities = m_missingRotStateGroup.GetEntityArray();
             var missingLensEntities = m_missingLensStateGroup.GetEntityArray();
             var missingTimeEntities = m_missingTimeStateGroup.GetEntityArray();
-            var missingChannelStateEntities = m_missingChannelStateGroup.GetEntityArray();
-            if (missingPosEntities.Length + missingRotEntities.Length + missingLensEntities.Length
-                + missingTimeEntities.Length + missingChannelStateEntities.Length > 0)
+            if (missingPosEntities.Length + missingRotEntities.Length
+                + missingLensEntities.Length + missingTimeEntities.Length > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
                 for (int i = 0; i < missingPosEntities.Length; ++i)
@@ -280,8 +273,6 @@ namespace Cinemachine.ECS
                     cb.AddComponent(missingLensEntities[i], CM_VcamLensState.FromLens(CM_VcamLens.Default));
                 for (int i = 0; i < missingTimeEntities.Length; ++i)
                     cb.AddComponent(missingTimeEntities[i], new CM_VcamTimeState());
-                for (int i = 0; i < missingChannelStateEntities.Length; ++i)
-                    cb.AddComponent(missingChannelStateEntities[i], new CM_ChannelState { aspect = 1 });
             }
 
             var rotJob = new InitRotJob
@@ -292,21 +283,28 @@ namespace Cinemachine.ECS
             };
             var rotDeps = rotJob.Schedule(m_rotGroup.CalculateLength(), 32, inputDeps);
 
-            var numChannels = m_channelsGroup.CalculateLength();
-            if (m_channelsLookup.IsCreated)
-                m_channelsLookup.Dispose();
-            m_channelsLookup = new NativeHashMap<int, CM_ChannelState>(numChannels, Allocator.TempJob);
+            var prioritySystem = World.GetExistingManager<CM_VcamPrioritySystem>();
+            var channelStateLookup = prioritySystem.AllocateChannelStateLookup();
 
-            var channelJob = new UpdateChannelStateJob
+            var channelJob = new CacheChannelStateJob
             {
                 timeNow = Time.time,
                 isPlaying = Application.isPlaying ? 1 : 0,
                 channels = m_channelsGroup.GetComponentDataArray<CM_Channel>(),
                 channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
-                hashMap = m_channelsLookup.ToConcurrent()
+                hashMap = channelStateLookup.ToConcurrent()
             };
             channelJob.SetDeltaTimes();
-            var channelDeps = channelJob.Schedule(numChannels, 32, inputDeps);
+            var channelDeps = channelJob.Schedule(m_channelsGroup.CalculateLength(), 32, inputDeps);
+
+            var blendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>();
+            for (int i = 0; i < blendStates.Length; ++i)
+            {
+                var s = blendStates[i];
+                s.priorityQueue.ResetReserved();
+                s.blender.PreUpdate();
+                blendStates[i] = s;
+            }
 
             var initJob = new InitVcamJob
             {
@@ -317,22 +315,25 @@ namespace Cinemachine.ECS
                 entities = m_posGroup.GetEntityArray(),
                 lenses = m_lensGroup.GetComponentDataArray<CM_VcamLens>(),
                 vcamChannels = m_lensGroup.GetComponentDataArray<CM_VcamChannel>(),
-                channelStates = m_channelsLookup
+                channelStates = channelStateLookup
             };
             var initDeps = initJob.Schedule(m_lensGroup.CalculateLength(), 32, channelDeps);
 
-            return JobHandle.CombineDependencies(rotDeps, initDeps);
+            // Reserve the priority queues
+            var reserveDeps = prioritySystem.PreUpdate(channelDeps);
+
+            return JobHandle.CombineDependencies(rotDeps, initDeps, reserveDeps);
         }
 
         [BurstCompile]
-        unsafe struct UpdateChannelStateJob : IJobParallelFor
+        unsafe struct CacheChannelStateJob : IJobParallelFor
         {
             public float timeNow;
             public int isPlaying;
             public fixed float deltaTimes[5];
             [ReadOnly] public ComponentDataArray<CM_Channel> channels;
             public ComponentDataArray<CM_ChannelState> channelStates;
-            public NativeHashMap<int, CM_ChannelState>.Concurrent hashMap;
+            public NativeHashMap<int, CM_VcamPrioritySystem.ChannelStates>.Concurrent hashMap;
 
             public void Execute(int index)
             {
@@ -348,8 +349,11 @@ namespace Cinemachine.ECS
                     -1, deltaTimes[timeModeIndex],
                     (isPlaying != 0) | (timeNow < state.notPlayingTimeModeExpiry));
                 channelStates[index] = state;
-
-                hashMap.TryAdd(state.channel, state);
+                hashMap.TryAdd(state.channel, new CM_VcamPrioritySystem.ChannelStates
+                {
+                    index = index,
+                    state = state
+                });
             }
 
             // Call this from main thread, to access unsafe fixed array
@@ -395,21 +399,23 @@ namespace Cinemachine.ECS
             [ReadOnly] public EntityArray entities;
             [ReadOnly] public ComponentDataArray<CM_VcamLens> lenses;
             [ReadOnly] public ComponentDataArray<CM_VcamChannel> vcamChannels;
-            [ReadOnly] public NativeHashMap<int, CM_ChannelState> channelStates;
+            [ReadOnly] public NativeHashMap<int, CM_VcamPrioritySystem.ChannelStates> channelStates;
 
             public void Execute(int index)
             {
-                channelStates.TryGetValue(vcamChannels[index].channel, out CM_ChannelState channelState);
+                if (!channelStates.TryGetValue(vcamChannels[index].channel,
+                        out CM_VcamPrioritySystem.ChannelStates channelState))
+                    return;
 
                 var lensState = CM_VcamLensState.FromLens(lenses[index]);
-                lensState.aspect = channelState.aspect;
-                lensState.orthographic = channelState.orthographic;
+                lensState.aspect = channelState.state.aspect;
+                lensState.orthographic = channelState.state.orthographic;
                 lensStates[index] = lensState;
-                timeStates[index] = new CM_VcamTimeState { deltaTime = channelState.deltaTime };
+                timeStates[index] = new CM_VcamTimeState { deltaTime = channelState.state.deltaTime };
 
                 var p = vcamPositions[index];
                 p.dampingBypass = float3.zero;
-                p.up = math.mul(channelState.worldOrientationOverride, math.up());
+                p.up = math.mul(channelState.state.worldOrientationOverride, math.up());
                 var entity = entities[index];
                 if (positions.Exists(entity))
                     p.raw = positions[entity].Value;
@@ -445,7 +451,7 @@ namespace Cinemachine.ECS
             m_posGroup = GetComponentGroup(
                 ComponentType.Create<CM_VcamPositionState>());
             m_rotGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamRotationState>(),
+                ComponentType.ReadOnly<CM_VcamRotationState>(),
                 ComponentType.Create<Rotation>());
             m_transformGroup = GetComponentGroup(
                 ComponentType.Create<LocalToWorld>(),
@@ -491,13 +497,9 @@ namespace Cinemachine.ECS
             public void Execute(int index)
             {
                 var p = vcamPositions[index];
-                vcamPositions[index] = new CM_VcamPositionState
-                {
-                    raw = p.raw,
-                    dampingBypass = float3.zero,
-                    up = p.up,
-                    previousFrameDataIsValid = 1
-                };
+                p.dampingBypass = float3.zero;
+                p.previousFrameDataIsValid = 1;
+                vcamPositions[index] = p;
                 var entity = entities[index];
                 if (positions.Exists(entity))
                     positions[entity] = new Position { Value = p.raw };

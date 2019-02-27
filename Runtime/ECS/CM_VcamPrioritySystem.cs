@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using System.Collections.Generic;
 using System;
 using UnityEngine;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace Cinemachine.ECS
 {
@@ -21,152 +22,224 @@ namespace Cinemachine.ECS
         public int vcamSequence;
     }
 
-    // GML todo: use shared component for channel and parallelize sort
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
     public class CM_VcamPrioritySystem : JobComponentSystem
     {
-        ComponentGroup m_mainGroup;
+        JobHandle ActiveChannelStateJobs { get; set; }
+
+        ComponentGroup m_vcamGroup;
+        ComponentGroup m_channelsGroup;
+
+        internal struct ChannelStates
+        {
+            public int index;
+            public CM_ChannelState state;
+        }
+        NativeHashMap<int, ChannelStates> channelStateLookup;
 
         protected override void OnCreateManager()
         {
-            m_mainGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamPriority>(),
-                ComponentType.ReadOnly<CM_VcamChannel>());
+            m_vcamGroup = GetComponentGroup(
+                ComponentType.Create<CM_VcamChannel>(),
+                ComponentType.ReadOnly<CM_VcamPriority>());
+            m_channelsGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_Channel>(),
+                ComponentType.Create<CM_ChannelState>(),
+                ComponentType.Create<CM_ChannelBlendState>());
 
             m_vcamSequence = 1;
-            m_priorityQueue = new NativeArray<QueueEntry>(16, Allocator.Persistent);
         }
 
         protected override void OnDestroyManager()
         {
-            m_priorityQueue.Dispose();
+            if (channelStateLookup.IsCreated)
+                channelStateLookup.Dispose();
+            base.OnDestroyManager();
+        }
+
+        internal NativeHashMap<int, ChannelStates> AllocateChannelStateLookup()
+        {
+            var numChannels = m_channelsGroup.CalculateLength();
+            if (channelStateLookup.IsCreated)
+                channelStateLookup.Dispose();
+            channelStateLookup = new NativeHashMap<int, ChannelStates>(numChannels, Allocator.TempJob);
+            return channelStateLookup;
+        }
+
+        internal JobHandle PreUpdate(JobHandle inputDeps)
+        {
+            var reserveJob = new ReservePriorityQueueJob
+            {
+                channels = m_vcamGroup.GetComponentDataArray<CM_VcamChannel>(),
+                channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>(),
+                channelLookup = channelStateLookup
+            };
+            var reserveDeps = reserveJob.Schedule(m_vcamGroup.CalculateLength(), 32, inputDeps);
+            ActiveChannelStateJobs = reserveDeps;
+            return reserveDeps;
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var length = m_mainGroup.CalculateLength();
-            if (m_priorityQueue.Length != length)
+            // Allocate the priority queues
+            ActiveChannelStateJobs.Complete();
+            ActiveChannelStateJobs = default;
+            var channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>();
+            for (int i = 0; i < channelBlendStates.Length; ++i)
             {
-                m_priorityQueue.Dispose();
-                m_priorityQueue = new NativeArray<QueueEntry>(length, Allocator.Persistent);
+                var s = channelBlendStates[i];
+                s.priorityQueue.AllocateReservedQueue();
+                channelBlendStates[i] = s;
             }
 
-            var populateDeps = new PopulateQueueJob
+            var populateJob = new PopulatePriorityQueueJob
             {
-                entities = m_mainGroup.GetEntityArray(),
-                channels = m_mainGroup.GetComponentDataArray<CM_VcamChannel>(),
-                priorities = m_mainGroup.GetComponentDataArray<CM_VcamPriority>(),
+                entities = m_vcamGroup.GetEntityArray(),
+                channels = m_vcamGroup.GetComponentDataArray<CM_VcamChannel>(),
+                priorities = m_vcamGroup.GetComponentDataArray<CM_VcamPriority>(),
                 qualities = GetComponentDataFromEntity<CM_VcamShotQuality>(true),
-                priorityQueue = m_priorityQueue
-            }.Schedule(length, 32, inputDeps);
+                channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>(),
+                channelLookup = channelStateLookup
+            };
+            var populateDeps = populateJob.Schedule(m_vcamGroup.CalculateLength(), 32, inputDeps);
 
-            QueueWriteHandle = new SortQueueJob
-                { priorityQueue = m_priorityQueue }.Schedule(1, 1, populateDeps);
-            return QueueWriteHandle;
+            var sortJob = new SortQueueJob
+            {
+                channels = m_channelsGroup.GetComponentDataArray<CM_Channel>(),
+                channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
+            };
+            var sortDeps = sortJob.Schedule(m_channelsGroup.CalculateLength(), 1, populateDeps);
+            return sortDeps;
         }
 
         [BurstCompile]
-        struct PopulateQueueJob : IJobParallelFor
+        struct ReservePriorityQueueJob : IJobParallelFor
+        {
+            [ReadOnly] public NativeHashMap<int, ChannelStates> channelLookup;
+            [ReadOnly] public ComponentDataArray<CM_VcamChannel> channels;
+            [NativeDisableParallelForRestriction] public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
+
+            public void Execute(int index)
+            {
+                // GML todo: optimize (get rid of the ifs)
+                if (channelLookup.TryGetValue(channels[index].channel, out ChannelStates state))
+                {
+                    var blendState = channelBlendStates[state.index];
+                    blendState.priorityQueue.InterlockedIncrementReserved();
+                    channelBlendStates[state.index] = blendState;
+                }
+            }
+        }
+
+        [BurstCompile]
+        struct PopulatePriorityQueueJob : IJobParallelFor
         {
             [ReadOnly] public EntityArray entities;
             [ReadOnly] public ComponentDataArray<CM_VcamChannel> channels;
             [ReadOnly] public ComponentDataArray<CM_VcamPriority> priorities;
             [ReadOnly] public ComponentDataFromEntity<CM_VcamShotQuality> qualities;
-            public NativeArray<QueueEntry> priorityQueue;
+            [NativeDisableParallelForRestriction] public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
+            [ReadOnly] public NativeHashMap<int, ChannelStates> channelLookup;
 
             public void Execute(int index)
             {
                 // GML todo: optimize (get rid of the ifs)
+                if (!channelLookup.TryGetValue(channels[index].channel,
+                        out ChannelStates channelState))
+                    return;
+
+                var blendState = channelBlendStates[channelState.index];
                 var entity = entities[index];
-                if (qualities.Exists(entity))
+                blendState.priorityQueue.InterlockedAddItem(new CM_PriorityQueue.QueueEntry
                 {
-                    priorityQueue[index] = new QueueEntry
-                    {
-                        entity = entity,
-                        vcamChannel = channels[index],
-                        vcamPriority = priorities[index],
-                        shotQuality = qualities[entity]
-                    };
-                }
-                else
-                {
-                    priorityQueue[index] = new QueueEntry
-                    {
-                        entity = entity,
-                        vcamChannel = channels[index],
-                        vcamPriority = priorities[index],
-                        shotQuality = new CM_VcamShotQuality { value = CM_VcamShotQuality.DefaultValue }
-                    };
-                }
+                    entity = entity,
+                    vcamPriority = priorities[index],
+                    shotQuality = qualities.Exists(entity) ? qualities[entity]
+                        : new CM_VcamShotQuality { value = CM_VcamShotQuality.DefaultValue }
+                });
+                channelBlendStates[channelState.index] = blendState;
             }
         }
 
-        [BurstCompile]
-        struct SortQueueJob : IJobParallelFor
+        [BurstCompile] //GML wtf??? why not?
+        unsafe struct SortQueueJob : IJobParallelFor
         {
-            public NativeArray<QueueEntry> priorityQueue;
+            [ReadOnly] public ComponentDataArray<CM_Channel> channels;
+            public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
 
             public void Execute(int index)
             {
-                priorityQueue.Sort(new Comparer1());
+                var s = channelBlendStates[index];
+                var c = channels[index];
+
+#if false // GML why doesn't burst accept this?
+                if (c.sortMode == CM_Channel.SortMode.PriorityThenQuality)
+                    s.priorityQueue.Sort(new ComparerPriority());
+                else if (c.sortMode == CM_Channel.SortMode.QualityThenPriority)
+                    s.priorityQueue.Sort(new ComparerQuality());
+#else
+                var array = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<CM_PriorityQueue.QueueEntry>(
+                    s.priorityQueue.GetUnsafeDataPtr(), s.priorityQueue.Length, Allocator.None);
+
+                #if ENABLE_UNITY_COLLECTIONS_CHECKS
+                    var safety = AtomicSafetyHandle.Create();
+                    NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref array, safety);
+                #endif
+
+                if (c.sortMode == CM_Channel.SortMode.PriorityThenQuality)
+                    array.Sort(new ComparerPriority());
+                else if (c.sortMode == CM_Channel.SortMode.QualityThenPriority)
+                    array.Sort(new ComparerQuality());
+
+                #if ENABLE_UNITY_COLLECTIONS_CHECKS
+                    AtomicSafetyHandle.Release(safety);
+                #endif
+#endif
             }
 
-            struct Comparer1 : IComparer<QueueEntry>
+            struct ComparerPriority : IComparer<CM_PriorityQueue.QueueEntry>
             {
-                public int Compare(QueueEntry x, QueueEntry y)
+                public int Compare(CM_PriorityQueue.QueueEntry x, CM_PriorityQueue.QueueEntry y)
                 {
-                    int a = x.vcamChannel.channel - y.vcamChannel.channel;
                     int p = y.vcamPriority.priority - x.vcamPriority.priority; // high-to-low
                     float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
                     int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
                     int s = y.vcamPriority.vcamSequence - x.vcamPriority.vcamSequence; // high-to-low
                     int e = y.entity.Index - x.entity.Index;    // high-to-low
                     int v = y.entity.Version - x.entity.Version; // high-to-low
-                    return math.select(a,
+                    return math.select(p,
+                        math.select(q,
+                            math.select(s,
+                                math.select(e, v, e == 0),
+                                s == 0),
+                            q == 0),
+                        p == 0);
+                }
+            }
+
+            struct ComparerQuality : IComparer<CM_PriorityQueue.QueueEntry>
+            {
+                public int Compare(CM_PriorityQueue.QueueEntry x, CM_PriorityQueue.QueueEntry y)
+                {
+                    int p = y.vcamPriority.priority - x.vcamPriority.priority; // high-to-low
+                    float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
+                    int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
+                    int s = y.vcamPriority.vcamSequence - x.vcamPriority.vcamSequence; // high-to-low
+                    int e = y.entity.Index - x.entity.Index;    // high-to-low
+                    int v = y.entity.Version - x.entity.Version; // high-to-low
+                    return math.select(q,
                         math.select(p,
-                            math.select(q,
-                                math.select(s,
-                                    math.select(e, v, e == 0),
-                                    s == 0),
-                                q == 0),
+                            math.select(s,
+                                math.select(e, v, e == 0),
+                                s == 0),
                             p == 0),
-                        a == 0);
+                        q == 0);
                 }
             }
         }
 
         int m_vcamSequence = 1;
         public int NextVcamSequence { get { return m_vcamSequence++; } }
-
-        public struct QueueEntry
-        {
-            public Entity entity;
-            public CM_VcamChannel vcamChannel;
-            public CM_VcamPriority vcamPriority;
-            public CM_VcamShotQuality shotQuality;
-        }
-        NativeArray<QueueEntry> m_priorityQueue;
-
-        public JobHandle QueueWriteHandle { get; private set; }
-
-        /// <summary>Get the vcam priority queue, which may not be written yet, for access by jobs.</summary>
-        /// <param name="inputDeps">Adds a dependency on the jobs that write the queue</param>
-        /// <returns>The queue.  Read-only</returns>
-        public NativeArray<QueueEntry> GetPriorityQueueForJobs(ref JobHandle inputDeps)
-        {
-            inputDeps = JobHandle.CombineDependencies(inputDeps, QueueWriteHandle);
-            return m_priorityQueue;
-        }
-
-        /// <summary>Get the vcam priority queue for immediate access.
-        /// Waits for queue write jobs to complete.</summary>
-        /// <returns>The queue</returns>
-        public NativeArray<QueueEntry> GetPriorityQueueNow(bool waitForWriteComplete)
-        {
-            if (waitForWriteComplete)
-                QueueWriteHandle.Complete();
-            return m_priorityQueue;
-        }
     }
 }

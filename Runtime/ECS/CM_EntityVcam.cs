@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Cinemachine.ECS
@@ -33,18 +34,6 @@ namespace Cinemachine.ECS
             }
         }
         public Entity AsEntity { get { return Entity; }}
-
-        // GML hack until I think of something better
-        static Dictionary<Entity, CM_EntityVcam> sVcamCache = new Dictionary<Entity, CM_EntityVcam>();
-        public static CM_EntityVcam GetEntityVcam(Entity e)
-        {
-            if (sVcamCache == null)
-                sVcamCache = new Dictionary<Entity, CM_EntityVcam>();
-            CM_EntityVcam vcam = null;
-            if (e != Entity.Null && !sVcamCache.TryGetValue(e, out vcam))
-                sVcamCache[e] = vcam = new CM_EntityVcam(e);
-            return vcam;
-        }
 
         static CM_ChannelSystem ActiveChannelSystem
         {
@@ -97,8 +86,8 @@ namespace Cinemachine.ECS
                 {
                     var c = m.GetComponentData<CM_VcamRotationState>(e);
                     state.ReferenceLookAt = c.lookAtPoint;
-                    state.RawOrientation = c.raw;
-                    state.OrientationCorrection = c.correction;
+                    state.RawOrientation = math.normalizesafe(c.raw);
+                    state.OrientationCorrection = math.normalizesafe(c.correction);
                 }
                 if (m.HasComponent<CM_VcamBlendHint>(e))
                 {
@@ -114,6 +103,39 @@ namespace Cinemachine.ECS
                 }
             }
             return state;
+        }
+
+
+        // GML hack until I think of something better
+        static Dictionary<Entity, ICinemachineCamera> sVcamCache;
+        public static ICinemachineCamera GetEntityVcam(Entity e)
+        {
+            if (sVcamCache == null)
+                sVcamCache = new Dictionary<Entity, ICinemachineCamera>();
+            ICinemachineCamera vcam = null;
+            if (e != Entity.Null && !sVcamCache.TryGetValue(e, out vcam))
+                sVcamCache[e] = vcam = new CM_EntityVcam(e);
+            return vcam;
+        }
+        public static void RegisterEntityVcam(ICinemachineCamera vcam)
+        {
+            if (vcam != null)
+            {
+                if (sVcamCache == null)
+                    sVcamCache = new Dictionary<Entity, ICinemachineCamera>();
+                var e = vcam.AsEntity;
+                if (e != Entity.Null)
+                    sVcamCache[e] = vcam;
+            }
+        }
+        public static void UnregisterEntityVcam(ICinemachineCamera vcam)
+        {
+            if (vcam != null)
+            {
+                var e = vcam.AsEntity;
+                if (e != Entity.Null && sVcamCache.ContainsKey(e))
+                    sVcamCache.Remove(e);
+            }
         }
     }
 }

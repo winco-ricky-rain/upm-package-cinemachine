@@ -14,7 +14,7 @@ namespace Cinemachine.ECS_Hybrid
         /// <summary>When enabled, the current camera and blend will be indicated in the game window, for debugging</summary>
         [Tooltip("When enabled, the current child camera and blend will be indicated in the game window, for debugging")]
         [NoSaveDuringPlay]
-        public bool m_ShowDebugText = false;
+        public bool showDebugText = false;
 
         /// <summary>Gets a brief debug description of this virtual camera,
         /// for use when displayiong debug info</summary>
@@ -76,10 +76,7 @@ namespace Cinemachine.ECS_Hybrid
         /// </summary>
         public ICinemachineCamera ActiveVirtualCamera
         {
-            get
-            {
-                return ActiveChannelSystem?.GetActiveVirtualCamera(ChannelState.channel);
-            }
+            get { return ActiveChannelSystem?.GetActiveVirtualCamera(ChannelState.channel); }
         }
 
         /// <summary>
@@ -122,7 +119,7 @@ namespace Cinemachine.ECS_Hybrid
         ///  Will only be called if Unity Editor - never in build
         private void OnGuiHandler()
         {
-            if (!m_ShowDebugText)
+            if (!showDebugText)
                 CinemachineDebug.ReleaseScreenPos(this);
             else
             {
@@ -161,6 +158,7 @@ namespace Cinemachine.ECS_Hybrid
                 c.projection = p;
                 Channel = c;
             }
+            base.Update();
         }
     }
 }

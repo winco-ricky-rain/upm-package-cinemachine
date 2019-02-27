@@ -130,7 +130,7 @@ namespace Cinemachine.ECS_Hybrid
                 return;
 
             if (!m.HasComponent<CM_VcamChannel>(Entity))
-                m.AddComponentData(Entity, new CM_VcamChannel()); // GML todo: vcamSequence
+                m.AddComponentData(Entity, new CM_VcamChannel());
             if (!m.HasComponent<CM_VcamPriority>(Entity))
                 m.AddComponentData(Entity, new CM_VcamPriority()); // GML todo: vcamSequence
             if (!m.HasComponent<CM_VcamShotQuality>(Entity))
@@ -150,11 +150,13 @@ namespace Cinemachine.ECS_Hybrid
         protected virtual void OnEnable()
         {
             m_gameObjectEntityComponent = GetComponent<GameObjectEntity>();
+            CM_EntityVcam.RegisterEntityVcam(this);
             PushValuesToEntityComponents();
         }
 
         protected virtual void OnDisable()
         {
+            CM_EntityVcam.UnregisterEntityVcam(this);
         }
 
         // GML: Needed in editor only, probably, only if something is dirtied

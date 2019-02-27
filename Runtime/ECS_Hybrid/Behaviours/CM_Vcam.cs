@@ -10,15 +10,15 @@ namespace Cinemachine.ECS_Hybrid
     [AddComponentMenu("Cinemachine/CM_Vcam")]
     public class CM_Vcam : CM_VcamBase
     {
-        /// <summary>Object for the camera children to look at (the aim target)</summary>
-        [Tooltip("Object for the camera children to look at (the aim target).")]
-        [NoSaveDuringPlay]
-        public Transform m_LookAtTarget = null;
-
         /// <summary>Object for the camera children wants to move with (the body target)</summary>
         [Tooltip("Object for the camera children wants to move with (the body target).")]
         [NoSaveDuringPlay]
         public Transform m_FollowTarget = null;
+
+        /// <summary>Object for the camera children to look at (the aim target)</summary>
+        [Tooltip("Object for the camera children to look at (the aim target).")]
+        [NoSaveDuringPlay]
+        public Transform m_LookAtTarget = null;
 
         /// <summary>Specifies the LensSettings of this Virtual Camera.
         /// These settings will be transferred to the Unity camera when the vcam is live.</summary>
