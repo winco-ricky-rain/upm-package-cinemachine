@@ -2,7 +2,6 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using UnityEngine.Assertions;
 using Unity.Collections.LowLevel.Unsafe;
 using System.Collections.Generic;
 
@@ -41,8 +40,9 @@ namespace Cinemachine.ECS
             get { return length; }
             set
             {
-#if UNITY_ASSERTIONS
-//                Assert.IsTrue(value >= 0 && value <= capacity, "CM_ChainedBlend.NumAciveFrames out of range");
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                if (value < 0 || value > capacity)
+                    throw new System.IndexOutOfRangeException("CM_ChainedBlend.NumActiveFrames out of range");
 #endif
                 length = value;
             }
@@ -50,8 +50,9 @@ namespace Cinemachine.ECS
 
         public ref CM_Blend ElementAt(int i)
         {
-#if UNITY_ASSERTIONS
-//            Assert.IsTrue(i < capacity, "Array access out of range");
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            if (i >= capacity)
+                throw new System.IndexOutOfRangeException("Array access out of range");
 #endif
             return ref stack[i];
         }

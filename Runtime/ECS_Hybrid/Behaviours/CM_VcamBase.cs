@@ -109,16 +109,18 @@ namespace Cinemachine.ECS_Hybrid
                 goe = target.gameObject.AddComponent<GameObjectEntity>();
 
             var e = goe.Entity;
-            if (!m.HasComponent<CM_Target>(e))
-                m.AddComponentData(e, new CM_Target());
+            if (e != Entity.Null)
+            {
+                if (!m.HasComponent<CM_Target>(e))
+                    m.AddComponentData(e, new CM_Target());
 
-            if (!m.HasComponent<Position>(e))
-                m.AddComponentData(e, new Position());
-            if (!m.HasComponent<Rotation>(e))
-                m.AddComponentData(e, new Rotation());
-            if (!m.HasComponent<CopyTransformFromGameObject>(e))
-                m.AddComponentData(e, new CopyTransformFromGameObject());
-
+                if (!m.HasComponent<Position>(e))
+                    m.AddComponentData(e, new Position());
+                if (!m.HasComponent<Rotation>(e))
+                    m.AddComponentData(e, new Rotation());
+                if (!m.HasComponent<CopyTransformFromGameObject>(e))
+                    m.AddComponentData(e, new CopyTransformFromGameObject());
+            }
             return e;
         }
 #endif

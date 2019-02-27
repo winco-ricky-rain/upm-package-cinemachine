@@ -67,14 +67,14 @@ namespace Cinemachine.ECS_Hybrid
         [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
 
         [Serializable]
-        public class Events
+        public struct Events
         {
             /// <summary>Called when the current live vcam changes.  If a blend is involved,
             /// then this will be called on the first frame of the blend</summary>
             public ActivationEvent vcamActivatedEvent;
 
             /// <summary>This event will fire after a brain updates its Camera</summary>
-            public BrainEvent cameraUpdatedEvent = new BrainEvent();
+            public BrainEvent cameraUpdatedEvent;
         }
         public Events events;
 

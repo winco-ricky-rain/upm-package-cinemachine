@@ -308,12 +308,12 @@ namespace Cinemachine.ECS
         public static float2 GetCameraRotationToTarget(
             this quaternion orient, float3 lookAtDirUnit, float3 worldUpUnit)
         {
-/*
-#if UNITY_ASSERTIONS
-            Assert.IsTrue(math.abs(math.length(lookAtDir) - 1) < Epsilon, "lookAtDir must be unit length");
-            Assert.IsTrue(math.abs(math.length(worldUp) - 1) < Epsilon, "worldUp must be unit length");
+#if ENABLE_UNITY_COLLECTIONS_CHECKS // GML this is the wrong define to test
+            if (math.abs(math.length(lookAtDirUnit) - 1) > Epsilon)
+                throw new System.IndexOutOfRangeException("lookAtDirUnit must be unit length");
+            if (math.abs(math.length(worldUpUnit) - 1) > Epsilon)
+                throw new System.IndexOutOfRangeException("worldUpUnit must be unit length");
 #endif
-*/
             // Work in local space
             quaternion toLocal = math.inverse(orient);
             float3 up = math.mul(toLocal, worldUpUnit);
