@@ -187,24 +187,20 @@ namespace Cinemachine.ECS
 
             var persp = math.inverse(float4x4.PerspectiveFov(fov.y, aspect, 0.0001f, 2f));
 
-            var pX = math.mul(persp, new float4((r.pos.x * 2f) - 1f, 0, 0.5f, 1)); pX.z = -pX.z;
-            var pY = math.mul(persp, new float4(0, (r.pos.y * 2f) - 1f, 0.5f, 1)); pY.z = -pY.z;
-
+            var pX = math.mul(persp, new float4(r.pos.x * 2f, 0, 0.5f, 1)); pX.z = -pX.z;
+            var pY = math.mul(persp, new float4(0, r.pos.y * 2f, 0.5f, 1)); pY.z = -pY.z;
             var angle = new float2(
                 MathHelpers.SignedAngleUnit(fwd, math.normalize(pX.xyz), up),
                 MathHelpers.SignedAngleUnit(fwd, math.normalize(pY.xyz), left));
+            var rMin = angle / fov;
 
-            var rMin = ((fov / 2) + angle) /  fov;
             var rMax = r.pos + r.size;
-
-            pX = math.mul(persp, new float4((rMax.x * 2f) - 1f, 0, 0.5f, 1)); pX.z = -pX.z;
-            pY = math.mul(persp, new float4(0, (rMax.y * 2f) - 1f, 0.5f, 1)); pY.z = -pY.z;
-
+            pX = math.mul(persp, new float4(rMax.x * 2f, 0, 0.5f, 1)); pX.z = -pX.z;
+            pY = math.mul(persp, new float4(0, rMax.y * 2f, 0.5f, 1)); pY.z = -pY.z;
             angle = new float2(
                 MathHelpers.SignedAngleUnit(fwd, math.normalize(pX.xyz), up),
                 MathHelpers.SignedAngleUnit(fwd, math.normalize(pY.xyz), left));
-
-            rMax = ((fov / 2) + angle) /  fov;
+            rMax = angle / fov;
 
             return new MathHelpers.rect2d { pos = rMin, size = rMax - rMin };
         }
@@ -358,7 +354,7 @@ namespace Cinemachine.ECS
                 composerState.lookAtPrevFrame = rotState.lookAtPoint;
                 composerState.cameraOrientationPrevFrame = math.normalize(rigOrientation);
                 composerState.screenOffsetPrevFrame = composerState.cameraOrientationPrevFrame.GetCameraRotationToTarget(
-                    math.normalizesafe(composerState.lookAtPrevFrame - posState.raw + posState.correction), posState.up);
+                    math.normalizesafe(composerState.lookAtPrevFrame - composerState.cameraPosPrevFrame), posState.up);
                 composerStates[index] = composerState;
 
                 rotState.raw = composerState.cameraOrientationPrevFrame;
@@ -408,13 +404,13 @@ namespace Cinemachine.ECS
                 float angle = MathHelpers.AngleUnit(dirUnit, upUnit);
                 float halfFov = (fov / 2f) + 0.01f; // give it a little extra to accommodate precision errors
                 float maxAllowed = (float)math.PI - halfFov;
-                float maxY = 1f - (halfFov - angle) / fov;
-                float minY = (angle - maxAllowed) / fov;
+                float maxY = 0.5f - (halfFov - angle) / fov;
+                float minY = ((angle - maxAllowed) - 0.5f) / fov;
 
                 r.pos.y = math.select(
                     math.select(r.pos.y, Mathf.Max(r.pos.y, minY), angle > maxAllowed),
-                    math.select(r.pos.y, math.min(r.pos.y, maxY),
-                    r.pos.y + r.size.y > maxY), angle < halfFov);
+                    math.select(r.pos.y, math.min(r.pos.y, maxY), r.pos.y + r.size.y > maxY),
+                    angle < halfFov);
                 r.size.y = math.select(
                     r.size.y,
                     Mathf.Min(r.size.y, maxY - r.pos.y),
