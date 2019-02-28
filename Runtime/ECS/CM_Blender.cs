@@ -86,9 +86,11 @@ namespace Cinemachine.ECS
 
         public void PushEmpty()
         {
-#if UNITY_ASSERTIONS
-//            Assert.IsTrue(stack != null, "EnsureCapacity() must be called before this");
-//            Assert.IsTrue(capacity > NumActiveFrames, "EnsureCapacity() must be called before this, with sufficient size");
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            if (stack == null)
+                throw new System.Exception("EnsureCapacity() must be called before this");
+            if (capacity <= NumActiveFrames)
+                throw new System.Exception("EnsureCapacity() must be called before this, with sufficient size");
 #endif
             UnsafeUtility.MemMove(stack + 1, stack, NumActiveFrames * sizeof(CM_Blend));
             stack[0] = new CM_Blend();
