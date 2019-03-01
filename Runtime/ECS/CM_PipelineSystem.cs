@@ -311,7 +311,7 @@ namespace Cinemachine.ECS
                 lensStates = m_lensGroup.GetComponentDataArray<CM_VcamLensState>(),
                 timeStates = m_lensGroup.GetComponentDataArray<CM_VcamTimeState>(),
                 vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                positions = GetComponentDataFromEntity<Position>(true),
+                positions = GetComponentDataFromEntity<Translation>(true),
                 entities = m_posGroup.GetEntityArray(),
                 lenses = m_lensGroup.GetComponentDataArray<CM_VcamLens>(),
                 vcamChannels = m_lensGroup.GetComponentDataArray<CM_VcamChannel>(),
@@ -395,7 +395,7 @@ namespace Cinemachine.ECS
             public ComponentDataArray<CM_VcamLensState> lensStates;
             public ComponentDataArray<CM_VcamTimeState> timeStates;
             public ComponentDataArray<CM_VcamPositionState> vcamPositions;
-            [ReadOnly] public ComponentDataFromEntity<Position> positions;
+            [ReadOnly] public ComponentDataFromEntity<Translation> positions;
             [ReadOnly] public EntityArray entities;
             [ReadOnly] public ComponentDataArray<CM_VcamLens> lenses;
             [ReadOnly] public ComponentDataArray<CM_VcamChannel> vcamChannels;
@@ -464,7 +464,7 @@ namespace Cinemachine.ECS
             var posJob = new FinalizePosJob
             {
                 vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                positions = GetComponentDataFromEntity<Position>(false),
+                positions = GetComponentDataFromEntity<Translation>(false),
                 entities = m_posGroup.GetEntityArray()
             };
             var posDeps = posJob.Schedule(m_posGroup.CalculateLength(), 32, inputDeps);
@@ -491,7 +491,7 @@ namespace Cinemachine.ECS
         struct FinalizePosJob : IJobParallelFor
         {
             public ComponentDataArray<CM_VcamPositionState> vcamPositions;
-            [NativeDisableParallelForRestriction] public ComponentDataFromEntity<Position> positions;
+            [NativeDisableParallelForRestriction] public ComponentDataFromEntity<Translation> positions;
             [ReadOnly] public EntityArray entities;
 
             public void Execute(int index)
@@ -502,7 +502,7 @@ namespace Cinemachine.ECS
                 vcamPositions[index] = p;
                 var entity = entities[index];
                 if (positions.Exists(entity))
-                    positions[entity] = new Position { Value = p.raw };
+                    positions[entity] = new Translation { Value = p.raw };
             }
         }
 

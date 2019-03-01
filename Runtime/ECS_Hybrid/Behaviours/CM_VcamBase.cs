@@ -114,8 +114,8 @@ namespace Cinemachine.ECS_Hybrid
                 if (!m.HasComponent<CM_Target>(e))
                     m.AddComponentData(e, new CM_Target());
 
-                if (!m.HasComponent<Position>(e))
-                    m.AddComponentData(e, new Position());
+                if (!m.HasComponent<Translation>(e))
+                    m.AddComponentData(e, new Translation());
                 if (!m.HasComponent<Rotation>(e))
                     m.AddComponentData(e, new Rotation());
                 if (!m.HasComponent<CopyTransformFromGameObject>(e))

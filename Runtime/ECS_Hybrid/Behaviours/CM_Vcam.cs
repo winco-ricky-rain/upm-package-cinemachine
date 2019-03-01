@@ -39,8 +39,8 @@ namespace Cinemachine.ECS_Hybrid
             if (m == null || !m.Exists(Entity))
                 return;
 
-            if (!m.HasComponent<Position>(Entity))
-                m.AddComponentData(Entity, new Position());
+            if (!m.HasComponent<Translation>(Entity))
+                m.AddComponentData(Entity, new Translation());
             if (!m.HasComponent<Rotation>(Entity))
                 m.AddComponentData(Entity, new Rotation());
             if (!m.HasComponent<CopyTransformFromGameObject>(Entity))
