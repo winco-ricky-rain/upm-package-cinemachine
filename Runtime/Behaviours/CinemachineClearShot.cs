@@ -79,7 +79,7 @@ namespace Cinemachine
             {
                 // Show the active camera and blend
                 if (mActiveBlend != null)
-                    return mActiveBlend.Description();
+                    return mActiveBlend.Description;
 
                 ICinemachineCamera vcam = LiveChild;
                 if (vcam == null)
@@ -419,6 +419,8 @@ namespace Cinemachine
                 blend = m_CustomBlends.GetBlendForVirtualCameras(
                         fromCameraName, toCameraName, blend);
             }
+            if (CinemachineCore.GetBlendOverride != null)
+                blend = CinemachineCore.GetBlendOverride(fromKey, toKey, blend, this);
             return blend;
         }
 

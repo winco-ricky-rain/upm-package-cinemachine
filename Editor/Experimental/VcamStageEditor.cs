@@ -44,7 +44,7 @@ namespace Cinemachine.Editor
                 // Get all ICinemachineComponents
                 var allTypes
                     = ReflectionHelpers.GetTypesInAllDependentAssemblies(
-                            (Type t) => t.IsSubclassOf(typeof(CinemachineComponentBase)));
+                            (Type t) => typeof(CinemachineComponentBase).IsAssignableFrom(t) && !t.IsAbstract);
 
                 // GML todo: use class attribute instead
                 // Create a temp game object so we can instance behaviours

@@ -1,7 +1,37 @@
-<size=20><b>Version 2.2.9-preview.1</b></size>
+<size=20><b>Version 2.3.4-preview.3</b></size>
 
+- Added CinemachineCore.GetBlendOverride delegate to allow applications to override any vcam blend when it happens
+- When a blend is cancelled by the opposite blend, reduce the blend time
+- Added support for PostProcessing V3 - now called CinemachineVolumeSttings
+- Orthographic cameras allow a Near Clip of 0
+- Timeline won't auto-create CM brains when something dragged onto it
+- Bugfix: FreeLook inherit position
+- Bugfix: collider was pushing camera too far if there were multiple overlapping obstacles
+- Bugfix: use IsAssignableFrom instead of IsSubclass in several places
+- Bugfix: when interrupting a blend in progress, Cut was not respected
+- Bugfix: collider minimum occlusion time and smoothing time interaction
+- Bugfix: TargetGroup.RemoveMember error (fogbugz 1119028)
+- Bugfix: TargetGroup member lerping jerk when member weight near 0
+
+
+<size=20><b>Version 2.3.3</b></size>
+
+- Removed Cinemachine.Timeline namespace, as a workaround for fogbugz 1115321
+
+
+<size=20><b>Version 2.3.1</b></size>
+
+- Added timeline dependency
+- OnTargetObjectWarped no longer generates garbage
+
+
+<size=20><b>Version 2.3.0</b></size>
+
+- Added dependency on new unity.timeline
+- Added conditional dependence on PostProcessingV2
+- No copying CM gizmo into assets folder
 - FreeLook: if inherit position from similar FreeLooks, bypass damping
-- Timline: improve handling when vcam values are tweaked inside shot inspector (fogbugz 1109024)
+- Timeline: improve handling when vcam values are tweaked inside shot inspector (fogbugz 1109024)
 
 
 <size=20><b>Version 2.2.8</b></size>

@@ -512,16 +512,28 @@ namespace Cinemachine
                     {
                         if (frame.blend.IsComplete)
                             frame.blend.CamA = outGoingCamera;  // new blend
-                        else // chain to existing blend
+                        else
+                        {
+                            // Special case: if backing out of a blend-in-progress
+                            // with the same blend in reverse, adjust the belnd time
+                            if (frame.blend.CamA == activeCamera
+                                && frame.blend.CamB == outGoingCamera
+                                && frame.blend.Duration <= blendDef.m_Time)
+                            {
+                                blendDef.m_Time = frame.blend.TimeInBlend;
+                            }
+
+                            // Chain to existing blend
                             frame.blend.CamA = new BlendSourceVirtualCamera(
                                 new CinemachineBlend(
                                     frame.blend.CamA, frame.blend.CamB,
-                                    frame.blend.BlendCurve, frame.blend.Duration, frame.blend.TimeInBlend));
-
-                        frame.blend.BlendCurve = blendDef.BlendCurve;
-                        frame.blend.Duration = blendDef.m_Time;
-                        frame.blend.TimeInBlend = 0;
+                                    frame.blend.BlendCurve, frame.blend.Duration,
+                                    frame.blend.TimeInBlend));
+                        }
                     }
+                    frame.blend.BlendCurve = blendDef.BlendCurve;
+                    frame.blend.Duration = blendDef.m_Time;
+                    frame.blend.TimeInBlend = 0;
                 }
                 // Set the current active camera
                 frame.blend.CamB = activeCamera;
@@ -656,6 +668,8 @@ namespace Cinemachine
                 blend = m_CustomBlends.GetBlendForVirtualCameras(
                         fromCameraName, toCameraName, blend);
             }
+            if (CinemachineCore.GetBlendOverride != null)
+                blend = CinemachineCore.GetBlendOverride(fromKey, toKey, blend, this);
             return blend;
         }
 

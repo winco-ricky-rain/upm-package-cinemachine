@@ -5,6 +5,14 @@
         "Unity.Entities.Hybrid",
         "Unity.Mathematics",
         "Unity.Entities"
+        "Unity.Timeline",
+        "Unity.Timeline.Editor",
+        "Unity.Postprocessing.Runtime",
+        "Unity.Postprocessing.Editor",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Core.Editor",
+        "Unity.RenderPipelines.HighDefinition.Runtime",
+        "Unity.RenderPipelines.HighDefinition.Editor"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [
@@ -15,5 +23,22 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": []
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.postprocessing",
+            "expression": "2.1.0",
+            "define": "CINEMACHINE_POST_PROCESSING_V2"
+        },
+        {
+            "name": "com.unity.timeline",
+            "expression": "0.0.0-builtin",
+            "define": "CINEMACHINE_TIMELINE"
+        },
+        {
+            "name": "com.unity.render-pipelines.high-definition",
+            "expression": "5.3.1",
+            "define": "CINEMACHINE_POST_PROCESSING_V3"
+        }
+    ]
 }

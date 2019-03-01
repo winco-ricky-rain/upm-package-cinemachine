@@ -432,11 +432,12 @@ namespace Cinemachine
         /// <param name="positionDelta">The amount the target's position changed</param>
         public virtual void OnTargetObjectWarped(Transform target, Vector3 positionDelta)
         {
-            // Locate all extensions and inform them
-            var extensions = GetComponents<CinemachineExtension>();
-            if (extensions != null)
-                for (int i = 0; i < extensions.Length; ++i)
-                    extensions[i].OnTargetObjectWarped(target, positionDelta);
+            // inform the extensions
+            if (mExtensions != null)
+            {
+                for (int i = 0; i < mExtensions.Count; ++i)
+                    mExtensions[i].OnTargetObjectWarped(target, positionDelta);
+            }
         }
 
         /// <summary>Create a blend between 2 virtual cameras, taking into account
@@ -451,14 +452,20 @@ namespace Cinemachine
                 return null;
             if (activeBlend != null)
             {
-//                if (activeBlend.Uses(camB))
-//                    camA = new StaticPointVirtualCamera(activeBlend.State, "Mid-Blend");
-//                else
-                    camA = new BlendSourceVirtualCamera(activeBlend);
+                // Special case: if backing out of a blend-in-progress
+                // with the same blend in reverse, adjust the belnd time
+                if (activeBlend.CamA == camB
+                    && activeBlend.CamB == camA
+                    && activeBlend.Duration <= blendDef.m_Time)
+                {
+                    blendDef.m_Time = activeBlend.TimeInBlend;
+                }
+                camA = new BlendSourceVirtualCamera(activeBlend);
             }
             else if (camA == null)
                 camA = new StaticPointVirtualCamera(State, "(none)");
-            return new CinemachineBlend(camA, camB, blendDef.BlendCurve, blendDef.m_Time, 0);
+            return new CinemachineBlend(
+                camA, camB, blendDef.BlendCurve, blendDef.m_Time, 0);
         }
 
         /// <summary>
