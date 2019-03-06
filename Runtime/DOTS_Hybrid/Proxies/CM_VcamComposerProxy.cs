@@ -24,6 +24,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             Value = new CM_VcamComposer
             {
+                damping = new float2(1, 1),
                 softZoneSize = new float2(0.6f, 0.6f),
                 centerOnActivate = 1
             };
