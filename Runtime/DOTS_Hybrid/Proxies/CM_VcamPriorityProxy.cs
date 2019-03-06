@@ -4,5 +4,5 @@ using Cinemachine.ECS;
 namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
-    public class CM_VcamPriorityComponent : CM_VcamComponentBase<CM_VcamPriority> { }
+    public class CM_VcamPriorityProxy : CM_ComponentProxyBase<CM_VcamPriority> { }
 }

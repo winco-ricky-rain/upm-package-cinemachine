@@ -243,7 +243,7 @@ namespace Cinemachine.ECS
             missingRotEntities.Dispose();
             missingLensEntities.Dispose();
 
-            JobHandle vcamDeps = default;
+            JobHandle vcamDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
             channelSystem.InitChannelStates();
             channelSystem.InvokePerVcamChannel(
@@ -256,8 +256,7 @@ namespace Cinemachine.ECS
                             ? (byte)1 : (byte)0,
                         positions = GetComponentDataFromEntity<LocalToWorld>(true)
                     };
-                    var deps = initJob.ScheduleGroup(filteredGroup, inputDeps);
-                    vcamDeps = JobHandle.CombineDependencies(vcamDeps, deps);
+                    vcamDeps = initJob.ScheduleGroup(filteredGroup, vcamDeps);
                 });
 
             return vcamDeps;

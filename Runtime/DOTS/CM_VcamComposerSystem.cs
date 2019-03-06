@@ -258,7 +258,7 @@ namespace Cinemachine.ECS
             if (!targetLookup.IsCreated)
                 return default; // no targets yet
 
-            JobHandle composerDeps = default;
+            JobHandle composerDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
             channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
@@ -268,8 +268,7 @@ namespace Cinemachine.ECS
                         deltaTime = state.deltaTime,
                         targetLookup = targetLookup
                     };
-                    var deps = job.ScheduleGroup(filteredGroup, inputDeps);
-                    composerDeps = JobHandle.CombineDependencies(composerDeps, deps);
+                    composerDeps = job.ScheduleGroup(filteredGroup, composerDeps);
                 });
 
             return targetSystem.RegisterTargetLookupReadJobs(composerDeps);

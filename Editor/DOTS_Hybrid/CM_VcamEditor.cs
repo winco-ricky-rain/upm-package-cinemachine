@@ -34,7 +34,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
                 Target.gameObject, CinemachineCore.Stage.Aim);
             mNoiseDropdown.Initialize(
                 new GUIContent("Noise", "Procedural algorithm for adding position or rotation noise"),
-                "(none)",
+                "None",
                 Target.gameObject, CinemachineCore.Stage.Noise);
         }
 
@@ -171,8 +171,8 @@ namespace Cinemachine.Editor.ECS_Hybrid
         {
             if (name.StartsWith("CM_Vcam"))
                 name = name.Substring(7); // Trim the prefix
-            if (name.EndsWith("Component"))
-                name = name.Substring(0, name.Length-9); // Trim the suffix
+            if (name.EndsWith("Proxy"))
+                name = name.Substring(0, name.Length-5); // Trim the suffix
             return ObjectNames.NicifyVariableName(name);
         }
     }

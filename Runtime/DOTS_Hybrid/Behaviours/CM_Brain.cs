@@ -13,7 +13,7 @@ namespace Cinemachine.ECS_Hybrid
     [ExecuteAlways]
     [SaveDuringPlay]
     [RequireComponent(typeof(GameObjectEntity))]
-    [RequireComponent(typeof(CM_ChannelComponent))]
+    [RequireComponent(typeof(CM_ChannelProxy))]
     [AddComponentMenu("Cinemachine/CM_Brain")]
     public class CM_Brain : MonoBehaviour
     {

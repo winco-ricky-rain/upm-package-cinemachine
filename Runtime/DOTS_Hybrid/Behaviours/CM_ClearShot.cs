@@ -8,7 +8,7 @@ namespace Cinemachine.ECS_Hybrid
     [DisallowMultipleComponent]
     [ExecuteAlways]
     [AddComponentMenu("Cinemachine/CM_ClearShot")]
-    [RequireComponent(typeof(CM_ChannelComponent))]
+    [RequireComponent(typeof(CM_ChannelProxy))]
     public class CM_ClearShot : CM_VcamBase
     {
         /// <summary>When enabled, the current camera and blend will be indicated in the game window, for debugging</summary>

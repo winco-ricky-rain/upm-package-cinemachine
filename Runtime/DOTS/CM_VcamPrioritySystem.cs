@@ -57,7 +57,7 @@ namespace Cinemachine.ECS
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
 
             // Init the blendstates and populate the queues
-            JobHandle populateDeps = default;
+            JobHandle populateDeps = inputDeps;
             channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
                 {
@@ -70,8 +70,7 @@ namespace Cinemachine.ECS
                         { qualities = GetComponentDataFromEntity<CM_VcamShotQuality>(true) };
                     populateJob.AssignDataPtr(ref blendState);
 
-                    var deps = populateJob.ScheduleGroup(filteredGroup, inputDeps);
-                    populateDeps = JobHandle.CombineDependencies(populateDeps, deps);
+                    populateDeps = populateJob.ScheduleGroup(filteredGroup, populateDeps);
                 });
 
             var sortJob = new SortQueueJob();

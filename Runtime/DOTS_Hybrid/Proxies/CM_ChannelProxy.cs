@@ -6,7 +6,7 @@ namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]
-    public class CM_ChannelComponent : ComponentDataProxy<CM_Channel>
+    public class CM_ChannelProxy : ComponentDataProxy<CM_Channel>
     {
         private void OnValidate()
         {

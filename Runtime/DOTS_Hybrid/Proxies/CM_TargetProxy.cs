@@ -5,5 +5,5 @@ namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]
-    public class CM_VcamBlendHintComponent : CM_VcamComponentBase<CM_VcamBlendHint> { }
+    public class CM_TargetProxy : CM_ComponentProxyBase<CM_Target> { }
 }

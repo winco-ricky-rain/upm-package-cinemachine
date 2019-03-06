@@ -2,7 +2,7 @@ using Unity.Entities;
 
 namespace Cinemachine.ECS_Hybrid
 {
-    public abstract class CM_VcamComponentBase<T> : ComponentDataProxy<T> where T : struct, IComponentData
+    public abstract class CM_ComponentProxyBase<T> : ComponentDataProxy<T> where T : struct, IComponentData
     {
         public bool TryGetEntityAndManager(out EntityManager entityManager, out Entity entity)
         {

@@ -9,8 +9,8 @@ using Unity.Entities;
 
 namespace Cinemachine.Editor.ECS_Hybrid
 {
-    [CustomEditor(typeof(CM_VcamComposerComponent))]
-    internal class CM_VcamComposerEditor : BaseEditor<CM_VcamComposerComponent>
+    [CustomEditor(typeof(CM_VcamComposerProxy))]
+    internal class CM_VcamComposerEditor : BaseEditor<CM_VcamComposerProxy>
     {
         CinemachineScreenComposerGuides mScreenGuideEditor;
 
