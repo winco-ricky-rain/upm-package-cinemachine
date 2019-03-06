@@ -79,7 +79,7 @@ namespace Cinemachine
             {
                 // Show the active camera and blend
                 if (mActiveBlend != null)
-                    return mActiveBlend.Description;
+                    return mActiveBlend.Description();
 
                 ICinemachineCamera vcam = LiveChild;
                 if (vcam == null)

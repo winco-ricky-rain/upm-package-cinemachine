@@ -6,12 +6,12 @@ namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]
-    public class CM_ChannelComponent : ComponentDataWrapper<CM_Channel>
+    public class CM_ChannelComponent : ComponentDataProxy<CM_Channel>
     {
         private void OnValidate()
         {
             var v = Value;
-            v.worldOrientationOverride = math.normalizesafe(v.worldOrientationOverride);
+            v.settings.worldOrientation = math.normalizesafe(v.settings.worldOrientation);
             Value = v;
         }
 
@@ -19,7 +19,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             Value = new CM_Channel
             {
-                worldOrientationOverride = quaternion.identity,
+                settings = new CM_Channel.Settings { worldOrientation = quaternion.identity },
                 defaultBlend = new CinemachineBlendDefinition
                 {
                     m_Style = CinemachineBlendDefinition.Style.EaseInOut,

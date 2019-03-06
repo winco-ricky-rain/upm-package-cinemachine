@@ -74,7 +74,8 @@ namespace Cinemachine.Editor.ECS_Hybrid
                 return;
 
             // Draw the camera guides
-            var brain = CM_Brain.FindBrain(Target.GetEntityComponentData<CM_VcamChannel>().channel);
+            var vcam = Target.Vcam;
+            var brain = vcam == null ? null : CM_Brain.FindBrain(vcam.ParentChannel);
             if (brain == null || brain.OutputCamera == null || !brain.m_ShowGameViewGuides)
                 return;
 

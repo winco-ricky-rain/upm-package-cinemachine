@@ -5,11 +5,14 @@ using Unity.Burst;
 using UnityEngine.Jobs;
 using Cinemachine.ECS;
 using UnityEngine;
+using Unity.Transforms;
+using Unity.Mathematics;
 
 namespace Cinemachine.ECS_Hybrid
 {
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class PushToVcamTransformSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -22,28 +25,51 @@ namespace Cinemachine.ECS_Hybrid
                 ComponentType.ReadOnly(typeof(CM_VcamRotationState)));
         }
 
-        [BurstCompile]
-        struct CopyTransforms : IJobParallelForTransform
-        {
-            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
-            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> rotations;
-
-            public void Execute(int index, TransformAccess transform)
-            {
-                transform.position = positions[index].raw;
-                transform.rotation = rotations[index].raw;
-            }
-        }
-
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             var transforms = m_mainGroup.GetTransformAccessArray();
-            var job = new CopyTransforms
+            var transformStashes = new NativeArray<TransformStash>(transforms.length, Allocator.TempJob);
+            var stashJob = new StashTransforms { transformStashes = transformStashes };
+            var stashDeps = stashJob.ScheduleGroup(m_mainGroup, inputDeps);
+
+            var writeJob = new WriteTransforms { transformStashes = transformStashes };
+            return writeJob.Schedule(transforms, stashDeps);
+        }
+
+        struct TransformStash
+        {
+            public float3 position;
+            public quaternion rotation;
+        }
+
+        [BurstCompile]
+        struct StashTransforms : IJobProcessComponentDataWithEntity<CM_VcamPositionState, CM_VcamRotationState>
+        {
+            public NativeArray<TransformStash> transformStashes;
+
+            public void Execute(
+                Entity entity, int index,
+                [ReadOnly] ref CM_VcamPositionState posState,
+                [ReadOnly] ref CM_VcamRotationState rotState)
             {
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>()
-            };
-            return job.Schedule(transforms, inputDeps);
+                transformStashes[index] = new TransformStash
+                {
+                    rotation = rotState.raw,
+                    position = posState.raw,
+                };
+            }
+        }
+
+        [BurstCompile]
+        struct WriteTransforms : IJobParallelForTransform
+        {
+            [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<TransformStash> transformStashes;
+            public void Execute(int index, TransformAccess transform)
+            {
+                var stash = transformStashes[index];
+                transform.position = stash.position;
+                transform.rotation = stash.rotation;
+            }
         }
     }
 }

@@ -18,20 +18,26 @@ namespace Cinemachine.ECS
         /// </summary>
         public int channel;
 
-        /// <summary>
-        /// Because cameras need to know which way up is, it's possible to override that
-        /// GML todo: this should be an object reference, so value can mutate in state data
-        /// </summary>
-        public quaternion worldOrientationOverride;
-
-        public float aspect;
-
-        public enum Projection
+        [Serializable]
+        public struct Settings
         {
-            Perspective,
-            Orthographic
+            /// <summary>
+            /// Because cameras need to know which way up is, it's possible to override that
+            /// GML todo: this should be an object reference, so value can mutate in state data
+            /// </summary>
+            public float3 worldPosition;
+            public quaternion worldOrientation;
+
+            public float aspect;
+
+            public enum Projection
+            {
+                Perspective,
+                Orthographic
+            }
+            public Projection projection;
         }
-        public Projection projection;
+        public Settings settings;
 
         public enum TimeMode
         {
@@ -69,8 +75,11 @@ namespace Cinemachine.ECS
             {
                 return new CM_Channel
                 {
-                    worldOrientationOverride = quaternion.identity,
-                    aspect = 1
+                    settings = new Settings
+                    {
+                        worldOrientation = quaternion.identity,
+                        aspect = 1
+                    }
                 };
             }
         }
@@ -78,14 +87,10 @@ namespace Cinemachine.ECS
 
     public struct CM_ChannelState : ISystemStateComponentData
     {
-        public int channel;
-        public quaternion worldOrientationOverride;
         public float notPlayingTimeModeExpiry;
         public float deltaTime;
         public Entity soloCamera;
         public Entity activeVcam;
-        public byte orthographic;
-        public float aspect;
     }
 
     /// Manages the nested blend stack and the camera override frames
@@ -102,36 +107,58 @@ namespace Cinemachine.ECS
 
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPrioritySystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_ChannelSystem : JobComponentSystem
     {
-        public Entity GetChannelEntity(int channel)
+        NativeArray<Entity> channelEntitiesCache;
+
+        NativeArray<Entity> GetChannelEntitiesCache(bool recalculate)
         {
-            var entities = m_channelsGroup.GetEntityArray();
-            var channels = m_channelsGroup.GetComponentDataArray<CM_Channel>();
-            int len = channels.Length;
-            for (int i = 0; i < len; ++i)
-                if (channels[i].channel == channel)
-                    return entities[i];
+            ActiveChannelStateJobs.Complete();
+            if (recalculate && channelEntitiesCache.IsCreated)
+                channelEntitiesCache.Dispose();
+            if (!channelEntitiesCache.IsCreated)
+                channelEntitiesCache = m_channelsGroup.ToEntityArray(Allocator.TempJob);
+            return channelEntitiesCache;
+        }
+
+        Entity GetChannelEntity(int channel)
+        {
+            if (entityManager != null)
+            {
+                var entities = GetChannelEntitiesCache(false);
+                for (int i = 0; i < entities.Length; ++i)
+                {
+                    var e = entities[i];
+                    if (entityManager.HasComponent<CM_Channel>(e))
+                    {
+                        var c = entityManager.GetComponentData<CM_Channel>(e);
+                        if (c.channel == channel)
+                            return e;
+                    }
+                }
+            }
             return Entity.Null;
         }
 
         T GetEntityComponentData<T>(Entity e) where T : struct, IComponentData
         {
-            var m = World.Active?.GetExistingManager<EntityManager>();
-            if (m != null && e != Entity.Null && m.HasComponent<T>(e))
-                return m.GetComponentData<T>(e);
+            if (e != Entity.Null && entityManager != null)
+            {
+                if (entityManager.HasComponent<T>(e))
+                    return entityManager.GetComponentData<T>(e);
+            }
             return new T();
         }
 
         void SetEntityComponentData<T>(Entity e, T c) where T : struct, IComponentData
         {
-            var m = World.Active?.GetExistingManager<EntityManager>();
-            if (m != null && e != Entity.Null)
+            if (e != Entity.Null && entityManager != null)
             {
-                if (m.HasComponent<T>(e))
-                    m.SetComponentData(e, c);
+                if (entityManager.HasComponent<T>(e))
+                    entityManager.SetComponentData(e, c);
                 else
-                    m.AddComponentData(e, c);
+                    entityManager.AddComponentData(e, c);
             }
         }
 
@@ -140,26 +167,28 @@ namespace Cinemachine.ECS
             return GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel));
         }
 
+        public CM_Channel GetChannelComponent(int channel)
+        {
+            return GetEntityComponentData<CM_Channel>(GetChannelEntity(channel));
+        }
+
         public Entity GetSoloCamera(int channel)
         {
-            ActiveChannelStateJobs.Complete();
             return GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel)).soloCamera;
         }
 
         public void SetSoloCamera(int channel, Entity vcam)
         {
-            ActiveChannelStateJobs.Complete();
             var e = GetChannelEntity(channel);
             var s = GetEntityComponentData<CM_ChannelState>(e);
             s.soloCamera = vcam;
-            SetEntityComponentData<CM_ChannelState>(e, s);
+            SetEntityComponentData(e, s);
         }
 
         /// <summary>Get the current active virtual camera.</summary>
         /// <param name="channel">The CM channel id to check</param>
         public ICinemachineCamera GetActiveVirtualCamera(int channel)
         {
-            ActiveChannelStateJobs.Complete();
             return CM_EntityVcam.GetEntityVcam(
                 GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel)).activeVcam);
         }
@@ -168,7 +197,6 @@ namespace Cinemachine.ECS
         /// <param name="channel">The CM channel id to check</param>
         public bool IsBlending(int channel)
         {
-            ActiveChannelStateJobs.Complete();
             return GetEntityComponentData<CM_ChannelBlendState>(
                 GetChannelEntity(channel)).blender.IsBlending;
         }
@@ -179,7 +207,6 @@ namespace Cinemachine.ECS
         /// <param name="channel">The CM channel id to check</param>
         public CM_BlendState GetActiveBlend(int channel)
         {
-            ActiveChannelStateJobs.Complete();
             return GetEntityComponentData<CM_ChannelBlendState>(
                 GetChannelEntity(channel)).blender.State;
         }
@@ -188,7 +215,6 @@ namespace Cinemachine.ECS
         /// <param name="channel">The CM channel id to check</param>
         public CameraState GetCurrentCameraState(int channel)
         {
-            ActiveChannelStateJobs.Complete();
             return GetEntityComponentData<CM_ChannelBlendState>(
                 GetChannelEntity(channel)).blender.State.cameraState;
         }
@@ -203,7 +229,6 @@ namespace Cinemachine.ECS
         /// or part of a blend in progress.</returns>
         public bool IsLive(int channel, ICinemachineCamera vcam)
         {
-            ActiveChannelStateJobs.Complete();
             return GetEntityComponentData<CM_ChannelBlendState>(
                 GetChannelEntity(channel)).blender.IsLive(vcam.AsEntity);
         }
@@ -217,10 +242,8 @@ namespace Cinemachine.ECS
         /// or part of a blend in progress.</returns>
         public bool IsLive(ICinemachineCamera vcam)
         {
-            ActiveChannelStateJobs.Complete();
-            var entities = m_channelsGroup.GetEntityArray();
-            int len = entities.Length;
-            for (int i = 0; i < len; ++i)
+            var entities = GetChannelEntitiesCache(false);
+            for (int i = 0; i < entities.Length; ++i)
                 if (GetEntityComponentData<CM_ChannelBlendState>(entities[i]).blender.IsLive(vcam.AsEntity))
                     return true;
             return false;
@@ -263,7 +286,6 @@ namespace Cinemachine.ECS
             if (e == Entity.Null)
                 return 0;
 
-            ActiveChannelStateJobs.Complete();
             var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
             var id = blendState.blender.SetBlendableOverride(
                 overrideId, camA.AsEntity, camB.AsEntity, weightB);
@@ -286,7 +308,6 @@ namespace Cinemachine.ECS
         /// was returned by SetCameraOverride</param>
         public void ReleaseCameraOverride(int channel, int overrideId)
         {
-            ActiveChannelStateJobs.Complete();
             var e = GetChannelEntity(channel);
             var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
             blendState.blender.ReleaseBlendableOverride(overrideId);
@@ -320,7 +341,6 @@ namespace Cinemachine.ECS
                 nameLookup[name] = list;
             }
 
-            ActiveChannelStateJobs.Complete();
             var e = GetChannelEntity(channel);
             var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
             int numBlends = bendDefs == null ? 0 : bendDefs.m_CustomBlends.Length;
@@ -370,102 +390,178 @@ namespace Cinemachine.ECS
             SetEntityComponentData(e, blendState);
         }
 
+        /// <summary>
+        /// Initialize the Channel system at the start of the CM pipeline
+        /// </summary>
+        internal void InitChannelStates()
+        {
+            var channelEntities = GetChannelEntitiesCache(true);
+
+            float timeNow = Time.time;
+            bool isPlaying = Application.isPlaying;
+
+            for (int i = 0; i < channelEntities.Length && entityManager != null; ++i)
+            {
+                var e = channelEntities[i];
+                var c = entityManager.GetComponentData<CM_Channel>(e);
+                var state = entityManager.GetComponentData<CM_ChannelState>(e);
+                if (!isPlaying || timeNow < state.notPlayingTimeModeExpiry)
+                    state.deltaTime = -1;
+                else
+                {
+                    switch (c.timeMode)
+                    {
+                        case CM_Channel.TimeMode.DeltaTime: state.deltaTime = Time.deltaTime; break;
+                        case CM_Channel.TimeMode.DeltaTimeIgnoreScale: state.deltaTime = Time.unscaledDeltaTime; break;
+                        case CM_Channel.TimeMode.FixedDeltaTime: state.deltaTime = Time.fixedTime; break;
+                        case CM_Channel.TimeMode.FixedDeltaTimeIgnoreScale: state.deltaTime = Time.fixedUnscaledDeltaTime; break;
+                        case CM_Channel.TimeMode.Off: default: state.deltaTime = -1; break;
+                    }
+                }
+                entityManager.SetComponentData(e, state);
+            }
+        }
+
+        public delegate void OnVcamGroupDelegate(
+            ComponentGroup filteredGroup,
+            Entity channelEntity,
+            CM_Channel c,
+            CM_ChannelState state);
+
+        /// <summary>Invoke a callback for each channel's vcams</summary>
+        /// <param name="group">all the vcams</param>
+        /// <param name="cb">the callback to invoke per channel</param>
+        public void InvokePerVcamChannel(ComponentGroup group, OnVcamGroupDelegate cb)
+        {
+            if (entityManager == null)
+                return;
+            var entities = GetChannelEntitiesCache(false);
+            uniqueChannelValues.Clear();
+            entityManager.GetAllUniqueSharedComponentData(uniqueChannelValues);
+            for (int i = 0; i < uniqueChannelValues.Count; ++i)
+            {
+                var channel = uniqueChannelValues[i];
+                for (int j = 0; j < entities.Length; ++j)
+                {
+                    var e = entities[j];
+                    var c = entityManager.GetComponentData<CM_Channel>(e);
+                    if (c.channel == channel.channel)
+                    {
+                        group.SetFilter(channel);
+                        if (group.CalculateLength() > 0)
+                            cb(group, e, c, entityManager.GetComponentData<CM_ChannelState>(e));
+                    }
+                }
+            }
+            group.ResetFilter();
+        }
 
         ComponentGroup m_channelsGroup;
         ComponentGroup m_missingChannelStateGroup;
         ComponentGroup m_missingBlendStateGroup;
 
-#pragma warning disable 649 // never assigned to
-        // Used only to add missing state components
-        [Inject] EndFrameBarrier m_missingStateBarrier;
-#pragma warning restore 649
+        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
 
         JobHandle ActiveChannelStateJobs { get; set; }
+        List<CM_VcamChannel> uniqueChannelValues = new List<CM_VcamChannel>();
+
+        EntityManager entityManager;
 
         protected override void OnCreateManager()
         {
             m_channelsGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Channel>(),
-                ComponentType.Create<CM_ChannelState>(),
-                ComponentType.Create<CM_ChannelBlendState>());
+                ComponentType.ReadWrite<CM_ChannelState>(),
+                ComponentType.ReadWrite<CM_ChannelBlendState>());
+
             m_missingChannelStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Channel>(),
-                ComponentType.Subtractive<CM_ChannelState>());
+                ComponentType.Exclude<CM_ChannelState>());
             m_missingBlendStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Channel>(),
-                ComponentType.Subtractive<CM_ChannelBlendState>());
+                ComponentType.Exclude<CM_ChannelBlendState>());
+
+            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
+            entityManager = World.GetOrCreateManager<EntityManager>();
         }
 
         protected override void OnDestroyManager()
         {
-            var blendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>();
-            for (int i = 0; i < blendStates.Length; ++i)
+            var entities = GetChannelEntitiesCache(false);
+            for (int i = 0; i < entities.Length; ++i)
             {
-                blendStates[i].blender.Dispose();
-                blendStates[i].blendLookup.Dispose();
-                blendStates[i].priorityQueue.Dispose();
+                // GML this is probably wrong...
+                // Sneakily bypassing "illegal to access other systems during destruction" warning.
+                // Is there some other way to dispose of these things?
+                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(entities[i]);
+                bs.blender.Dispose();
+                bs.blendLookup.Dispose();
+                bs.priorityQueue.Dispose();
+                entityManager.SetComponentData(entities[i], bs);
             }
+            if (channelEntitiesCache.IsCreated)
+                channelEntitiesCache.Dispose();
             base.OnDestroyManager();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing state components
-            var missingChannelStateEntities = m_missingChannelStateGroup.GetEntityArray();
-            var missingBlendStateEntities = m_missingBlendStateGroup.GetEntityArray();
+            var missingChannelStateEntities = m_missingChannelStateGroup.ToEntityArray(Allocator.TempJob);
+            var missingBlendStateEntities = m_missingBlendStateGroup.ToEntityArray(Allocator.TempJob);
             if (missingChannelStateEntities.Length + missingBlendStateEntities.Length > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
                 for (int i = 0; i < missingChannelStateEntities.Length; ++i)
-                    cb.AddComponent(missingChannelStateEntities[i], new CM_ChannelState { aspect = 1 });
+                    cb.AddComponent(missingChannelStateEntities[i], new CM_ChannelState());
                 for (int i = 0; i < missingBlendStateEntities.Length; ++i)
                     cb.AddComponent(missingBlendStateEntities[i], new CM_ChannelBlendState());
             }
+            missingChannelStateEntities.Dispose();
+            missingBlendStateEntities.Dispose();
+
+            ActiveChannelStateJobs.Complete();
+
+            // Make sure all blenders are sufficiently allocated
+            var entities = GetChannelEntitiesCache(false);
+            for (int i = 0; i < entities.Length; ++i)
+            {
+                var e = entities[i];
+                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(e);
+                bs.blender.PreUpdate();
+                entityManager.SetComponentData(e, bs);
+            }
 
             var objectCount = m_channelsGroup.CalculateLength();
-            var updateJob = new UpdateChannelJob()
-            {
-                now = Time.time,
-                channels = m_channelsGroup.GetComponentDataArray<CM_Channel>(),
-                channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
-                channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
-            };
-            var updateDeps = updateJob.Schedule(objectCount, 1, inputDeps);
+            var updateJob = new UpdateChannelJob() { now = Time.time };
+            var updateDeps = updateJob.ScheduleGroup(m_channelsGroup, inputDeps);
 
-            var fetchJob = new FetchActiveVcamJob
-            {
-                channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
-                channelBlendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>()
-            };
-            var fetchDeps = fetchJob.Schedule(objectCount, 1, updateDeps);
+            var fetchJob = new FetchActiveVcamJob();
+            var fetchDeps = fetchJob.ScheduleGroup(m_channelsGroup, updateDeps);
+
             ActiveChannelStateJobs = fetchDeps;
             return fetchDeps;
         }
 
 
         [BurstCompile]
-        struct UpdateChannelJob : IJobParallelFor
+        struct UpdateChannelJob : IJobProcessComponentData<
+            CM_Channel, CM_ChannelState, CM_ChannelBlendState>
         {
             public float now;
-            [ReadOnly] public ComponentDataArray<CM_Channel> channels;
-            [ReadOnly] public ComponentDataArray<CM_ChannelState> channelStates;
-            public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
 
-            public void Execute(int index)
+            public void Execute(
+                [ReadOnly] ref CM_Channel c,
+                ref CM_ChannelState state, ref CM_ChannelBlendState blendState)
             {
-                var c = channels[index];
                 float activateAfter = c.activateAfter;
                 float minDuration = c.minDuration;
-
-                var state = channelStates[index];
-                var blendState = channelBlendStates[index];
 
                 Entity desiredVcam = state.soloCamera;
                 if (desiredVcam == Entity.Null)
                     desiredVcam = blendState.priorityQueue.EntityAt(0);
                 else
                     activateAfter = minDuration = 0;
-
 
                 Entity currentVcam = blendState.blender.ActiveVirtualCamera;
                 if (blendState.activationTime != 0)
@@ -519,21 +615,14 @@ namespace Cinemachine.ECS
                             c.defaultBlend.m_Time, 0,
                             c.defaultBlend.m_Style == CinemachineBlendDefinition.Style.Cut)
                     });
-
-                channelBlendStates[index] = blendState;
             }
         }
 
-        struct FetchActiveVcamJob : IJobParallelFor
+        struct FetchActiveVcamJob : IJobProcessComponentData<CM_ChannelState, CM_ChannelBlendState>
         {
-            public ComponentDataArray<CM_ChannelState> channelStates;
-            [ReadOnly] public ComponentDataArray<CM_ChannelBlendState> channelBlendStates;
-
-            public void Execute(int index)
+            public void Execute(ref CM_ChannelState state, ref CM_ChannelBlendState blendState)
             {
-                var s = channelStates[index];
-                s.activeVcam = channelBlendStates[index].blender.ActiveVirtualCamera;
-                channelStates[index] = s;
+                state.activeVcam = blendState.blender.ActiveVirtualCamera;
             }
         }
     }

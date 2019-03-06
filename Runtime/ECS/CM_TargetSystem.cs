@@ -25,12 +25,19 @@ namespace Cinemachine.ECS
         public float weight;
     }
 
+    // Dummy component for iterating groups
+    internal struct CM_Group : IComponentData {}
+
     [ExecuteAlways]
-    [UpdateAfter(typeof(EndFrameTransformSystem))]
+    //[UpdateAfter(typeof(EndFrameWorldToLocalSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_TargetSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
         ComponentGroup m_groupGroup;
+        ComponentGroup m_missingGroupGroup;
+
+        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
 
         public struct TargetInfo
         {
@@ -44,14 +51,19 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_Target>(),
+                ComponentType.ReadOnly<CM_Target>(),
                 ComponentType.ReadOnly<LocalToWorld>());
 
             m_groupGroup = GetComponentGroup(
-                ComponentType.Create<CM_Target>(),
+                ComponentType.ReadOnly<CM_Target>(),
                 ComponentType.ReadOnly(typeof(CM_GroupBufferElement)));
 
+            m_missingGroupGroup = GetComponentGroup(
+                ComponentType.ReadOnly(typeof(CM_GroupBufferElement)),
+                ComponentType.Exclude<CM_Group>());
+
             m_targetLookup = new NativeHashMap<Entity, TargetInfo>(64, Allocator.Persistent);
+            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnDestroyManager()
@@ -60,40 +72,86 @@ namespace Cinemachine.ECS
             base.OnDestroyManager();
         }
 
-        [BurstCompile]
-        struct HashTargets : IJobParallelFor
+        protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            [ReadOnly] public EntityArray entities;
-            [ReadOnly] public ComponentDataArray<LocalToWorld> positions;
-            public ComponentDataArray<CM_Target> targets;
+            // Add any missing group components
+            var missingGroupEntities = m_missingGroupGroup.ToEntityArray(Allocator.TempJob);
+            if (missingGroupEntities.Length > 0)
+            {
+                var cb  = m_missingStateBarrier.CreateCommandBuffer();
+                for (int i = 0; i < missingGroupEntities.Length; ++i)
+                    cb.AddComponent(missingGroupEntities[i], new CM_Group());
+            }
+            missingGroupEntities.Dispose();
+
+            // Make sure all readers have finished with the table
+            TargetTableReadJobHandle.Complete();
+            TargetTableReadJobHandle = default;
+
+            var objectCount = m_mainGroup.CalculateLength();
+            var groupCount = m_groupGroup == null ? 0 : m_groupGroup.CalculateLength();
+            m_targetLookup.Clear();
+            m_targetLookup.Capacity = math.max(m_targetLookup.Capacity, objectCount + groupCount);
+
+            var hashJob = new HashTargets()
+            {
+                hashMap = m_targetLookup.ToConcurrent()
+            };
+            TargetTableWriteHandle = hashJob.ScheduleGroup(m_mainGroup, inputDeps);
+
+            if (groupCount > 0)
+            {
+                var infoArray = new NativeArray<TargetInfo>(groupCount, Allocator.TempJob);
+                var groupJob = new UpdateGroups
+                {
+                    groupBuffers = GetBufferFromEntity<CM_GroupBufferElement>(),
+                    hashMap = m_targetLookup,
+                    infoArray = infoArray
+                };
+                TargetTableWriteHandle = groupJob.ScheduleGroup(m_groupGroup, TargetTableWriteHandle);
+
+                var setGroupsJob = new SetGroupInfo
+                {
+                    infoArray = infoArray,
+                    hashMap = m_targetLookup.ToConcurrent(),
+                };
+                TargetTableWriteHandle = setGroupsJob.ScheduleGroup(m_mainGroup, TargetTableWriteHandle);
+            }
+            return TargetTableWriteHandle;
+        }
+
+        [BurstCompile]
+        struct HashTargets : IJobProcessComponentDataWithEntity<LocalToWorld, CM_Target>
+        {
             public NativeHashMap<Entity, TargetInfo>.Concurrent hashMap;
 
-            public void Execute(int index)
+            public void Execute(
+                Entity entity, int index,
+                [ReadOnly] ref LocalToWorld pos,
+                [ReadOnly] ref CM_Target t)
             {
-                var p = positions[index].Value;
-                var t = targets[index];
-                hashMap.TryAdd(entities[index], new TargetInfo()
+                var rot = pos.Value.GetRotation();
+                hashMap.TryAdd(entity, new TargetInfo()
                 {
-                    position = math.transform(p, t.offset),
-                    rotation = new quaternion(p),
+                    rotation = rot,
+                    position = pos.Value.GetTranslation() + math.mul(rot, t.offset),
                     radius = t.radius,
                     warpDelta = t.warpDelta
                 });
                 t.warpDelta = float3.zero;
-                targets[index] = t;
             }
         }
 
         [BurstCompile]
-        struct UpdateGroups : IJobParallelFor
+        struct UpdateGroups : IJobProcessComponentDataWithEntity<CM_Group>
         {
-            [ReadOnly] public BufferArray<CM_GroupBufferElement> groupBuffers;
+            [ReadOnly] public BufferFromEntity<CM_GroupBufferElement> groupBuffers;
             [ReadOnly] public NativeHashMap<Entity, TargetInfo> hashMap;
             public NativeArray<TargetInfo> infoArray;
 
-            public void Execute(int index)
+            public void Execute(Entity entity, int index, [ReadOnly] ref CM_Group groupDummy)
             {
-                var buffer = groupBuffers[index];
+                var buffer = groupBuffers[entity];
 
                 float3 avgPos = float3.zero;
                 float weightSum = 0;
@@ -142,61 +200,16 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct SetGroupInfo : IJobParallelFor
+        struct SetGroupInfo : IJobProcessComponentDataWithEntity<CM_Target>
         {
-            [ReadOnly] public EntityArray entities;
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<TargetInfo> infoArray;
             public NativeHashMap<Entity, TargetInfo>.Concurrent hashMap;
-            public ComponentDataArray<CM_Target> targets;
 
-            public void Execute(int index)
+            public void Execute(Entity entity, int index, ref CM_Target t)
             {
-                hashMap.TryAdd(entities[index], infoArray[index]);
-                targets[index] = new CM_Target { radius = infoArray[index].radius };
+                hashMap.TryAdd(entity, infoArray[index]);
+                t.radius = infoArray[index].radius;
             }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            // Make sure all readers have finished with the table
-            TargetTableReadJobHandle.Complete();
-            TargetTableReadJobHandle = default(JobHandle);
-
-            var objectCount = m_mainGroup.CalculateLength();
-            var groupCount = m_groupGroup == null ? 0 : m_groupGroup.CalculateLength();
-            m_targetLookup.Clear();
-            m_targetLookup.Capacity = math.max(m_targetLookup.Capacity, objectCount + groupCount);
-
-            var hashJob = new HashTargets()
-            {
-                entities = m_mainGroup.GetEntityArray(),
-                targets = m_mainGroup.GetComponentDataArray<CM_Target>(),
-                positions = m_mainGroup.GetComponentDataArray<LocalToWorld>(),
-                hashMap = m_targetLookup.ToConcurrent()
-            };
-            TargetTableWriteHandle = hashJob.Schedule(objectCount, 32, inputDeps);
-
-            if (groupCount > 0)
-            {
-                var infoArray = new NativeArray<TargetInfo>(groupCount, Allocator.TempJob);
-                var groupJob = new UpdateGroups
-                {
-                    groupBuffers = m_groupGroup.GetBufferArray<CM_GroupBufferElement>(),
-                    hashMap = m_targetLookup,
-                    infoArray = infoArray
-                };
-                TargetTableWriteHandle = groupJob.Schedule(groupCount, 32, TargetTableWriteHandle);
-
-                var setGroupsJob = new SetGroupInfo
-                {
-                    entities = m_groupGroup.GetEntityArray(),
-                    infoArray = infoArray,
-                    hashMap = m_targetLookup.ToConcurrent(),
-                    targets = m_groupGroup.GetComponentDataArray<CM_Target>()
-                };
-                TargetTableWriteHandle = setGroupsJob.Schedule(groupCount, 32, TargetTableWriteHandle);
-            }
-            return TargetTableWriteHandle;
         }
 
         JobHandle TargetTableReadJobHandle = default(JobHandle);

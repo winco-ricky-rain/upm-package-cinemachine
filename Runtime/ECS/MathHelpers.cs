@@ -355,5 +355,24 @@ namespace Cinemachine.ECS
             return math.mul(math.mul(quaternion.AxisAngle(up, rot.x), orient), q);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 GetTranslation(this float4x4 m)
+        {
+            return m.c3.xyz;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 GetScale(this float4x4 m)
+        {
+            return new float3(math.length(m.c0), math.length(m.c1), math.length(m.c2));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static quaternion GetRotation(this float4x4 m)
+        {
+            var s = m.GetScale();
+            float3x3 r = new float3x3(m.c0.xyz / s, m.c1.xyz / s, m.c2.xyz / s);
+            return math.normalizesafe(new quaternion(r));
+        }
     }
 }

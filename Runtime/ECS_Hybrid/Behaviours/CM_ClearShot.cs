@@ -76,7 +76,7 @@ namespace Cinemachine.ECS_Hybrid
         /// </summary>
         public ICinemachineCamera ActiveVirtualCamera
         {
-            get { return ActiveChannelSystem?.GetActiveVirtualCamera(ChannelState.channel); }
+            get { return ActiveChannelSystem?.GetActiveVirtualCamera(Channel.channel); }
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.IsBlending(ChannelState.channel);
+                    return channelSystem.IsBlending(Channel.channel);
                 return false;
             }
         }
@@ -102,7 +102,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.GetActiveBlend(ChannelState.channel);
+                    return channelSystem.GetActiveBlend(Channel.channel);
                 return new CM_BlendState();
             }
         }
@@ -149,13 +149,12 @@ namespace Cinemachine.ECS_Hybrid
         protected override void Update()
         {
             var c = Channel;
-            var s = ParentChannelState;
-            CM_Channel.Projection p = s.orthographic != 0
-                ? CM_Channel.Projection.Orthographic : CM_Channel.Projection.Perspective;
-            if (c.aspect != s.aspect || c.projection != p)
+            var s = ParentChannelComponent;
+            var p = s.settings.projection;
+            if (c.settings.aspect != s.settings.aspect || c.settings.projection != p)
             {
-                c.aspect = s.aspect;
-                c.projection = p;
+                c.settings.aspect = s.settings.aspect;
+                c.settings.projection = p;
                 Channel = c;
             }
             base.Update();

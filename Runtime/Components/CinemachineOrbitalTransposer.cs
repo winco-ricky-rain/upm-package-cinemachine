@@ -227,11 +227,12 @@ namespace Cinemachine
             ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime,
             ref CinemachineVirtualCameraBase.TransitionParams transitionParams)
         {
-            if (fromCam != null && fromCam.Follow == FollowTarget
+            var from = fromCam as CinemachineVirtualCameraBase;
+            if (from != null && from.Follow == FollowTarget
                 && m_BindingMode != CinemachineTransposer.BindingMode.SimpleFollowWithWorldUp
                 && transitionParams.m_InheritPosition)
             {
-                m_XAxis.Value = GetAxisClosestValue(fromCam.State.RawPosition, worldUp);
+                m_XAxis.Value = GetAxisClosestValue(from.State.RawPosition, worldUp);
                 return true;
             }
             return false;

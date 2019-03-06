@@ -10,7 +10,7 @@ using System;
 namespace Cinemachine.ECS
 {
     [Serializable]
-    public struct CM_VcamChannel : IComponentData
+    public struct CM_VcamChannel : ISharedComponentData
     {
         public int channel;
     }
@@ -89,16 +89,6 @@ namespace Cinemachine.ECS
                 aspect = 1
             };
         }
-    }
-
-
-    /// <summary>
-    /// Holds the deltaTime with which this vcam needs to be (has been) updated now
-    /// </summary>
-    [Serializable]
-    public struct CM_VcamTimeState : ISystemStateComponentData
-    {
-        public float deltaTime;
     }
 
     [Serializable]
@@ -199,69 +189,46 @@ namespace Cinemachine.ECS
 
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_TargetSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamPreBodySystem : JobComponentSystem
     {
-        ComponentGroup m_channelsGroup;
-        ComponentGroup m_posGroup;
         ComponentGroup m_rotGroup;
-        ComponentGroup m_lensGroup;
         ComponentGroup m_vcamGroup;
         ComponentGroup m_missingPosStateGroup;
         ComponentGroup m_missingRotStateGroup;
         ComponentGroup m_missingLensStateGroup;
-        ComponentGroup m_missingTimeStateGroup;
 
-#pragma warning disable 649 // never assigned to
-        // Used only to add missing state components
-        [Inject] EndFrameBarrier m_missingStateBarrier;
-#pragma warning restore 649
+        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
 
         protected override void OnCreateManager()
         {
-            m_channelsGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_Channel>(),
-                ComponentType.Create<CM_ChannelState>(),
-                ComponentType.Create<CM_ChannelBlendState>());
-            m_posGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamChannel>(),
-                ComponentType.Create<CM_VcamPositionState>());
-            m_rotGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamChannel>(),
-                ComponentType.Create<CM_VcamRotationState>());
-            m_lensGroup = GetComponentGroup(
+            m_vcamGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.ReadOnly<CM_VcamLens>(),
-                ComponentType.Create<CM_VcamLensState>(),
-                ComponentType.Create<CM_VcamTimeState>());
-
-            m_vcamGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamChannel>(),
-                ComponentType.ReadOnly<CM_VcamPriority>(),
-                ComponentType.ReadOnly<CM_VcamShotQuality>());
+                ComponentType.ReadWrite<CM_VcamLensState>(),
+                ComponentType.ReadWrite<CM_VcamPositionState>(),
+                ComponentType.ReadWrite<CM_VcamRotationState>());
 
             m_missingPosStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
-                ComponentType.Subtractive<CM_VcamPositionState>());
+                ComponentType.Exclude<CM_VcamPositionState>());
             m_missingRotStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
-                ComponentType.Subtractive<CM_VcamRotationState>());
+                ComponentType.Exclude<CM_VcamRotationState>());
             m_missingLensStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
-                ComponentType.Subtractive<CM_VcamLensState>());
-            m_missingTimeStateGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamChannel>(),
-                ComponentType.Subtractive<CM_VcamTimeState>());
+                ComponentType.Exclude<CM_VcamLensState>());
+
+            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing state components
-            var missingPosEntities = m_missingPosStateGroup.GetEntityArray();
-            var missingRotEntities = m_missingRotStateGroup.GetEntityArray();
-            var missingLensEntities = m_missingLensStateGroup.GetEntityArray();
-            var missingTimeEntities = m_missingTimeStateGroup.GetEntityArray();
-            if (missingPosEntities.Length + missingRotEntities.Length
-                + missingLensEntities.Length + missingTimeEntities.Length > 0)
+            var missingPosEntities = m_missingPosStateGroup.ToEntityArray(Allocator.TempJob);
+            var missingRotEntities = m_missingRotStateGroup.ToEntityArray(Allocator.TempJob);
+            var missingLensEntities = m_missingLensStateGroup.ToEntityArray(Allocator.TempJob);
+            if (missingPosEntities.Length + missingRotEntities.Length + missingLensEntities.Length > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
                 for (int i = 0; i < missingPosEntities.Length; ++i)
@@ -271,161 +238,68 @@ namespace Cinemachine.ECS
                         { raw = quaternion.identity, correction = quaternion.identity });
                 for (int i = 0; i < missingLensEntities.Length; ++i)
                     cb.AddComponent(missingLensEntities[i], CM_VcamLensState.FromLens(CM_VcamLens.Default));
-                for (int i = 0; i < missingTimeEntities.Length; ++i)
-                    cb.AddComponent(missingTimeEntities[i], new CM_VcamTimeState());
             }
+            missingPosEntities.Dispose();
+            missingRotEntities.Dispose();
+            missingLensEntities.Dispose();
 
-            var rotJob = new InitRotJob
-            {
-                vcamRotations = m_rotGroup.GetComponentDataArray<CM_VcamRotationState>(),
-                rotations = GetComponentDataFromEntity<Rotation>(true),
-                entities = m_rotGroup.GetEntityArray()
-            };
-            var rotDeps = rotJob.Schedule(m_rotGroup.CalculateLength(), 32, inputDeps);
-
-            var prioritySystem = World.GetExistingManager<CM_VcamPrioritySystem>();
-            var channelStateLookup = prioritySystem.AllocateChannelStateLookup();
-
-            var channelJob = new CacheChannelStateJob
-            {
-                timeNow = Time.time,
-                isPlaying = Application.isPlaying ? 1 : 0,
-                channels = m_channelsGroup.GetComponentDataArray<CM_Channel>(),
-                channelStates = m_channelsGroup.GetComponentDataArray<CM_ChannelState>(),
-                hashMap = channelStateLookup.ToConcurrent()
-            };
-            channelJob.SetDeltaTimes();
-            var channelDeps = channelJob.Schedule(m_channelsGroup.CalculateLength(), 32, inputDeps);
-
-            var blendStates = m_channelsGroup.GetComponentDataArray<CM_ChannelBlendState>();
-            for (int i = 0; i < blendStates.Length; ++i)
-            {
-                var s = blendStates[i];
-                s.priorityQueue.ResetReserved();
-                s.blender.PreUpdate();
-                blendStates[i] = s;
-            }
-
-            var initJob = new InitVcamJob
-            {
-                lensStates = m_lensGroup.GetComponentDataArray<CM_VcamLensState>(),
-                timeStates = m_lensGroup.GetComponentDataArray<CM_VcamTimeState>(),
-                vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                positions = GetComponentDataFromEntity<Translation>(true),
-                entities = m_posGroup.GetEntityArray(),
-                lenses = m_lensGroup.GetComponentDataArray<CM_VcamLens>(),
-                vcamChannels = m_lensGroup.GetComponentDataArray<CM_VcamChannel>(),
-                channelStates = channelStateLookup
-            };
-            var initDeps = initJob.Schedule(m_lensGroup.CalculateLength(), 32, channelDeps);
-
-            // Reserve the priority queues
-            var reserveDeps = prioritySystem.PreUpdate(channelDeps);
-
-            return JobHandle.CombineDependencies(rotDeps, initDeps, reserveDeps);
-        }
-
-        [BurstCompile]
-        unsafe struct CacheChannelStateJob : IJobParallelFor
-        {
-            public float timeNow;
-            public int isPlaying;
-            public fixed float deltaTimes[5];
-            [ReadOnly] public ComponentDataArray<CM_Channel> channels;
-            public ComponentDataArray<CM_ChannelState> channelStates;
-            public NativeHashMap<int, CM_VcamPrioritySystem.ChannelStates>.Concurrent hashMap;
-
-            public void Execute(int index)
-            {
-                var c = channels[index];
-                var state = channelStates[index];
-                state.channel = c.channel;
-                state.worldOrientationOverride = math.normalizesafe(c.worldOrientationOverride);
-                state.aspect = c.aspect;
-                state.orthographic =
-                    c.projection == CM_Channel.Projection.Orthographic ? (byte)1 : (byte)0;
-                int timeModeIndex = (int)c.timeMode;
-                state.deltaTime = math.select(
-                    -1, deltaTimes[timeModeIndex],
-                    (isPlaying != 0) | (timeNow < state.notPlayingTimeModeExpiry));
-                channelStates[index] = state;
-                hashMap.TryAdd(state.channel, new CM_VcamPrioritySystem.ChannelStates
+            JobHandle vcamDeps = default;
+            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            channelSystem.InitChannelStates();
+            channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
                 {
-                    index = index,
-                    state = state
+                    var initJob = new InitVcamJob
+                    {
+                        channelSettings = c.settings,
+                        orthographic = (c.settings.projection == CM_Channel.Settings.Projection.Orthographic)
+                            ? (byte)1 : (byte)0,
+                        positions = GetComponentDataFromEntity<LocalToWorld>(true)
+                    };
+                    var deps = initJob.ScheduleGroup(filteredGroup, inputDeps);
+                    vcamDeps = JobHandle.CombineDependencies(vcamDeps, deps);
                 });
-            }
 
-            // Call this from main thread, to access unsafe fixed array
-            public void SetDeltaTimes()
-            {
-                deltaTimes[(int)CM_Channel.TimeMode.DeltaTime] = Time.deltaTime;
-                deltaTimes[(int)CM_Channel.TimeMode.DeltaTimeIgnoreScale] = Time.unscaledDeltaTime;
-                deltaTimes[(int)CM_Channel.TimeMode.FixedDeltaTime] = Time.fixedTime;
-                deltaTimes[(int)CM_Channel.TimeMode.FixedDeltaTimeIgnoreScale] = Time.fixedUnscaledDeltaTime;
-                deltaTimes[(int)CM_Channel.TimeMode.Off] = -1;
-            }
+            return vcamDeps;
         }
 
         [BurstCompile]
-        struct InitRotJob : IJobParallelFor
+        struct InitVcamJob : IJobProcessComponentDataWithEntity<
+            CM_VcamLensState, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLens>
         {
-            public ComponentDataArray<CM_VcamRotationState> vcamRotations;
-            [ReadOnly] public ComponentDataFromEntity<Rotation> rotations;
-            [ReadOnly] public EntityArray entities;
+            public CM_Channel.Settings channelSettings;
+            public byte orthographic;
+            [ReadOnly] public ComponentDataFromEntity<LocalToWorld> positions;
 
-            public void Execute(int index)
+            public void Execute(
+                Entity entity, int index,
+                ref CM_VcamLensState lensState,
+                ref CM_VcamPositionState posState,
+                ref CM_VcamRotationState rotState,
+                [ReadOnly] ref CM_VcamLens lens)
             {
-                var r = vcamRotations[index];
-                r.correction = quaternion.identity;
-                vcamRotations[index] = r;
+                lensState = CM_VcamLensState.FromLens(lens);
+                lensState.aspect = channelSettings.aspect;
+                lensState.orthographic = orthographic;
 
-                var entity = entities[index];
-                if (rotations.Exists(entity))
-                    r.raw = rotations[entity].Value;
-
-                // GML todo: set the lookAt point if lookAt target
-                vcamRotations[index] = r;
-            }
-        }
-
-        [BurstCompile]
-        struct InitVcamJob : IJobParallelFor
-        {
-            public ComponentDataArray<CM_VcamLensState> lensStates;
-            public ComponentDataArray<CM_VcamTimeState> timeStates;
-            public ComponentDataArray<CM_VcamPositionState> vcamPositions;
-            [ReadOnly] public ComponentDataFromEntity<Translation> positions;
-            [ReadOnly] public EntityArray entities;
-            [ReadOnly] public ComponentDataArray<CM_VcamLens> lenses;
-            [ReadOnly] public ComponentDataArray<CM_VcamChannel> vcamChannels;
-            [ReadOnly] public NativeHashMap<int, CM_VcamPrioritySystem.ChannelStates> channelStates;
-
-            public void Execute(int index)
-            {
-                if (!channelStates.TryGetValue(vcamChannels[index].channel,
-                        out CM_VcamPrioritySystem.ChannelStates channelState))
-                    return;
-
-                var lensState = CM_VcamLensState.FromLens(lenses[index]);
-                lensState.aspect = channelState.state.aspect;
-                lensState.orthographic = channelState.state.orthographic;
-                lensStates[index] = lensState;
-                timeStates[index] = new CM_VcamTimeState { deltaTime = channelState.state.deltaTime };
-
-                var p = vcamPositions[index];
-                p.dampingBypass = float3.zero;
-                p.up = math.mul(channelState.state.worldOrientationOverride, math.up());
-                var entity = entities[index];
+                posState.dampingBypass = float3.zero;
+                posState.up = math.mul(channelSettings.worldOrientation, math.up());
+                posState.correction = float3.zero;
+                rotState.correction = quaternion.identity;
                 if (positions.Exists(entity))
-                    p.raw = positions[entity].Value;
-                vcamPositions[index] = p;
+                {
+                    var m = positions[entity].Value;
+                    posState.raw = m.GetTranslation();
+                    rotState.raw = m.GetRotation();
+                }
+                // GML todo: set the lookAt point if lookAt target
             }
         }
     }
 
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreBodySystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamPreAimSystem : ComponentSystem
     {
         protected override void OnUpdate() {} // Do nothing
@@ -433,6 +307,7 @@ namespace Cinemachine.ECS
 
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreAimSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamPreCorrectionSystem : ComponentSystem
     {
         protected override void OnUpdate() {} // Do nothing
@@ -440,6 +315,7 @@ namespace Cinemachine.ECS
 
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreCorrectionSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamFinalizeSystem : JobComponentSystem
     {
         ComponentGroup m_posGroup;
@@ -449,92 +325,48 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_posGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPositionState>());
-            m_rotGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamRotationState>(),
-                ComponentType.Create<Rotation>());
+                ComponentType.ReadWrite<CM_VcamPositionState>());
             m_transformGroup = GetComponentGroup(
-                ComponentType.Create<LocalToWorld>(),
+                ComponentType.ReadWrite<LocalToWorld>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamRotationState>());
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var posJob = new FinalizePosJob
-            {
-                vcamPositions = m_posGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                positions = GetComponentDataFromEntity<Translation>(false),
-                entities = m_posGroup.GetEntityArray()
-            };
-            var posDeps = posJob.Schedule(m_posGroup.CalculateLength(), 32, inputDeps);
+            var posJob = new FinalizePosJob();
+            var posDeps = posJob.ScheduleGroup(m_posGroup, inputDeps);
 
-            var rotJob = new FinalizeRotJob
-            {
-                vcamRotations = m_rotGroup.GetComponentDataArray<CM_VcamRotationState>(),
-                rotations = m_rotGroup.GetComponentDataArray<Rotation>(),
-            };
-            var rotDeps = rotJob.Schedule(m_rotGroup.CalculateLength(), 32, inputDeps);
+            var transformJob = new PushToTransformJob();
+            var transformDeps = transformJob.ScheduleGroup(m_transformGroup, posDeps);
 
-            var transformJob = new PushToTransformJob
-            {
-                localToWorld = m_transformGroup.GetComponentDataArray<LocalToWorld>(),
-                vcamPositions = m_transformGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                vcamRotations = m_transformGroup.GetComponentDataArray<CM_VcamRotationState>()
-            };
-            var transformDeps = transformJob.Schedule(m_transformGroup.CalculateLength(), 32, posDeps);
-
-            return JobHandle.CombineDependencies(rotDeps, transformDeps);
+            return transformDeps;
         }
 
         [BurstCompile]
-        struct FinalizePosJob : IJobParallelFor
+        struct FinalizePosJob : IJobProcessComponentDataWithEntity<CM_VcamPositionState>
         {
-            public ComponentDataArray<CM_VcamPositionState> vcamPositions;
-            [NativeDisableParallelForRestriction] public ComponentDataFromEntity<Translation> positions;
-            [ReadOnly] public EntityArray entities;
-
-            public void Execute(int index)
+            public void Execute(Entity entity, int index, ref CM_VcamPositionState posState)
             {
-                var p = vcamPositions[index];
-                p.dampingBypass = float3.zero;
-                p.previousFrameDataIsValid = 1;
-                vcamPositions[index] = p;
-                var entity = entities[index];
-                if (positions.Exists(entity))
-                    positions[entity] = new Translation { Value = p.raw };
+                posState.dampingBypass = float3.zero; // GML should this be moved to init?
+                posState.previousFrameDataIsValid = 1;
             }
         }
 
         [BurstCompile]
-        struct FinalizeRotJob : IJobParallelFor
+        struct PushToTransformJob : IJobProcessComponentData<
+            CM_VcamPositionState, CM_VcamRotationState, LocalToWorld>
         {
-            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> vcamRotations;
-            [NativeDisableParallelForRestriction] public ComponentDataArray<Rotation> rotations;
-
-            public void Execute(int index)
+            public void Execute(
+                [ReadOnly] ref CM_VcamPositionState posState,
+                [ReadOnly] ref CM_VcamRotationState rotState,
+                ref LocalToWorld l2w)
             {
-                rotations[index] = new Rotation { Value = vcamRotations[index].raw };
-            }
-        }
-
-        [BurstCompile]
-        struct PushToTransformJob : IJobParallelFor
-        {
-            public ComponentDataArray<LocalToWorld> localToWorld;
-            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> vcamPositions;
-            [ReadOnly] public ComponentDataArray<CM_VcamRotationState> vcamRotations;
-
-            public void Execute(int index)
-            {
-                var m0 = localToWorld[index].Value;
+                var m0 = l2w.Value;
                 var m = new float3x3(m0.c0.xyz, m0.c1.xyz, m0.c2.xyz);
                 var v = new float3(0.5773503f, 0.5773503f, 0.5773503f); // unit vector
                 var scale = float4x4.Scale(math.length(math.mul(m, v))); // approximate uniform scale
-                localToWorld[index] = new LocalToWorld
-                {
-                    Value = math.mul(new float4x4(vcamRotations[index].raw, vcamPositions[index].raw), scale)
-                };
+                l2w.Value = math.mul(new float4x4(rotState.raw, posState.raw), scale);
             }
         }
     }

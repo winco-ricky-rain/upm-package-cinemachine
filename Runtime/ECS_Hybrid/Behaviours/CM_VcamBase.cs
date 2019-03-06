@@ -91,6 +91,17 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
+        protected CM_Channel ParentChannelComponent
+        {
+            get
+            {
+                var m = World.Active?.GetExistingManager<CM_ChannelSystem>();
+                if (m != null)
+                    return m.GetChannelComponent(ParentChannel);
+                return new CM_Channel();
+            }
+        }
+
         public int ParentChannel { get { return gameObject.layer; } } // GML is this the right thing?
 
 
@@ -113,11 +124,8 @@ namespace Cinemachine.ECS_Hybrid
             {
                 if (!m.HasComponent<CM_Target>(e))
                     m.AddComponentData(e, new CM_Target());
-
-                if (!m.HasComponent<Translation>(e))
-                    m.AddComponentData(e, new Translation());
-                if (!m.HasComponent<Rotation>(e))
-                    m.AddComponentData(e, new Rotation());
+                if (!m.HasComponent<LocalToWorld>(e))
+                    m.AddComponentData(e, new LocalToWorld());
                 if (!m.HasComponent<CopyTransformFromGameObject>(e))
                     m.AddComponentData(e, new CopyTransformFromGameObject());
             }
@@ -131,17 +139,21 @@ namespace Cinemachine.ECS_Hybrid
             if (m == null || !m.Exists(Entity))
                 return;
 
+            var typeIndex = TypeManager.GetTypeIndex<CM_VcamChannel>();
             if (!m.HasComponent<CM_VcamChannel>(Entity))
-                m.AddComponentData(Entity, new CM_VcamChannel());
+                m.AddSharedComponentData(Entity, new CM_VcamChannel());
             if (!m.HasComponent<CM_VcamPriority>(Entity))
                 m.AddComponentData(Entity, new CM_VcamPriority()); // GML todo: vcamSequence
             if (!m.HasComponent<CM_VcamShotQuality>(Entity))
                 m.AddComponentData(Entity, new CM_VcamShotQuality());
 
-            m.SetComponentData(Entity, new CM_VcamChannel
-            {
-                channel = ParentChannel
-            });
+            var c = m.GetSharedComponentData<CM_VcamChannel>(Entity);
+            if (c.channel != ParentChannel)
+                m.SetSharedComponentData(Entity, new CM_VcamChannel
+                {
+                    channel = ParentChannel
+                });
+
             m.SetComponentData(Entity, new CM_VcamPriority
             {
                 priority = m_Priority

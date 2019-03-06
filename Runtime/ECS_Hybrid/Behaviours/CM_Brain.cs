@@ -121,7 +121,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                return ActiveChannelSystem?.GetActiveVirtualCamera(ChannelState.channel);
+                return ActiveChannelSystem?.GetActiveVirtualCamera(Channel.channel);
             }
         }
 
@@ -134,7 +134,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.IsBlending(ChannelState.channel);
+                    return channelSystem.IsBlending(Channel.channel);
                 return false;
             }
         }
@@ -148,7 +148,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.GetActiveBlend(ChannelState.channel);
+                    return channelSystem.GetActiveBlend(Channel.channel);
                 return new CM_BlendState();
             }
         }
@@ -162,7 +162,7 @@ namespace Cinemachine.ECS_Hybrid
             {
                 var channelSystem = ActiveChannelSystem;
                 if (channelSystem != null)
-                    return channelSystem.GetCurrentCameraState(ChannelState.channel);
+                    return channelSystem.GetCurrentCameraState(Channel.channel);
                 var state = CameraState.Default;
                 var t = transform;
                 state.RawPosition = t.position;
@@ -359,12 +359,12 @@ namespace Cinemachine.ECS_Hybrid
             var channelSystem = ActiveChannelSystem;
             if (channelSystem != null)
             {
-                var channelState = ChannelState;
-                var deltaTime = channelState.deltaTime;
-                var worldUp = math.mul(channelState.worldOrientationOverride, math.up());
+                var channel = Channel;
+                var deltaTime = ChannelState.deltaTime;
+                var worldUp = math.mul(channel.settings.worldOrientation, math.up());
 
                 scratchList.Clear();
-                channelSystem.GetLiveVcams(channelState.channel, scratchList);
+                channelSystem.GetLiveVcams(Channel.channel, scratchList);
                 var previous = liveVcamsPreviousFrame.Count > 0
                     ? CM_EntityVcam.GetEntityVcam(liveVcamsPreviousFrame[0]) : null;
                 bool isBlending = scratchList.Count > 1;
@@ -404,12 +404,13 @@ namespace Cinemachine.ECS_Hybrid
             if (camera != null)
             {
                 var c = Channel;
-                CM_Channel.Projection p = camera.orthographic
-                    ? CM_Channel.Projection.Orthographic : CM_Channel.Projection.Perspective;
-                if (c.aspect != camera.aspect || c.projection != p)
+                CM_Channel.Settings.Projection p = camera.orthographic
+                    ? CM_Channel.Settings.Projection.Orthographic
+                    : CM_Channel.Settings.Projection.Perspective;
+                if (c.settings.aspect != camera.aspect || c.settings.projection != p)
                 {
-                    c.aspect = camera.aspect;
-                    c.projection = p;
+                    c.settings.aspect = camera.aspect;
+                    c.settings.projection = p;
                     Channel = c;
                 }
             }

@@ -6,6 +6,7 @@ using Unity.Burst;
 using System;
 using UnityEngine;
 using System.Runtime.CompilerServices;
+using Unity.Transforms;
 
 namespace Cinemachine.ECS
 {
@@ -107,6 +108,7 @@ namespace Cinemachine.ECS
     // Internal use only
     struct CM_VcamComposerState : ISystemStateComponentData
     {
+        public float3 cameraPos;
         public float3 cameraPosPrevFrame;
         public float3 lookAtPrevFrame;
         public float2 screenOffsetPrevFrame;
@@ -209,90 +211,88 @@ namespace Cinemachine.ECS
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreAimSystem))]
     [UpdateBefore(typeof(CM_VcamPreCorrectionSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamComposerSystem : JobComponentSystem
     {
-        ComponentGroup m_mainGroup;
+        ComponentGroup m_vcamGroup;
         ComponentGroup m_missingStateGroup;
 
-#pragma warning disable 649 // never assigned to
-        // Used only to add missing CM_VcamTransposerState components
-        [Inject] EndFrameBarrier m_missingStateBarrier;
-#pragma warning restore 649
+        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
 
         protected override void OnCreateManager()
         {
-            m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamRotationState>(),
+            m_vcamGroup = GetComponentGroup(
+                ComponentType.ReadWrite<CM_VcamRotationState>(),
+                ComponentType.ReadWrite<CM_VcamComposerState>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamLensState>(),
-                ComponentType.ReadOnly<CM_VcamTimeState>(),
                 ComponentType.ReadOnly<CM_VcamLookAtTarget>(),
                 ComponentType.ReadOnly<CM_VcamComposer>(),
-                ComponentType.Create<CM_VcamComposerState>());
+                ComponentType.ReadOnly<CM_VcamChannel>());
 
             m_missingStateGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamRotationState>(),
+                ComponentType.ReadWrite<CM_VcamRotationState>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamLensState>(),
                 ComponentType.ReadOnly<CM_VcamLookAtTarget>(),
                 ComponentType.ReadOnly<CM_VcamComposer>(),
-                ComponentType.Subtractive<CM_VcamComposerState>());
+                ComponentType.Exclude<CM_VcamComposerState>());
+
+            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing composer state components
-            var missingEntities = m_missingStateGroup.GetEntityArray();
+            var missingEntities = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
             if (missingEntities.Length > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
                 for (int i = 0; i < missingEntities.Length; ++i)
                     cb.AddComponent(missingEntities[i], new CM_VcamComposerState());
             }
+            missingEntities.Dispose();
 
-            var targetSystem = World.GetExistingManager<CM_TargetSystem>();
+            var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
                 return default; // no targets yet
 
-            var job = new ComposerJob
-            {
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                timeStates = m_mainGroup.GetComponentDataArray<CM_VcamTimeState>(),
-                lenses = m_mainGroup.GetComponentDataArray<CM_VcamLensState>(),
-                targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
-                composers = m_mainGroup.GetComponentDataArray<CM_VcamComposer>(),
-                composerStates = m_mainGroup.GetComponentDataArray<CM_VcamComposerState>(),
-                targetLookup = targetLookup
-            };
-            return targetSystem.RegisterTargetLookupReadJobs(
-                job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
+            JobHandle composerDeps = default;
+            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
+                {
+                    var job = new ComposerJob
+                    {
+                        deltaTime = state.deltaTime,
+                        targetLookup = targetLookup
+                    };
+                    var deps = job.ScheduleGroup(filteredGroup, inputDeps);
+                    composerDeps = JobHandle.CombineDependencies(composerDeps, deps);
+                });
+
+            return targetSystem.RegisterTargetLookupReadJobs(composerDeps);
         }
 
         [BurstCompile]
-        struct ComposerJob : IJobParallelFor
+        struct ComposerJob : IJobProcessComponentData<
+            CM_VcamComposerState, CM_VcamRotationState,
+            CM_VcamPositionState, CM_VcamLensState,
+            CM_VcamLookAtTarget, CM_VcamComposer>
         {
-            public ComponentDataArray<CM_VcamRotationState> rotations;
-            public ComponentDataArray<CM_VcamComposerState> composerStates;
-            [ReadOnly] public ComponentDataArray<CM_VcamTimeState> timeStates;
-            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
-            [ReadOnly] public ComponentDataArray<CM_VcamLensState> lenses;
-            [ReadOnly] public ComponentDataArray<CM_VcamLookAtTarget> targets;
-            [ReadOnly] public ComponentDataArray<CM_VcamComposer> composers;
+            public float deltaTime;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
-            // GML todo: optimize.  Get rid of those ifs
-            public void Execute(int index)
+            public void Execute(
+                ref CM_VcamComposerState composerState,
+                ref CM_VcamRotationState rotState,
+                [ReadOnly] ref CM_VcamPositionState posState,
+                [ReadOnly] ref CM_VcamLensState lensState,
+                [ReadOnly] ref CM_VcamLookAtTarget lookAt,
+                [ReadOnly] ref CM_VcamComposer composer)
             {
-                targetLookup.TryGetValue(targets[index].target, out CM_TargetSystem.TargetInfo targetInfo);
-
-                var composer = composers[index];
-                var rotState = rotations[index];
-                var posState = positions[index];
-                var composerState = composerStates[index];
-                var lensState = lenses[index];
-                var deltaTime = timeStates[index].deltaTime;
+                targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo);
 
                 rotState.lookAtPoint = targetInfo.position;
                 rotState.correction = quaternion.identity;
@@ -303,7 +303,6 @@ namespace Cinemachine.ECS
                 {
                     if (deltaTime >= 0)
                         rotState.raw = composerState.cameraOrientationPrevFrame;
-                    rotations[index] = rotState;
                     return;  // navel-gazing, get outa here
                 }
 
@@ -355,10 +354,8 @@ namespace Cinemachine.ECS
                 composerState.cameraOrientationPrevFrame = math.normalize(rigOrientation);
                 composerState.screenOffsetPrevFrame = composerState.cameraOrientationPrevFrame.GetCameraRotationToTarget(
                     math.normalizesafe(composerState.lookAtPrevFrame - composerState.cameraPosPrevFrame), posState.up);
-                composerStates[index] = composerState;
 
                 rotState.raw = composerState.cameraOrientationPrevFrame;
-                rotations[index] = rotState;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

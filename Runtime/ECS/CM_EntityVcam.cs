@@ -44,13 +44,12 @@ namespace Cinemachine.ECS
         {
             CameraState state = CameraState.Default;
             var m = World.Active?.GetExistingManager<EntityManager>();
-            if (m != null)
+            if (m != null && e != Entity.Null)
             {
                 // Is this entity a channel?
                 if (m.HasComponent<CM_ChannelBlendState>(e) && m.HasComponent<CM_Channel>(e))
                 {
-                    if (!m.HasComponent<CM_VcamChannel>(e)
-                        || m.GetComponentData<CM_VcamChannel>(e).channel
+                    if (m.GetSharedComponentData<CM_VcamChannel>(e).channel
                             != m.GetComponentData<CM_Channel>(e).channel)
                     {
                         var c = m.GetComponentData<CM_ChannelBlendState>(e);

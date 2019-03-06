@@ -1,9 +1,7 @@
 ﻿using Unity.Collections;
 using Unity.Entities;
 using Unity.Collections.LowLevel.Unsafe;
-using System.Threading;
 using System.Runtime.CompilerServices;
-using System.Collections.Generic;
 
 namespace Cinemachine.ECS
 {
@@ -17,74 +15,43 @@ namespace Cinemachine.ECS
         }
 
         QueueEntry* data;
-        int reserved;
-        int length;
+        public int Length { get; private set; }
 
-        public int Capacity { get; private set; }
-        public int Length { get { return length; } }
-
+        // Call from a job
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity EntityAt(int index)
         {
-            return index >= 0 && index < length ? data[index].entity : Entity.Null;
+            return index >= 0 && index < Length ? data[index].entity : Entity.Null;
         }
 
-        // GML: Why can't this be called from burst-compiled jobs?!?!?
-        public void Sort(IComparer<QueueEntry> comparer)
-        {
-            var array = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<QueueEntry>(
-                data, length, Allocator.None);
-
-            #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                var safety = AtomicSafetyHandle.Create();
-                NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref array, safety);
-            #endif
-
-            array.Sort(comparer);
-
-            #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.Release(safety);
-            #endif
-        }
-        // GML Use this hack instead:
+        // Call from a job
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void* GetUnsafeDataPtr() { return data; }
 
-        // Call outside of job
-        public void ResetReserved()
-        {
-            reserved = 0;
-            length = 0;
-        }
-
-        // Call from job
+        // Call from a job
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void InterlockedIncrementReserved()
+        public void SetData([ReadOnly] NativeArray<QueueEntry> array)
         {
-            Interlocked.Increment(ref reserved);
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            if (array.Length > Length)
+                throw new System.IndexOutOfRangeException("CM_PriorityQueue.SetData out of range");
+#endif
+            if (Length > 0)
+                UnsafeUtility.MemCpy(data, array.GetUnsafeReadOnlyPtr(), sizeof(QueueEntry) * Length);
         }
 
         // Call outside of job
-        public void AllocateReservedQueue()
+        public void AllocateData(int length)
         {
-            int itemSize = sizeof(QueueEntry);
-            if (Capacity < reserved)
+            if (length != Length)
             {
-                Capacity = reserved;
                 if (data != null)
                     UnsafeUtility.Free(data, Allocator.Persistent);
+                Length = length;
                 data = (QueueEntry*)UnsafeUtility.Malloc(
-                    itemSize * Capacity,
+                    sizeof(QueueEntry) * Length,
                     UnsafeUtility.AlignOf<QueueEntry>(), Allocator.Persistent);
             }
-            reserved = 0;
-            length = 0;
-        }
-
-        // Call from job
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void InterlockedAddItem(QueueEntry item)
-        {
-            data[Interlocked.Increment(ref length)-1] = item;
         }
 
         // Call outside of job
@@ -93,9 +60,7 @@ namespace Cinemachine.ECS
             if (data != null)
                 UnsafeUtility.Free(data, Allocator.Persistent);
             data = null;
-            Capacity = 0;
-            length = 0;
-            reserved = 0;
+            Length = 0;
         }
     }
 }

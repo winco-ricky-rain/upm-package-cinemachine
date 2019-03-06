@@ -21,7 +21,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
         protected virtual void OnDisable()
         {
-            var brain = CM_Brain.FindBrain(Target.GetEntityComponentData<CM_VcamChannel>().channel);
+            var brain = Target == null ? null : CM_Brain.FindBrain(Target.ParentChannel);
             if (brain != null && brain.SoloCamera == Target.AsEntity)
             {
                 brain.SoloCamera = Entity.Null;
@@ -63,7 +63,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
             rect.width -= rectLabel.width;
             rect.x += rectLabel.width;
 
-            var brain = CM_Brain.FindBrain(Target.GetEntityComponentData<CM_VcamChannel>().channel);
+            var brain = CM_Brain.FindBrain(Target.ParentChannel);
             Color color = GUI.color;
             bool isSolo = brain != null && brain.SoloCamera == Target.AsEntity && Target.AsEntity != Entity.Null;
             if (isSolo)
@@ -89,7 +89,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
         protected void DrawGlobalControlsInInspector()
         {
-            var brain = CM_Brain.FindBrain(Target.GetEntityComponentData<CM_VcamChannel>().channel);
+            var brain = CM_Brain.FindBrain(Target.ParentChannel);
             if (brain != null)
                 brain.m_ShowGameViewGuides = EditorGUILayout.Toggle(
                     new GUIContent(

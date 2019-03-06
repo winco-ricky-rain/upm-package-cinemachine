@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Burst;
 using System;
 using UnityEngine;
+using Unity.Transforms;
 
 namespace Cinemachine.ECS
 {
@@ -16,6 +17,7 @@ namespace Cinemachine.ECS
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreAimSystem))]
     [UpdateBefore(typeof(CM_VcamPreCorrectionSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamHardLookAtSystem : JobComponentSystem
     {
         ComponentGroup m_mainGroup;
@@ -23,7 +25,7 @@ namespace Cinemachine.ECS
         protected override void OnCreateManager()
         {
             m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamRotationState>(),
+                ComponentType.ReadWrite<CM_VcamRotationState>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamHardLookAt>(),
                 ComponentType.ReadOnly<CM_VcamLookAtTarget>());
@@ -36,35 +38,30 @@ namespace Cinemachine.ECS
             if (!targetLookup.IsCreated)
                 return default; // no targets yet
 
-            var job = new LookAtTargetJob()
-            {
-                rotations = m_mainGroup.GetComponentDataArray<CM_VcamRotationState>(),
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                targets = m_mainGroup.GetComponentDataArray<CM_VcamLookAtTarget>(),
-                targetLookup = targetLookup
-            };
-            return targetSystem.RegisterTargetLookupReadJobs(
-                job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
+            var job = new LookAtTargetJob() { targetLookup = targetLookup };
+            var jobDeps = job.ScheduleGroup(m_mainGroup, inputDeps);
+
+            return targetSystem.RegisterTargetLookupReadJobs(jobDeps);
         }
 
         [BurstCompile]
-        struct LookAtTargetJob : IJobParallelFor
+        struct LookAtTargetJob : IJobProcessComponentData<
+            CM_VcamRotationState, CM_VcamPositionState, CM_VcamLookAtTarget>
         {
-            public ComponentDataArray<CM_VcamRotationState> rotations;
-            [ReadOnly] public ComponentDataArray<CM_VcamPositionState> positions;
-            [ReadOnly] public ComponentDataArray<CM_VcamLookAtTarget> targets;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
-            public void Execute(int index)
+            public void Execute(
+                ref CM_VcamRotationState rotState,
+                [ReadOnly] ref CM_VcamPositionState posState,
+                [ReadOnly] ref CM_VcamLookAtTarget lookAt)
             {
-                CM_TargetSystem.TargetInfo targetInfo;
-                if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
+                if (targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo))
                 {
-                    var q = math.normalizesafe(rotations[index].raw, quaternion.identity);
-                    float3 dir = math.normalizesafe(targetInfo.position - positions[index].raw, math.forward(q));
-                    float3 up = math.normalizesafe(positions[index].up, math.up());
+                    var q = math.normalizesafe(rotState.raw, quaternion.identity);
+                    float3 dir = math.normalizesafe(targetInfo.position - posState.raw, math.forward(q));
+                    float3 up = math.normalizesafe(posState.up, math.up());
                     q = q.LookRotationUnit(dir, up);
-                    rotations[index] = new CM_VcamRotationState
+                    rotState = new CM_VcamRotationState
                     {
                         lookAtPoint = targetInfo.position,
                         raw = q,

@@ -6,6 +6,7 @@ using Unity.Burst;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using System;
+using Unity.Transforms;
 
 namespace Cinemachine.ECS
 {
@@ -64,36 +65,36 @@ namespace Cinemachine.ECS
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamPreBodySystem))]
     [UpdateBefore(typeof(CM_VcamPreAimSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamTransposerSystem : JobComponentSystem
     {
-        ComponentGroup m_mainGroup;
+        ComponentGroup m_vcamGroup;
         ComponentGroup m_missingStateGroup;
 
-#pragma warning disable 649 // never assigned to
-        // Used only to add missing CM_VcamTransposerState components
-        [Inject] EndFrameBarrier m_missingStateBarrier;
-#pragma warning restore 649
+        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
 
         protected override void OnCreateManager()
         {
-            m_mainGroup = GetComponentGroup(
-                ComponentType.Create<CM_VcamPositionState>(),
-                ComponentType.Create<CM_VcamTransposerState>(),
-                ComponentType.ReadOnly<CM_VcamTimeState>(),
+            m_vcamGroup = GetComponentGroup(
+                ComponentType.ReadWrite<CM_VcamPositionState>(),
+                ComponentType.ReadWrite<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
-                ComponentType.ReadOnly<CM_VcamFollowTarget>());
+                ComponentType.ReadOnly<CM_VcamFollowTarget>(),
+                ComponentType.ReadOnly<CM_VcamChannel>());
 
             m_missingStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
-                ComponentType.Subtractive<CM_VcamTransposerState>(),
+                ComponentType.Exclude<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
+
+            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing transposer state components
-            var missingEntities = m_missingStateGroup.GetEntityArray();
+            var missingEntities = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
             if (missingEntities.Length > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
@@ -103,66 +104,71 @@ namespace Cinemachine.ECS
                     cb.SetComponent(missingEntities[i], new CM_VcamPositionState()); // invalidate prev pos
                 }
             }
+            missingEntities.Dispose();
 
-            var targetSystem = World.GetExistingManager<CM_TargetSystem>();
+            var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
                 return default; // no targets yet
 
-            var job = new TrackTargetJob()
-            {
-                positions = m_mainGroup.GetComponentDataArray<CM_VcamPositionState>(),
-                timeStates = m_mainGroup.GetComponentDataArray<CM_VcamTimeState>(),
-                transposers = m_mainGroup.GetComponentDataArray<CM_VcamTransposer>(),
-                transposerStates = m_mainGroup.GetComponentDataArray<CM_VcamTransposerState>(),
-                targets = m_mainGroup.GetComponentDataArray<CM_VcamFollowTarget>(),
-                targetLookup =  targetLookup
-            };
-            return targetSystem.RegisterTargetLookupReadJobs(
-                job.Schedule(m_mainGroup.CalculateLength(), 32, inputDeps));
+            JobHandle vcamDeps = default;
+            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
+                {
+                    var job = new TrackTargetJob
+                    {
+                        deltaTime = state.deltaTime,
+                        targetLookup = targetLookup
+                    };
+                    var deps = job.ScheduleGroup(filteredGroup, inputDeps);
+                    vcamDeps = JobHandle.CombineDependencies(vcamDeps, deps);
+                });
+
+            return targetSystem.RegisterTargetLookupReadJobs(vcamDeps);
         }
 
         [BurstCompile]
-        struct TrackTargetJob : IJobParallelFor
+        struct TrackTargetJob : IJobProcessComponentData<
+            CM_VcamPositionState, CM_VcamTransposerState,
+            CM_VcamTransposer, CM_VcamFollowTarget>
         {
-            public ComponentDataArray<CM_VcamPositionState> positions;
-            public ComponentDataArray<CM_VcamTransposerState> transposerStates;
-            [ReadOnly] public ComponentDataArray<CM_VcamTimeState> timeStates;
-            [ReadOnly] public ComponentDataArray<CM_VcamTransposer> transposers;
-            [ReadOnly] public ComponentDataArray<CM_VcamFollowTarget> targets;
+            public float deltaTime;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
-            public void Execute(int index)
+            public void Execute(
+                ref CM_VcamPositionState posState,
+                ref CM_VcamTransposerState transposerState,
+                [ReadOnly] ref CM_VcamTransposer transposer,
+                [ReadOnly] ref CM_VcamFollowTarget follow)
             {
-                CM_TargetSystem.TargetInfo targetInfo;
-                if (targetLookup.TryGetValue(targets[index].target, out targetInfo))
+                if (targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
                 {
                     var targetPos = targetInfo.position;
                     var targetRot = GetRotationForBindingMode(
-                            targetInfo.rotation, transposers[index].bindingMode,
-                            targetPos - positions[index].raw);
-                    var deltaTime = timeStates[index].deltaTime;
+                            targetInfo.rotation, transposer.bindingMode,
+                            targetPos - posState.raw);
 
-                    bool applyDamping = deltaTime >= 0 && positions[index].previousFrameDataIsValid != 0;
-                    var prevPos = transposerStates[index].previousTargetPosition + targetInfo.warpDelta;
+                    bool applyDamping = deltaTime >= 0 && posState.previousFrameDataIsValid != 0;
+                    var prevPos = transposerState.previousTargetPosition + targetInfo.warpDelta;
                     targetRot = ApplyRotationDamping(
                         deltaTime, 0,
-                        math.select(0, transposers[index].angularDamping, applyDamping),
-                        transposerStates[index].previousTargetRotation, targetRot);
+                        math.select(0, transposer.angularDamping, applyDamping),
+                        transposerState.previousTargetRotation, targetRot);
                     targetPos = ApplyPositionDamping(
                         deltaTime, 0,
-                        math.select(float3.zero, transposers[index].damping, applyDamping),
+                        math.select(float3.zero, transposer.damping, applyDamping),
                         prevPos, targetPos, targetRot);
 
-                    transposerStates[index] = new CM_VcamTransposerState
+                    transposerState = new CM_VcamTransposerState
                     {
                         previousTargetPosition = targetPos,
                         previousTargetRotation = targetRot
                     };
 
-                    positions[index] = new CM_VcamPositionState
+                    posState = new CM_VcamPositionState
                     {
-                        raw = targetPos + math.mul(targetRot, transposers[index].followOffset),
+                        raw = targetPos + math.mul(targetRot, transposer.followOffset),
                         dampingBypass = float3.zero,
                         up = math.mul(targetRot, math.up())
                     };
