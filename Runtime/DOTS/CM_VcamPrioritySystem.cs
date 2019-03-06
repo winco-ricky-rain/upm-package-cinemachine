@@ -62,7 +62,7 @@ namespace Cinemachine.ECS
                 m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
                 {
                     var blendState = m.GetComponentData<CM_ChannelBlendState>(e);
-                    blendState.blender.PreUpdate();
+                    //blendState.blender.PreUpdate();
                     blendState.priorityQueue.AllocateData(filteredGroup.CalculateLength());
                     m.SetComponentData(e, blendState);
 

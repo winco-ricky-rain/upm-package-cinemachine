@@ -552,7 +552,7 @@ namespace Cinemachine.ECS
 
             public void Execute(
                 [ReadOnly] ref CM_Channel c,
-                ref CM_ChannelState state, ref CM_ChannelBlendState blendState)
+                [ReadOnly] ref CM_ChannelState state, ref CM_ChannelBlendState blendState)
             {
                 float activateAfter = c.activateAfter;
                 float minDuration = c.minDuration;
@@ -618,9 +618,12 @@ namespace Cinemachine.ECS
             }
         }
 
+        [BurstCompile]
         struct FetchActiveVcamJob : IJobProcessComponentData<CM_ChannelState, CM_ChannelBlendState>
         {
-            public void Execute(ref CM_ChannelState state, ref CM_ChannelBlendState blendState)
+            public void Execute(
+                ref CM_ChannelState state,
+                [ReadOnly] ref CM_ChannelBlendState blendState)
             {
                 state.activeVcam = blendState.blender.ActiveVirtualCamera;
             }
