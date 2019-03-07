@@ -16,6 +16,18 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
+    public struct CM_VcamPriority : IComponentData
+    {
+        /// <summary>The priority will determine which camera becomes active based on the
+        /// state of other cameras and this camera.  Higher numbers have greater priority.
+        /// </summary>
+        public int priority;
+
+        /// <summary>Used as second key for priority sorting</summary>
+        public int vcamSequence;
+    }
+
+    [Serializable]
     public struct CM_VcamFollowTarget : IComponentData
     {
         public Entity target;

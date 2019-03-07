@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -94,7 +95,7 @@ namespace Cinemachine.ECS
     }
 
     /// Manages the nested blend stack and the camera override frames
-    internal struct CM_ChannelBlendState : ISystemStateComponentData
+    struct CM_ChannelBlendState : ISystemStateComponentData
     {
         public CM_Blender blender;
         public CM_BlendLookup blendLookup;
@@ -106,7 +107,7 @@ namespace Cinemachine.ECS
     }
 
     [ExecuteAlways]
-    [UpdateAfter(typeof(CM_VcamPrioritySystem))]
+    [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_ChannelSystem : JobComponentSystem
     {
@@ -472,15 +473,17 @@ namespace Cinemachine.ECS
             group.ResetFilter();
         }
 
+        ComponentGroup m_vcamGroup;
         ComponentGroup m_channelsGroup;
         ComponentGroup m_missingChannelStateGroup;
         ComponentGroup m_missingBlendStateGroup;
 
         EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
-
         JobHandle ActiveChannelStateJobs { get; set; }
-
         EntityManager entityManager;
+
+        int m_vcamSequence = 1;
+        public int NextVcamSequence { get { return m_vcamSequence++; } }
 
         protected override void OnCreateManager()
         {
@@ -488,6 +491,10 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_Channel>(),
                 ComponentType.ReadWrite<CM_ChannelState>(),
                 ComponentType.ReadWrite<CM_ChannelBlendState>());
+
+            m_vcamGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_VcamChannel>(),
+                ComponentType.ReadWrite<CM_VcamPriority>());
 
             m_missingChannelStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Channel>(),
@@ -498,6 +505,7 @@ namespace Cinemachine.ECS
 
             m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
             entityManager = World.GetOrCreateManager<EntityManager>();
+            m_vcamSequence = 1;
         }
 
         protected override void OnDestroyManager()
@@ -541,9 +549,27 @@ namespace Cinemachine.ECS
         {
             ActiveChannelStateJobs.Complete();
 
-            var objectCount = m_channelsGroup.CalculateLength();
+            // Init the blendstates and populate the queues
+            JobHandle populateDeps = inputDeps;
+            InvokePerVcamChannel(
+                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
+                {
+                    var blendState = entityManager.GetComponentData<CM_ChannelBlendState>(e);
+                    blendState.priorityQueue.AllocateData(filteredGroup.CalculateLength());
+                    entityManager.SetComponentData(e, blendState);
+
+                    var populateJob = new PopulatePriorityQueueJob
+                        { qualities = GetComponentDataFromEntity<CM_VcamShotQuality>(true) };
+                    populateJob.AssignDataPtr(ref blendState);
+
+                    populateDeps = populateJob.ScheduleGroup(filteredGroup, populateDeps);
+                });
+
+            var sortJob = new SortQueueJob();
+            var sortDeps = sortJob.ScheduleGroup(m_channelsGroup, populateDeps);
+
             var updateJob = new UpdateChannelJob() { now = Time.time };
-            var updateDeps = updateJob.ScheduleGroup(m_channelsGroup, inputDeps);
+            var updateDeps = updateJob.ScheduleGroup(m_channelsGroup, sortDeps);
 
             var fetchJob = new FetchActiveVcamJob();
             var fetchDeps = fetchJob.ScheduleGroup(m_channelsGroup, updateDeps);
@@ -552,6 +578,92 @@ namespace Cinemachine.ECS
             return fetchDeps;
         }
 
+        [BurstCompile]
+        unsafe struct PopulatePriorityQueueJob : IJobProcessComponentDataWithEntity<CM_VcamPriority>
+        {
+            [ReadOnly] public ComponentDataFromEntity<CM_VcamShotQuality> qualities;
+            [NativeDisableUnsafePtrRestriction] public CM_PriorityQueue.QueueEntry* queue;
+
+            public void AssignDataPtr(ref CM_ChannelBlendState blendState)
+            {
+                queue = (CM_PriorityQueue.QueueEntry*)blendState.priorityQueue.GetUnsafeDataPtr();
+            }
+
+            public void Execute(Entity entity, int index, [ReadOnly] ref CM_VcamPriority priority)
+            {
+                queue[index] = new CM_PriorityQueue.QueueEntry
+                {
+                    entity = entity,
+                    vcamPriority = priority,
+                    shotQuality = qualities.Exists(entity) ? qualities[entity]
+                        : new CM_VcamShotQuality { value = CM_VcamShotQuality.DefaultValue }
+                };
+            }
+        }
+
+        [BurstCompile]
+        unsafe struct SortQueueJob : IJobProcessComponentData<CM_Channel, CM_ChannelBlendState>
+        {
+            public void Execute([ReadOnly] ref CM_Channel c, ref CM_ChannelBlendState blendState)
+            {
+                var array = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<CM_PriorityQueue.QueueEntry>(
+                    blendState.priorityQueue.GetUnsafeDataPtr(), blendState.priorityQueue.Length, Allocator.None);
+
+                #if ENABLE_UNITY_COLLECTIONS_CHECKS
+                    var safety = AtomicSafetyHandle.Create();
+                    NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref array, safety);
+                #endif
+
+                if (c.sortMode == CM_Channel.SortMode.PriorityThenQuality)
+                    array.Sort(new ComparerPriority());
+                else if (c.sortMode == CM_Channel.SortMode.QualityThenPriority)
+                    array.Sort(new ComparerQuality());
+
+                #if ENABLE_UNITY_COLLECTIONS_CHECKS
+                    AtomicSafetyHandle.Release(safety);
+                #endif
+            }
+
+            struct ComparerPriority : IComparer<CM_PriorityQueue.QueueEntry>
+            {
+                public int Compare(CM_PriorityQueue.QueueEntry x, CM_PriorityQueue.QueueEntry y)
+                {
+                    int p = y.vcamPriority.priority - x.vcamPriority.priority; // high-to-low
+                    float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
+                    int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
+                    int s = y.vcamPriority.vcamSequence - x.vcamPriority.vcamSequence; // high-to-low
+                    int e = y.entity.Index - x.entity.Index;    // high-to-low
+                    int v = y.entity.Version - x.entity.Version; // high-to-low
+                    return math.select(p,
+                        math.select(q,
+                            math.select(s,
+                                math.select(e, v, e == 0),
+                                s == 0),
+                            q == 0),
+                        p == 0);
+                }
+            }
+
+            struct ComparerQuality : IComparer<CM_PriorityQueue.QueueEntry>
+            {
+                public int Compare(CM_PriorityQueue.QueueEntry x, CM_PriorityQueue.QueueEntry y)
+                {
+                    int p = y.vcamPriority.priority - x.vcamPriority.priority; // high-to-low
+                    float qf = y.shotQuality.value - x.shotQuality.value; // high-to-low
+                    int q = math.select(-1, (int)math.ceil(qf), qf >= 0);
+                    int s = y.vcamPriority.vcamSequence - x.vcamPriority.vcamSequence; // high-to-low
+                    int e = y.entity.Index - x.entity.Index;    // high-to-low
+                    int v = y.entity.Version - x.entity.Version; // high-to-low
+                    return math.select(q,
+                        math.select(p,
+                            math.select(s,
+                                math.select(e, v, e == 0),
+                                s == 0),
+                            p == 0),
+                        q == 0);
+                }
+            }
+        }
 
         [BurstCompile]
         struct UpdateChannelJob : IJobProcessComponentData<

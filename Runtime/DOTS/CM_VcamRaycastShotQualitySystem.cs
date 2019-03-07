@@ -5,13 +5,12 @@ using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
 using System.Runtime.CompilerServices;
-using Unity.Transforms;
 
 namespace Cinemachine.ECS
 {
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]
-    [UpdateBefore(typeof(CM_VcamPrioritySystem))]
+    [UpdateBefore(typeof(CM_ChannelSystem))]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamRaycastShotQualitySystem : JobComponentSystem
     {
