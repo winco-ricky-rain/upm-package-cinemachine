@@ -288,8 +288,8 @@ namespace Cinemachine.ECS
                 if (positions.Exists(entity))
                 {
                     var m = positions[entity].Value;
-                    posState.raw = m.GetTranslation();
-                    rotState.raw = m.GetRotation();
+                    posState.raw = m.GetTranslationFromTRS();
+                    rotState.raw = m.GetRotationFromTRS();
                 }
                 // GML todo: set the lookAt point if lookAt target
             }
@@ -361,11 +361,8 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamRotationState rotState,
                 ref LocalToWorld l2w)
             {
-                var m0 = l2w.Value;
-                var m = new float3x3(m0.c0.xyz, m0.c1.xyz, m0.c2.xyz);
-                var v = new float3(0.5773503f, 0.5773503f, 0.5773503f); // unit vector
-                var scale = float4x4.Scale(math.length(math.mul(m, v))); // approximate uniform scale
-                l2w.Value = math.mul(new float4x4(rotState.raw, posState.raw), scale);
+                // Preserve the scale
+                l2w.Value = float4x4.TRS(posState.raw, rotState.raw, l2w.Value.GetScaleFromTRS());
             }
         }
     }

@@ -130,11 +130,11 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref LocalToWorld pos,
                 [ReadOnly] ref CM_Target t)
             {
-                var rot = pos.Value.GetRotation();
+                var rot = pos.Value.GetRotationFromTRS();
                 hashMap.TryAdd(entity, new TargetInfo()
                 {
                     rotation = rot,
-                    position = pos.Value.GetTranslation() + math.mul(rot, t.offset),
+                    position = pos.Value.GetTranslationFromTRS() + math.mul(rot, t.offset),
                     radius = t.radius,
                     warpDelta = t.warpDelta
                 });
