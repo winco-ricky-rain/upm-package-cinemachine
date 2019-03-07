@@ -110,32 +110,48 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_ChannelSystem : JobComponentSystem
     {
-        NativeArray<Entity> channelEntitiesCache;
+        struct ChannelCache
+        {
+            public Entity e;
+            public CM_Channel c;
+            public CM_ChannelState state;
+        }
+        NativeArray<ChannelCache> channelCache;
 
-        NativeArray<Entity> GetChannelEntitiesCache(bool recalculate)
+        NativeArray<ChannelCache> GetChannelCache(bool recalculate)
         {
             ActiveChannelStateJobs.Complete();
-            if (recalculate && channelEntitiesCache.IsCreated)
-                channelEntitiesCache.Dispose();
-            if (!channelEntitiesCache.IsCreated)
-                channelEntitiesCache = m_channelsGroup.ToEntityArray(Allocator.TempJob);
-            return channelEntitiesCache;
+            if (recalculate)
+            {
+                if (channelCache.IsCreated)
+                    channelCache.Dispose();
+                var entities = m_channelsGroup.ToEntityArray(Allocator.TempJob);
+                channelCache = new NativeArray<ChannelCache>(entities.Length, Allocator.TempJob);
+                for (int i = 0; i < entities.Length; ++i)
+                {
+                    var e = entities[i];
+                    channelCache[i] = new ChannelCache
+                    {
+                        e = e,
+                        c = entityManager.GetComponentData<CM_Channel>(e),
+                        state = entityManager.GetComponentData<CM_ChannelState>(e)
+                    };
+                }
+                entities.Dispose();
+            }
+            return channelCache;
         }
 
         Entity GetChannelEntity(int channel)
         {
             if (entityManager != null)
             {
-                var entities = GetChannelEntitiesCache(false);
+                var entities = GetChannelCache(false);
                 for (int i = 0; i < entities.Length; ++i)
                 {
                     var e = entities[i];
-                    if (entityManager.HasComponent<CM_Channel>(e))
-                    {
-                        var c = entityManager.GetComponentData<CM_Channel>(e);
-                        if (c.channel == channel)
-                            return e;
-                    }
+                    if (e.c.channel == channel)
+                        return e.e;
                 }
             }
             return Entity.Null;
@@ -242,9 +258,9 @@ namespace Cinemachine.ECS
         /// or part of a blend in progress.</returns>
         public bool IsLive(ICinemachineCamera vcam)
         {
-            var entities = GetChannelEntitiesCache(false);
+            var entities = GetChannelCache(false);
             for (int i = 0; i < entities.Length; ++i)
-                if (GetEntityComponentData<CM_ChannelBlendState>(entities[i]).blender.IsLive(vcam.AsEntity))
+                if (GetEntityComponentData<CM_ChannelBlendState>(entities[i].e).blender.IsLive(vcam.AsEntity))
                     return true;
             return false;
         }
@@ -395,30 +411,36 @@ namespace Cinemachine.ECS
         /// </summary>
         internal void InitChannelStates()
         {
-            var channelEntities = GetChannelEntitiesCache(true);
+            CreateMissingStateComponents();
+            var channelEntities = GetChannelCache(true);
 
             float timeNow = Time.time;
             bool isPlaying = Application.isPlaying;
 
             for (int i = 0; i < channelEntities.Length && entityManager != null; ++i)
             {
-                var e = channelEntities[i];
+                var cache = channelEntities[i];
+                var e = cache.e;
                 var c = entityManager.GetComponentData<CM_Channel>(e);
-                var state = entityManager.GetComponentData<CM_ChannelState>(e);
-                if (!isPlaying || timeNow < state.notPlayingTimeModeExpiry)
-                    state.deltaTime = -1;
+                if (!isPlaying || timeNow < cache.state.notPlayingTimeModeExpiry)
+                    cache.state.deltaTime = -1;
                 else
                 {
                     switch (c.timeMode)
                     {
-                        case CM_Channel.TimeMode.DeltaTime: state.deltaTime = Time.deltaTime; break;
-                        case CM_Channel.TimeMode.DeltaTimeIgnoreScale: state.deltaTime = Time.unscaledDeltaTime; break;
-                        case CM_Channel.TimeMode.FixedDeltaTime: state.deltaTime = Time.fixedTime; break;
-                        case CM_Channel.TimeMode.FixedDeltaTimeIgnoreScale: state.deltaTime = Time.fixedUnscaledDeltaTime; break;
-                        case CM_Channel.TimeMode.Off: default: state.deltaTime = -1; break;
+                        case CM_Channel.TimeMode.DeltaTime: cache.state.deltaTime = Time.deltaTime; break;
+                        case CM_Channel.TimeMode.DeltaTimeIgnoreScale: cache.state.deltaTime = Time.unscaledDeltaTime; break;
+                        case CM_Channel.TimeMode.FixedDeltaTime: cache.state.deltaTime = Time.fixedTime; break;
+                        case CM_Channel.TimeMode.FixedDeltaTimeIgnoreScale: cache.state.deltaTime = Time.fixedUnscaledDeltaTime; break;
+                        case CM_Channel.TimeMode.Off: default: cache.state.deltaTime = -1; break;
                     }
                 }
-                entityManager.SetComponentData(e, state);
+                entityManager.SetComponentData(e, cache.state);
+                channelEntities[i] = cache;
+
+                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(e);
+                bs.blender.PreUpdate();
+                entityManager.SetComponentData(e, bs);
             }
         }
 
@@ -435,22 +457,16 @@ namespace Cinemachine.ECS
         {
             if (entityManager == null)
                 return;
-            var entities = GetChannelEntitiesCache(false);
-            uniqueChannelValues.Clear();
-            entityManager.GetAllUniqueSharedComponentData(uniqueChannelValues);
-            for (int i = 0; i < uniqueChannelValues.Count; ++i)
+            var entities = GetChannelCache(false);
+            for (int i = 0; i < entities.Length; ++i)
             {
-                var channel = uniqueChannelValues[i];
+                var channel = entities[i];
                 for (int j = 0; j < entities.Length; ++j)
                 {
-                    var e = entities[j];
-                    var c = entityManager.GetComponentData<CM_Channel>(e);
-                    if (c.channel == channel.channel)
-                    {
-                        group.SetFilter(channel);
-                        if (group.CalculateLength() > 0)
-                            cb(group, e, c, entityManager.GetComponentData<CM_ChannelState>(e));
-                    }
+                    var cache = entities[j];
+                    group.SetFilter(new CM_VcamChannel { channel = cache.c.channel });
+                    if (group.CalculateLength() > 0)
+                        cb(group, cache.e, cache.c, cache.state);
                 }
             }
             group.ResetFilter();
@@ -463,7 +479,6 @@ namespace Cinemachine.ECS
         EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
 
         JobHandle ActiveChannelStateJobs { get; set; }
-        List<CM_VcamChannel> uniqueChannelValues = new List<CM_VcamChannel>();
 
         EntityManager entityManager;
 
@@ -487,50 +502,44 @@ namespace Cinemachine.ECS
 
         protected override void OnDestroyManager()
         {
-            var entities = GetChannelEntitiesCache(false);
+            var entities = GetChannelCache(false);
             for (int i = 0; i < entities.Length; ++i)
             {
                 // GML this is probably wrong...
                 // Sneakily bypassing "illegal to access other systems during destruction" warning.
                 // Is there some other way to dispose of these things?
-                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(entities[i]);
+                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(entities[i].e);
                 bs.blender.Dispose();
                 bs.blendLookup.Dispose();
                 bs.priorityQueue.Dispose();
-                entityManager.SetComponentData(entities[i], bs);
+                entityManager.SetComponentData(entities[i].e, bs);
             }
-            if (channelEntitiesCache.IsCreated)
-                channelEntitiesCache.Dispose();
+            if (channelCache.IsCreated)
+                channelCache.Dispose();
             base.OnDestroyManager();
+        }
+
+        void CreateMissingStateComponents()
+        {
+            // Add any missing state components
+            if (m_missingChannelStateGroup.CalculateLength() > 0
+                || m_missingBlendStateGroup.CalculateLength() > 0)
+            {
+                var cb  = m_missingStateBarrier.CreateCommandBuffer();
+                var a = m_missingChannelStateGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                    cb.AddComponent(a[i], new CM_ChannelState());
+                a.Dispose();
+                a = m_missingBlendStateGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                    cb.AddComponent(a[i], new CM_ChannelBlendState());
+                a.Dispose();
+            }
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            // Add any missing state components
-            var missingChannelStateEntities = m_missingChannelStateGroup.ToEntityArray(Allocator.TempJob);
-            var missingBlendStateEntities = m_missingBlendStateGroup.ToEntityArray(Allocator.TempJob);
-            if (missingChannelStateEntities.Length + missingBlendStateEntities.Length > 0)
-            {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                for (int i = 0; i < missingChannelStateEntities.Length; ++i)
-                    cb.AddComponent(missingChannelStateEntities[i], new CM_ChannelState());
-                for (int i = 0; i < missingBlendStateEntities.Length; ++i)
-                    cb.AddComponent(missingBlendStateEntities[i], new CM_ChannelBlendState());
-            }
-            missingChannelStateEntities.Dispose();
-            missingBlendStateEntities.Dispose();
-
             ActiveChannelStateJobs.Complete();
-
-            // Make sure all blenders are sufficiently allocated
-            var entities = GetChannelEntitiesCache(false);
-            for (int i = 0; i < entities.Length; ++i)
-            {
-                var e = entities[i];
-                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(e);
-                bs.blender.PreUpdate();
-                entityManager.SetComponentData(e, bs);
-            }
 
             var objectCount = m_channelsGroup.CalculateLength();
             var updateJob = new UpdateChannelJob() { now = Time.time };

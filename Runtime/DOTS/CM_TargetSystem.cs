@@ -75,14 +75,14 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing group components
-            var missingGroupEntities = m_missingGroupGroup.ToEntityArray(Allocator.TempJob);
-            if (missingGroupEntities.Length > 0)
+            if (m_missingGroupGroup.CalculateLength() > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                for (int i = 0; i < missingGroupEntities.Length; ++i)
-                    cb.AddComponent(missingGroupEntities[i], new CM_Group());
+                var a = m_missingGroupGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                    cb.AddComponent(a[i], new CM_Group());
+                a.Dispose();
             }
-            missingGroupEntities.Dispose();
 
             // Make sure all readers have finished with the table
             TargetTableReadJobHandle.Complete();

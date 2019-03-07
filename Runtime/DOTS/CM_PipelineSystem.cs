@@ -225,23 +225,28 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing state components
-            var missingPosEntities = m_missingPosStateGroup.ToEntityArray(Allocator.TempJob);
-            var missingRotEntities = m_missingRotStateGroup.ToEntityArray(Allocator.TempJob);
-            var missingLensEntities = m_missingLensStateGroup.ToEntityArray(Allocator.TempJob);
-            if (missingPosEntities.Length + missingRotEntities.Length + missingLensEntities.Length > 0)
+            if (m_missingPosStateGroup.CalculateLength() > 0
+                || m_missingRotStateGroup.CalculateLength() > 0
+                || m_missingLensStateGroup.CalculateLength() > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                for (int i = 0; i < missingPosEntities.Length; ++i)
-                    cb.AddComponent(missingPosEntities[i], new CM_VcamPositionState());
-                for (int i = 0; i < missingRotEntities.Length; ++i)
-                    cb.AddComponent(missingRotEntities[i], new CM_VcamRotationState
+
+                var a = m_missingPosStateGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                    cb.AddComponent(a[i], new CM_VcamPositionState());
+                a.Dispose();
+
+                a = m_missingRotStateGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                    cb.AddComponent(a[i], new CM_VcamRotationState
                         { raw = quaternion.identity, correction = quaternion.identity });
-                for (int i = 0; i < missingLensEntities.Length; ++i)
-                    cb.AddComponent(missingLensEntities[i], CM_VcamLensState.FromLens(CM_VcamLens.Default));
+                a.Dispose();
+
+                a = m_missingLensStateGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                    cb.AddComponent(a[i], CM_VcamLensState.FromLens(CM_VcamLens.Default));
+                a.Dispose();
             }
-            missingPosEntities.Dispose();
-            missingRotEntities.Dispose();
-            missingLensEntities.Dispose();
 
             JobHandle vcamDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();

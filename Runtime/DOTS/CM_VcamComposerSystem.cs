@@ -244,14 +244,14 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing composer state components
-            var missingEntities = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
-            if (missingEntities.Length > 0)
+            if (m_missingStateGroup.CalculateLength() > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                for (int i = 0; i < missingEntities.Length; ++i)
-                    cb.AddComponent(missingEntities[i], new CM_VcamComposerState());
+                var a = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                    cb.AddComponent(a[i], new CM_VcamComposerState());
+                a.Dispose();
             }
-            missingEntities.Dispose();
 
             var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
