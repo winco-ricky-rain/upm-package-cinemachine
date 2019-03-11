@@ -14,11 +14,11 @@ namespace Cinemachine.ECS_Hybrid
         [NoSaveDuringPlay]
         [Tooltip("The priority will determine which camera becomes active based on the "
             + "state of other cameras and this camera.  Higher numbers have greater priority.")]
-        public int m_Priority = 10;
+        public int priority = 10;
 
         /// <summary> Collection of parameters that influence how this virtual camera transitions from
         /// other virtual cameras </summary>
-        public CinemachineVirtualCameraBase.TransitionParams m_Transitions; // GML fixme
+        public CinemachineVirtualCameraBase.TransitionParams transitions; // GML fixme
 
         public ICinemachineCamera ParentCamera { get { return null; } }
         public bool IsLiveChild(ICinemachineCamera vcam) { return false; }
@@ -172,7 +172,7 @@ namespace Cinemachine.ECS_Hybrid
 
             m.SetComponentData(Entity, new CM_VcamPriority
             {
-                priority = m_Priority
+                priority = priority
                 // GML todo: vcamSequence
             });
         }

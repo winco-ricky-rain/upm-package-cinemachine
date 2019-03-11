@@ -37,6 +37,8 @@ namespace Cinemachine.ECS
                 Orthographic
             }
             public Projection projection;
+
+            public bool IsOrthographic { get { return projection == Projection.Orthographic; } }
         }
         public Settings settings;
 
@@ -310,7 +312,7 @@ namespace Cinemachine.ECS
                 camB == null ? Entity.Null : camB.AsEntity, weightB);
             SetEntityComponentData(e, blendState);
 
-            // GML todo: something better
+            // GML todo: something better?
             var state = GetEntityComponentData<CM_ChannelState>(e);
             state.notPlayingTimeModeExpiry = Time.time + timeExpiry;
             SetEntityComponentData(e, state);

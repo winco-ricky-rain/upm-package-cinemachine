@@ -14,11 +14,12 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamRaycastShotQualitySystem : JobComponentSystem
     {
-        ComponentGroup m_mainGroup;
+        ComponentGroup m_vcamGroup;
 
         protected override void OnCreateManager()
         {
-            m_mainGroup = GetComponentGroup(
+            m_vcamGroup = GetComponentGroup(
+                ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.ReadWrite<CM_VcamShotQuality>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamRotationState>(),
@@ -27,32 +28,37 @@ namespace Cinemachine.ECS
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            // GML todo: should use corrected position/orientation
+            JobHandle deps = inputDeps;
+            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
+                {
+                    var objectCount = filteredGroup.CalculateLength();
 
-            var objectCount = m_mainGroup.CalculateLength();
+                    // These will be deallocated by the final job
+                    var raycastCommands = new NativeArray<RaycastCommand>(objectCount, Allocator.TempJob);
+                    var raycastHits = new NativeArray<RaycastHit>(objectCount, Allocator.TempJob);
 
-            // These will be deallocated by the final job
-            var raycastCommands = new NativeArray<RaycastCommand>(objectCount, Allocator.TempJob);
-            var raycastHits = new NativeArray<RaycastHit>(objectCount, Allocator.TempJob);
+                    var setupRaycastsJob = new SetupRaycastsJob()
+                    {
+                        layerMask = -5, // GML todo: how to set this?
+                        minDstanceFromTarget = 0, // GML todo: how to set this?
+                        raycasts = raycastCommands
+                    };
+                    var setupDeps = setupRaycastsJob.ScheduleGroup(filteredGroup, deps);
+                    var raycastDeps = RaycastCommand.ScheduleBatch(raycastCommands, raycastHits, 32, setupDeps);
 
-            var setupRaycastsJob = new SetupRaycastsJob()
-            {
-                layerMask = -5, // GML todo: how to set this?
-                minDstanceFromTarget = 0, // GML todo: how to set this?
-                raycasts = raycastCommands
-            };
-            var setupDependency = setupRaycastsJob.ScheduleGroup(m_mainGroup, inputDeps);
-            var raycastDependency = RaycastCommand.ScheduleBatch(
-                raycastCommands, raycastHits, 32, setupDependency);
+                    var qualityJob = new CalculateQualityJob()
+                    {
+                        isOrthographic = c.settings.IsOrthographic,
+                        aspect = c.settings.aspect,
+                        hits = raycastHits,         // deallocates on completion
+                        raycasts = raycastCommands  // deallocates on completion
+                    };
+                    deps = qualityJob.ScheduleGroup(filteredGroup, raycastDeps);
+                });
 
-            var qualityJob = new CalculateQualityJob()
-            {
-                isOrthographic = false, // GML fixme
-                aspect = (float)Screen.width / (float)Screen.height, // GML fixme
-                hits = raycastHits,         // deallocates on completion
-                raycasts = raycastCommands  // deallocates on completion
-            };
-            return qualityJob.ScheduleGroup(m_mainGroup, raycastDependency);
+            return deps;
         }
 
         [BurstCompile]
@@ -66,12 +72,13 @@ namespace Cinemachine.ECS
 
             public void Execute(
                 Entity entity, int index,
-                [ReadOnly] ref CM_VcamPositionState posState, [ReadOnly] ref CM_VcamRotationState rotState)
+                [ReadOnly] ref CM_VcamPositionState posState,
+                [ReadOnly] ref CM_VcamRotationState rotState)
             {
                 // GML todo: check for no lookAt condition
 
                 // cast back towards the camera to filter out target's collider
-                float3 dir = posState.raw - rotState.lookAtPoint;
+                float3 dir = posState.GetCorrected() - rotState.lookAtPoint;
                 float distance = math.length(dir);
                 dir /= distance;
                 raycasts[index] = new RaycastCommand(
@@ -96,7 +103,7 @@ namespace Cinemachine.ECS
             {
                 bool noObstruction = hits[index].normal == Vector3.zero;
 
-                float3 offset = rotState.lookAtPoint - (posState.raw + posState.correction);
+                float3 offset = rotState.lookAtPoint - posState.GetCorrected();
                 offset = math.mul(math.inverse(rotState.raw), offset); // camera-space
                 var fov = lens.fov;
                 bool isOnscreen =
@@ -104,7 +111,7 @@ namespace Cinemachine.ECS
                     | (isOrthographic & IsTargetOnscreenOrtho(offset, fov, aspect));
 
                 bool isVisible = noObstruction && isOnscreen;
-                shotQuality = new CM_VcamShotQuality { value = math.select(0f, 1f, isVisible) };
+                shotQuality.value = math.select(0f, 1f, isVisible);
             }
         }
 

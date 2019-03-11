@@ -6,6 +6,7 @@ using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Cinemachine.ECS
 {
@@ -162,6 +163,9 @@ namespace Cinemachine.ECS
 
         /// GML not sure where to put this
         public byte previousFrameDataIsValid; // GML todo: flags
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float3 GetCorrected() { return raw + correction; }
     }
 
     [Serializable]
@@ -183,6 +187,9 @@ namespace Cinemachine.ECS
         /// Can be noise, or smoothing, or both, or something else.
         /// </summary>
         public quaternion correction;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public quaternion GetCorrected() { return math.mul(raw, correction); }
     }
 
     /// <summary>
