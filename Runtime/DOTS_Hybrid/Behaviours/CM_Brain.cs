@@ -294,7 +294,7 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
-        CM_Channel Channel
+        public CM_Channel Channel
         {
             get
             {

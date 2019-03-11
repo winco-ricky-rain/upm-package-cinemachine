@@ -305,12 +305,14 @@ namespace Cinemachine.ECS
 
             var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
             var id = blendState.blender.SetBlendableOverride(
-                overrideId, camA.AsEntity, camB.AsEntity, weightB);
+                overrideId,
+                camA == null ? Entity.Null : camA.AsEntity,
+                camB == null ? Entity.Null : camB.AsEntity, weightB);
             SetEntityComponentData(e, blendState);
 
             // GML todo: something better
             var state = GetEntityComponentData<CM_ChannelState>(e);
-            state.notPlayingTimeModeExpiry = timeExpiry;
+            state.notPlayingTimeModeExpiry = Time.time + timeExpiry;
             SetEntityComponentData(e, state);
 
             return id;
