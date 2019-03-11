@@ -15,13 +15,16 @@ namespace Cinemachine.Editor.ECS_Hybrid
     [CustomEditor(typeof(CM_VcamBase), true)]
     public class CM_VcamBaseEditor : BaseEditor<CM_VcamBase>
     {
+        protected int TopLevelChannel { get; private set; }
+
         protected virtual void OnEnable()
         {
+            TopLevelChannel = Target.FindTopLevelChannel();
         }
 
         protected virtual void OnDisable()
         {
-            var brain = Target == null ? null : CM_Brain.FindBrain(Target.ParentChannel);
+            var brain = Target == null ? null : CM_Brain.FindBrain(TopLevelChannel);
             if (brain != null && brain.SoloCamera == Target.AsEntity)
             {
                 brain.SoloCamera = Entity.Null;
@@ -63,13 +66,13 @@ namespace Cinemachine.Editor.ECS_Hybrid
             rect.width -= rectLabel.width;
             rect.x += rectLabel.width;
 
-            var brain = CM_Brain.FindBrain(Target.ParentChannel);
+            var brain = CM_Brain.FindBrain(TopLevelChannel);
             Color color = GUI.color;
             bool isSolo = brain != null && brain.SoloCamera == Target.AsEntity && Target.AsEntity != Entity.Null;
             if (isSolo)
                 GUI.color = CM_Brain.GetSoloGUIColor();
 
-            bool isLive = brain != null ? brain.VcamIsLive(Target.AsEntity) : false;
+            bool isLive = Target.IsLive;
             GUI.enabled = isLive;
             GUI.Label(rectLabel, isLive ? "Status: Live"
                 : (Target.isActiveAndEnabled ? "Status: Standby" : "Status: Disabled"));
@@ -89,7 +92,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
         protected void DrawGlobalControlsInInspector()
         {
-            var brain = CM_Brain.FindBrain(Target.ParentChannel);
+            var brain = CM_Brain.FindBrain(TopLevelChannel);
             if (brain != null)
                 brain.m_ShowGameViewGuides = EditorGUILayout.Toggle(
                     new GUIContent(

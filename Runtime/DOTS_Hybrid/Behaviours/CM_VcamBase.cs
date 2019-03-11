@@ -104,6 +104,22 @@ namespace Cinemachine.ECS_Hybrid
 
         public int ParentChannel { get { return gameObject.layer; } } // GML is this the right thing?
 
+        public int FindTopLevelChannel()
+        {
+            var channel = ParentChannel;
+            var m = ActiveEntityManager;
+            var channelSystem = World.Active?.GetExistingManager<CM_ChannelSystem>();
+            if (m != null && channelSystem != null)
+            {
+                var e = channelSystem.GetChannelEntity(channel);
+                while (e != Entity.Null && m.HasComponent<CM_VcamChannel>(e))
+                {
+                    channel = m.GetSharedComponentData<CM_VcamChannel>(e).channel;
+                    e = channelSystem.GetChannelEntity(channel);
+                }
+            }
+            return channel;
+        }
 
 #if true // GML todo something here
         protected Entity EnsureTargetCompliance(Transform target)

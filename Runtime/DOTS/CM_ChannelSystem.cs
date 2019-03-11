@@ -143,7 +143,7 @@ namespace Cinemachine.ECS
             return channelCache;
         }
 
-        Entity GetChannelEntity(int channel)
+        public Entity GetChannelEntity(int channel)
         {
             if (entityManager != null)
             {

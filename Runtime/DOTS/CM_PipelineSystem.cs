@@ -335,7 +335,6 @@ namespace Cinemachine.ECS
     public class CM_VcamFinalizeSystem : JobComponentSystem
     {
         ComponentGroup m_posGroup;
-        ComponentGroup m_rotGroup;
         ComponentGroup m_transformGroup;
 
         protected override void OnCreateManager()
@@ -345,7 +344,8 @@ namespace Cinemachine.ECS
             m_transformGroup = GetComponentGroup(
                 ComponentType.ReadWrite<LocalToWorld>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
-                ComponentType.ReadOnly<CM_VcamRotationState>());
+                ComponentType.ReadOnly<CM_VcamRotationState>(),
+                ComponentType.Exclude<CM_Channel>());
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)

@@ -14,8 +14,12 @@ namespace Cinemachine.Editor.ECS_Hybrid
     {
         CinemachineScreenComposerGuides mScreenGuideEditor;
 
+        protected int TopLevelChannel { get; private set; }
+
         protected virtual void OnEnable()
         {
+            TopLevelChannel = Target.Vcam.FindTopLevelChannel();
+
             mScreenGuideEditor = new CinemachineScreenComposerGuides();
             mScreenGuideEditor.GetHardGuide = () => { return ToRect(Target.Value.GetHardGuideRect()); };
             mScreenGuideEditor.GetSoftGuide = () => { return ToRect(Target.Value.GetSoftGuideRect()); };
@@ -75,12 +79,12 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
             // Draw the camera guides
             var vcam = Target.Vcam;
-            var brain = vcam == null ? null : CM_Brain.FindBrain(vcam.ParentChannel);
+            var brain = vcam == null ? null : CM_Brain.FindBrain(TopLevelChannel);
             if (brain == null || brain.OutputCamera == null || !brain.m_ShowGameViewGuides)
                 return;
 
             var entity = Target.Entity;
-            bool isLive = brain.VcamIsLive(entity);
+            bool isLive = vcam.IsLive;
 
             // Screen guides
             var state = CM_EntityVcam.StateFromEntity(entity);

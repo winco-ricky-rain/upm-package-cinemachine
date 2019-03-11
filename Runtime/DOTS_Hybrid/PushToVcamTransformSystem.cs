@@ -5,7 +5,6 @@ using Unity.Burst;
 using UnityEngine.Jobs;
 using Cinemachine.ECS;
 using UnityEngine;
-using Unity.Transforms;
 using Unity.Mathematics;
 
 namespace Cinemachine.ECS_Hybrid
@@ -21,8 +20,9 @@ namespace Cinemachine.ECS_Hybrid
         {
             m_mainGroup = GetComponentGroup(
                 typeof(Transform),
-                ComponentType.ReadOnly(typeof(CM_VcamPositionState)),
-                ComponentType.ReadOnly(typeof(CM_VcamRotationState)));
+                ComponentType.ReadOnly<CM_VcamPositionState>(),
+                ComponentType.ReadOnly<CM_VcamRotationState>(),
+                ComponentType.Exclude<CM_Channel>());
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
