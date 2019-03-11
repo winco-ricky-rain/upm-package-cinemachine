@@ -89,9 +89,7 @@ namespace Cinemachine
                 lens.OrthographicSize = fromCamera.orthographicSize;
                 lens.NearClipPlane = fromCamera.nearClipPlane;
                 lens.FarClipPlane = fromCamera.farClipPlane;
-#if UNITY_2018_2_OR_NEWER
                 lens.LensShift = fromCamera.lensShift;
-#endif
                 lens.SnapshotCameraReadOnlyProperties(fromCamera);
             }
             return lens;
@@ -107,11 +105,9 @@ namespace Cinemachine
             {
                 Orthographic = camera.orthographic;
                 SensorSize = new Vector2(camera.aspect, 1f);
-#if UNITY_2018_2_OR_NEWER
                 IsPhysicalCamera = camera.usePhysicalProperties;
                 if (IsPhysicalCamera)
                     SensorSize = camera.sensorSize;
-#endif
             }
         }
 
@@ -123,9 +119,7 @@ namespace Cinemachine
         {
             Orthographic = lens.Orthographic;
             SensorSize = lens.SensorSize;
-#if UNITY_2018_2_OR_NEWER
             IsPhysicalCamera = lens.IsPhysicalCamera;
-#endif
         }
 
         /// <summary>

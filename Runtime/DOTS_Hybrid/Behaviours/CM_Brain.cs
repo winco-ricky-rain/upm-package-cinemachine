@@ -6,6 +6,7 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Events;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace Cinemachine.ECS_Hybrid
 {
@@ -171,15 +172,6 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
-        public bool VcamIsLive(Entity vcam)
-        {
-            if (vcam != Entity.Null)
-                for (int i = 0; i < liveVcamsPreviousFrame.Count; ++i)
-                    if (liveVcamsPreviousFrame[i] == vcam)
-                        return true;
-            return false;
-        }
-
         // Get the first active brain on this channel
         public static CM_Brain FindBrain(int channel)
         {
@@ -208,15 +200,24 @@ namespace Cinemachine.ECS_Hybrid
                     cam.fieldOfView = state.Lens.FieldOfView;
                     if (cam.orthographic)
                         cam.orthographicSize = state.Lens.OrthographicSize;
-#if UNITY_2018_2_OR_NEWER
                     else
                     {
                         cam.usePhysicalProperties = state.Lens.IsPhysicalCamera;
                         cam.lensShift = state.Lens.LensShift;
                     }
-#endif
                 }
             }
+/*
+            var m = ActiveEntityManager;
+            if (m != null)
+            {
+                LocalToWorld l2w = new LocalToWorld { Value = transform.worldToLocalMatrix };
+                if (!m.HasComponent<LocalToWorld>(Entity))
+                    m.AddComponentData(Entity, l2w);
+                else
+                    m.SetComponentData(Entity, l2w);
+            }
+*/
             if (events.cameraUpdatedEvent != null)
                 events.cameraUpdatedEvent.Invoke(this);
         }

@@ -5,7 +5,6 @@ using Unity.Mathematics;
 using Unity.Burst;
 using System;
 using UnityEngine;
-using Unity.Transforms;
 
 namespace Cinemachine.ECS
 {

@@ -18,7 +18,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
 
         protected virtual void OnEnable()
         {
-            TopLevelChannel = Target.Vcam.FindTopLevelChannel();
+            TopLevelChannel = Target.Vcam == null ? 0 : Target.Vcam.FindTopLevelChannel();
 
             mScreenGuideEditor = new CinemachineScreenComposerGuides();
             mScreenGuideEditor.GetHardGuide = () => { return ToRect(Target.Value.GetHardGuideRect()); };
