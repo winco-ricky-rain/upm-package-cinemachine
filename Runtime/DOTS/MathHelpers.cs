@@ -307,7 +307,7 @@ namespace Cinemachine.ECS
         public static float2 GetCameraRotationToTarget(
             this quaternion orient, float3 lookAtDirUnit, float3 worldUpUnit)
         {
-#if ENABLE_UNITY_COLLECTIONS_CHECKS // GML this is the wrong define to test
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
             if (math.abs(math.length(lookAtDirUnit) - 1) > Epsilon)
                 throw new System.IndexOutOfRangeException("lookAtDirUnit must be unit length");
             if (math.abs(math.length(worldUpUnit) - 1) > Epsilon)

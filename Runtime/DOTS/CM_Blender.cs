@@ -7,6 +7,14 @@ using System.Collections.Generic;
 
 namespace Cinemachine.ECS
 {
+    public delegate CM_BlendDefinition GetBlendDelegate(Entity fromCam, Entity toCam);
+
+    public struct CM_BlendDefinition
+    {
+        public BlendCurve curve;
+        public float duration;
+    }
+
     public struct CM_Blend
     {
         public Entity cam;
@@ -26,6 +34,11 @@ namespace Cinemachine.ECS
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsValid() { return cam != Entity.Null; }
+
+        // Special value for undefined blends
+        const float kAbsurdlyLong = 1e10f;
+        public static CM_Blend UndefinedBlend { get {return new CM_Blend { duration = kAbsurdlyLong }; } }
+        public bool IsUndefined() { return duration >= kAbsurdlyLong; }
     }
 
     // Support for blend chaining
@@ -203,9 +216,13 @@ namespace Cinemachine.ECS
         {
             get
             {
-                if (mCurrentBlend.NumActiveFrames == 0)
-                    return false;
-                return !mCurrentBlend.ElementAt(0).IsComplete();
+                for (int i = 0; i < mCurrentBlend.NumActiveFrames; ++i)
+                {
+                    var blend = mCurrentBlend.ElementAt(i);
+                    if (!blend.IsUndefined() && !blend.IsComplete())
+                        return true;
+                }
+                return false;
             }
         }
 
@@ -244,23 +261,39 @@ namespace Cinemachine.ECS
         {
             int count = mCurrentBlend.NumActiveFrames;
             for (int i = 0; i < count; ++i)
-                vcams.Add(mCurrentBlend.ElementAt(i).cam);
+                if (!mCurrentBlend.ElementAt(i).IsUndefined())
+                    vcams.Add(mCurrentBlend.ElementAt(i).cam);
         }
 
-        // Call this from the main thread, before Update() gets called
+        // Call this from the main thread, before Update() gets called.
+        // Ensures that internal arrays are sufficiently allocated to cover the next Update
         public void PreUpdate()
         {
             mNativeFrame.EnsureCapacity(mNativeFrame.NumActiveFrames + 1);
             mCurrentBlend.EnsureCapacity(NumActiveFrames + mNativeFrame.NumActiveFrames + 2);
         }
 
-        // Can be called from job
-        public void Update(
-            float deltaTime, Entity activeCamera,
-            CM_BlendLookup blendProvider,
-            CM_BlendLookup.BlendDef defaultBlend)
+        public void ResolveUndefinedBlends(GetBlendDelegate blendLookup)
         {
-            UpdateNativeFrame(deltaTime, activeCamera, blendProvider, defaultBlend);
+            for (int i = 0; i < mNativeFrame.NumActiveFrames-1; ++i)
+            {
+                var blend = mNativeFrame.ElementAt(i);
+                if (blend.IsUndefined())
+                {
+                    var def = blendLookup(mNativeFrame.ElementAt(i+1).cam, blend.cam);
+                    blend.blendCurve = def.curve;
+                    blend.duration = def.duration;
+                    mNativeFrame.ElementAt(i) = blend;
+                    if (blend.IsComplete())
+                        mNativeFrame.NumActiveFrames = i + 1;
+                }
+            }
+        }
+
+        // Can be called from job
+        public void Update(float deltaTime, Entity activeCamera)
+        {
+            UpdateNativeFrame(deltaTime, activeCamera);
             ComputeCurrentBlend();
         }
 
@@ -350,10 +383,7 @@ namespace Cinemachine.ECS
         }
 
         // Can be called from a job
-        void UpdateNativeFrame(
-            float deltaTime, Entity activeCamera,
-            CM_BlendLookup blendProvider,
-            CM_BlendLookup.BlendDef defaultBlend)
+        void UpdateNativeFrame(float deltaTime, Entity activeCamera)
         {
             // Are we transitioning cameras?
             var blend = mNativeFrame.ElementAt(0);
@@ -362,16 +392,9 @@ namespace Cinemachine.ECS
                 // Do we need to create a game-play blend?
                 if (activeCamera != Entity.Null && blend.cam != Entity.Null && deltaTime >= 0)
                 {
-                    // Create a blend
-                    var blendDef = blendProvider.LookupBlend(blend.cam, activeCamera, defaultBlend);
-                    bool isCut = blendDef.duration == 0;
-                    if (!isCut)
-                        mNativeFrame.PushEmpty();
-                    blend = new CM_Blend
-                    {
-                        blendCurve = blendDef.curve,
-                        duration = blendDef.duration
-                    };
+                    // Create an undefined blend - must be defined later or it will sit here forever
+                    mNativeFrame.PushEmpty();
+                    blend = CM_Blend.UndefinedBlend;
                 }
                 // Set the current active camera
                 blend.cam = activeCamera;

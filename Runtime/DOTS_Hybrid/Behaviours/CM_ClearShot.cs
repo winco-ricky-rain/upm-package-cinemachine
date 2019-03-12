@@ -16,6 +16,11 @@ namespace Cinemachine.ECS_Hybrid
         [NoSaveDuringPlay]
         public bool showDebugText = false;
 
+        /// <summary>
+        /// This is the asset which contains custom settings for specific blends.
+        /// </summary>
+        public CinemachineBlenderSettings customBlends;
+
         /// <summary>Gets a brief debug description of this virtual camera,
         /// for use when displayiong debug info</summary>
         public override string Description
@@ -132,6 +137,33 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
+        void ResolveUndefinedBlends()
+        {
+            var channelSystem = ActiveChannelSystem;
+            if (channelSystem != null)
+            {
+                var c = Channel;
+                channelSystem.ResolveUndefinedBlends(
+                    Channel.channel, (Entity fromCam, Entity toCam) =>
+                    {
+                        var def = c.defaultBlend;
+                        if (customBlends != null)
+                            def = customBlends.GetBlendForVirtualCameras(fromCam, toCam, def);
+
+                        if (CM_Brain.OnCreateBlend != null)
+                            def = CM_Brain.OnCreateBlend(gameObject,
+                                CM_EntityVcam.GetEntityVcam(fromCam),
+                                CM_EntityVcam.GetEntityVcam(toCam), def);
+
+                        return new CM_BlendDefinition
+                        {
+                            curve = def.BlendCurve,
+                            duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
+                        };
+                    });
+            }
+        }
+
         /// <summary>Makes sure the internal child cache is up to date</summary>
         protected override void OnEnable()
         {
@@ -157,6 +189,7 @@ namespace Cinemachine.ECS_Hybrid
                 c.settings.projection = p;
                 Channel = c;
             }
+            ResolveUndefinedBlends();
             base.Update();
         }
     }

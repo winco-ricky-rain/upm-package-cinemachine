@@ -6,7 +6,6 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Events;
 using Unity.Mathematics;
-using Unity.Transforms;
 
 namespace Cinemachine.ECS_Hybrid
 {
@@ -183,6 +182,13 @@ namespace Cinemachine.ECS_Hybrid
 
         static List<CM_Brain> sAllBrains = new List<CM_Brain>();
 
+        /// Hook for custom blend - called whenever a blend is created, allowing client
+        /// to override the blend definition
+        public delegate CinemachineBlendDefinition CreateBlendDelegate(
+            GameObject context, ICinemachineCamera fromCam, ICinemachineCamera toCam,
+            CinemachineBlendDefinition defaultBlend);
+        public static CreateBlendDelegate OnCreateBlend;
+
         /// <summary> Apply a cref="CameraState"/> to the game object</summary>
         private void PushStateToUnityCamera(CameraState state)
         {
@@ -207,17 +213,7 @@ namespace Cinemachine.ECS_Hybrid
                     }
                 }
             }
-/*
-            var m = ActiveEntityManager;
-            if (m != null)
-            {
-                LocalToWorld l2w = new LocalToWorld { Value = transform.worldToLocalMatrix };
-                if (!m.HasComponent<LocalToWorld>(Entity))
-                    m.AddComponentData(Entity, l2w);
-                else
-                    m.SetComponentData(Entity, l2w);
-            }
-*/
+
             if (events.cameraUpdatedEvent != null)
                 events.cameraUpdatedEvent.Invoke(this);
         }
@@ -312,19 +308,6 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
-        void SetupCustomBlends()
-        {
-            // GML todo: something more efficient
-            var m = ActiveChannelSystem;
-            if (m != null && customBlends != null)
-            {
-                List<ICinemachineCamera> allVcams = new List<ICinemachineCamera>();
-                allVcams.AddRange(Resources.FindObjectsOfTypeAll(
-                    typeof(CM_VcamBase)) as ICinemachineCamera[]);
-                m.BuildBlendLookup(Channel.channel, customBlends, allVcams);
-            }
-        }
-
         private void OnEnable()
         {
             m_OutputCamera = GetComponent<Camera>();
@@ -332,7 +315,6 @@ namespace Cinemachine.ECS_Hybrid
             sAllBrains.Add(this);
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
-            blendsSetup = false;
         }
 
         private void OnDisable()
@@ -349,26 +331,54 @@ namespace Cinemachine.ECS_Hybrid
         }
 #endif
 
+        void ResolveUndefinedBlends()
+        {
+            var channelSystem = ActiveChannelSystem;
+            if (channelSystem != null)
+            {
+                var c = Channel;
+                channelSystem.ResolveUndefinedBlends(
+                    Channel.channel, (Entity fromCam, Entity toCam) =>
+                    {
+                        var def = c.defaultBlend;
+                        if (customBlends != null)
+                            def = customBlends.GetBlendForVirtualCameras(fromCam, toCam, def);
+
+                        if (CM_Brain.OnCreateBlend != null)
+                            def = CM_Brain.OnCreateBlend(gameObject,
+                                CM_EntityVcam.GetEntityVcam(fromCam),
+                                CM_EntityVcam.GetEntityVcam(toCam), def);
+
+                        return new CM_BlendDefinition
+                        {
+                            curve = def.BlendCurve,
+                            duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
+                        };
+                    });
+            }
+        }
+
         List<Entity> liveVcamsPreviousFrame = new List<Entity>();
         List<Entity> scratchList = new List<Entity>();
 
         void ProcessActiveVcam()
         {
+            ResolveUndefinedBlends();
             var state = CurrentCameraState;
 
             // Send activation events
             var channelSystem = ActiveChannelSystem;
             if (channelSystem != null)
             {
-                var channel = Channel;
+                var c = Channel;
                 var deltaTime = ChannelState.deltaTime;
-                var worldUp = math.mul(channel.settings.worldOrientation, math.up());
+                var worldUp = math.mul(c.settings.worldOrientation, math.up());
 
                 scratchList.Clear();
-                channelSystem.GetLiveVcams(Channel.channel, scratchList);
+                channelSystem.GetLiveVcams(Channel.channel, scratchList, true);
                 var previous = liveVcamsPreviousFrame.Count > 0
                     ? CM_EntityVcam.GetEntityVcam(liveVcamsPreviousFrame[0]) : null;
-                bool isBlending = scratchList.Count > 1;
+                bool isBlending = channelSystem.IsBlending(c.channel);
                 for (int i = scratchList.Count - 1; i >= 0; --i)
                 {
                     if (!liveVcamsPreviousFrame.Contains(scratchList[i]))
@@ -376,7 +386,8 @@ namespace Cinemachine.ECS_Hybrid
                         var vcam = CM_EntityVcam.GetEntityVcam(scratchList[i]);
                         if (vcam != null)
                         {
-                            // Notify incoming camera of transition
+                            // Notify incoming camera of transition.
+                            // GML this is not really useful... think of something better
                             vcam.OnTransitionFromCamera(previous, worldUp, deltaTime);
 
                             // Send transition notification to observers
@@ -425,15 +436,8 @@ namespace Cinemachine.ECS_Hybrid
                 ProcessActiveVcam();
         }
 
-        // GML there must be a more reliable way to do this
-        bool blendsSetup = false;
         private void OnPreCull()
         {
-            if (!blendsSetup)
-            {
-                SetupCustomBlends();
-                blendsSetup = true;
-            }
             if (m_UpdateMethod == UpdateMethod.OnPreCull)
                 ProcessActiveVcam();
         }
