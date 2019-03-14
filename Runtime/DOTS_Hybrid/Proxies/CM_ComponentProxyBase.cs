@@ -33,6 +33,16 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
+        protected EntityManager ActiveEntityManager
+        {
+            get
+            {
+                if (TryGetEntityAndManager(out EntityManager m, out Entity entity))
+                    return m;
+                return null;
+            }
+        }
+
         public CT GetEntityComponentData<CT>() where CT : struct, IComponentData
         {
             if (TryGetEntityAndManager(out EntityManager m, out Entity entity))

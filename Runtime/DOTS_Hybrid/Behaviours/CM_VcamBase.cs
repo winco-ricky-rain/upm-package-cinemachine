@@ -155,7 +155,6 @@ namespace Cinemachine.ECS_Hybrid
             if (m == null || !m.Exists(Entity))
                 return;
 
-            var typeIndex = TypeManager.GetTypeIndex<CM_VcamChannel>();
             if (!m.HasComponent<CM_VcamChannel>(Entity))
                 m.AddSharedComponentData(Entity, new CM_VcamChannel());
             if (!m.HasComponent<CM_VcamPriority>(Entity))

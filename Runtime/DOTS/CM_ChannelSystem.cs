@@ -446,6 +446,30 @@ namespace Cinemachine.ECS
             group.ResetFilter();
         }
 
+        /// <summary>Invoke a callback for each channel's vcams</summary>
+        /// <param name="group">all the vcams</param>
+        /// <param name="c2">Other shared component for grouping</param>
+        /// <param name="cb">the callback to invoke per channel</param>
+        public void InvokePerVcamChannel<T>(ComponentGroup group, T c2, OnVcamGroupDelegate cb)
+            where T : struct, ISharedComponentData
+        {
+            if (entityManager == null)
+                return;
+            var entities = GetChannelCache(false);
+            for (int i = 0; i < entities.Length; ++i)
+            {
+                var channel = entities[i];
+                for (int j = 0; j < entities.Length; ++j)
+                {
+                    var cache = entities[j];
+                    group.SetFilter(new CM_VcamChannel { channel = cache.c.channel }, c2);
+                    if (group.CalculateLength() > 0)
+                        cb(group, cache.e, cache.c, cache.state);
+                }
+            }
+            group.ResetFilter();
+        }
+
         ComponentGroup m_vcamGroup;
         ComponentGroup m_channelsGroup;
         ComponentGroup m_missingChannelStateGroup;

@@ -7,8 +7,8 @@ namespace Cinemachine
     /// As a part of the Cinemachine Pipeline implementing the Noise stage, this
     /// component adds Perlin Noise to the Camera state, in the Correction
     /// channel of the CameraState.
-    /// 
-    /// The noise is created by using a predefined noise profile asset.  This defines the 
+    ///
+    /// The noise is created by using a predefined noise profile asset.  This defines the
     /// shape of the noise over time.  You can scale this in amplitude or in time, to produce
     /// a large family of different noises using the same profile.
     /// </summary>
