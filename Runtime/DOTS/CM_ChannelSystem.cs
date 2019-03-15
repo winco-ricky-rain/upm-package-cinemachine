@@ -208,7 +208,8 @@ namespace Cinemachine.ECS
         public ICinemachineCamera GetActiveVirtualCamera(int channel)
         {
             var e = GetChannelEntity(channel);
-            return CM_EntityVcam.GetEntityVcam(GetEntityComponentData<CM_ChannelState>(e).activeVcam);
+            var s = GetEntityComponentData<CM_ChannelState>(e);
+            return CM_EntityVcam.GetEntityVcam(s.activeVcam);
         }
 
         /// <summary>Is there a blend in progress?</summary>
@@ -741,17 +742,6 @@ namespace Cinemachine.ECS
                 }
 
                 blendState.blender.Update(state.deltaTime, desiredVcam);
-/* GML
-                    ,
-                    blendState.blendLookup,
-                    new CM_BlendLookup.BlendDef
-                    {
-                        curve = c.defaultBlend.BlendCurve,
-                        duration = math.select(
-                            c.defaultBlend.m_Time, 0,
-                            c.defaultBlend.m_Style == CinemachineBlendDefinition.Style.Cut)
-                    });
-*/
             }
         }
 
@@ -762,8 +752,8 @@ namespace Cinemachine.ECS
                 ref CM_ChannelState state,
                 [ReadOnly] ref CM_ChannelBlendState blendState)
             {
-                state.activeVcam = (state.soloCamera == Entity.Null)
-                    ? state.soloCamera : state.activeVcam = blendState.blender.ActiveVirtualCamera;
+                state.activeVcam = (state.soloCamera != Entity.Null)
+                    ? state.soloCamera : blendState.blender.ActiveVirtualCamera;
             }
         }
     }
