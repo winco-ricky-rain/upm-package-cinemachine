@@ -75,6 +75,10 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamRotationState rotState)
             {
+                // GML hack
+                if (index >= raycasts.Length)
+                    return; // WTF!!!!
+
                 // GML todo: check for no lookAt condition
 
                 // cast back towards the camera to filter out target's collider
@@ -101,6 +105,10 @@ namespace Cinemachine.ECS
                 ref CM_VcamShotQuality shotQuality, [ReadOnly] ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamRotationState rotState, [ReadOnly] ref CM_VcamLensState lens)
             {
+                // GML hack
+                if (index >= raycasts.Length)
+                    return; // WTF!!!!
+
                 bool noObstruction = hits[index].normal == Vector3.zero;
 
                 float3 offset = rotState.lookAtPoint - posState.GetCorrected();
