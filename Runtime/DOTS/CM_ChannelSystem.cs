@@ -207,16 +207,18 @@ namespace Cinemachine.ECS
         /// <param name="channel">The CM channel id to check</param>
         public ICinemachineCamera GetActiveVirtualCamera(int channel)
         {
-            return CM_EntityVcam.GetEntityVcam(
-                GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel)).activeVcam);
+            var e = GetChannelEntity(channel);
+            return CM_EntityVcam.GetEntityVcam(GetEntityComponentData<CM_ChannelState>(e).activeVcam);
         }
 
         /// <summary>Is there a blend in progress?</summary>
         /// <param name="channel">The CM channel id to check</param>
         public bool IsBlending(int channel)
         {
-            return GetEntityComponentData<CM_ChannelBlendState>(
-                GetChannelEntity(channel)).blender.IsBlending;
+            var e = GetChannelEntity(channel);
+            if (GetEntityComponentData<CM_ChannelState>(e).soloCamera != Entity.Null)
+                return false;
+            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.IsBlending;
         }
 
         /// <summary>
@@ -225,16 +227,22 @@ namespace Cinemachine.ECS
         /// <param name="channel">The CM channel id to check</param>
         public CM_BlendState GetActiveBlend(int channel)
         {
-            return GetEntityComponentData<CM_ChannelBlendState>(
-                GetChannelEntity(channel)).blender.State;
+            var e = GetChannelEntity(channel);
+            var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
+            if (solo != Entity.Null)
+                return new CM_BlendState { cam = solo, weight = 1 };;
+            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.State;
         }
 
         /// <summary>Current camera state, final result of all blends</summary>
         /// <param name="channel">The CM channel id to check</param>
         public CameraState GetCurrentCameraState(int channel)
         {
-            return GetEntityComponentData<CM_ChannelBlendState>(
-                GetChannelEntity(channel)).blender.State.cameraState;
+            var e = GetChannelEntity(channel);
+            var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
+            if (solo != Entity.Null)
+                return CM_EntityVcam.StateFromEntity(solo);
+            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.State.cameraState;
         }
 
         /// <summary>
@@ -247,8 +255,11 @@ namespace Cinemachine.ECS
         /// or part of a blend in progress.</returns>
         public bool IsLive(int channel, ICinemachineCamera vcam)
         {
-            return GetEntityComponentData<CM_ChannelBlendState>(
-                GetChannelEntity(channel)).blender.IsLive(vcam.AsEntity);
+            var e = GetChannelEntity(channel);
+            var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
+            if (solo != Entity.Null && solo == vcam.AsEntity)
+                return true;
+            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.IsLive(vcam.AsEntity);
         }
 
         /// <summary>
@@ -262,8 +273,13 @@ namespace Cinemachine.ECS
         {
             var entities = GetChannelCache(false);
             for (int i = 0; i < entities.Length; ++i)
-                if (GetEntityComponentData<CM_ChannelBlendState>(entities[i].e).blender.IsLive(vcam.AsEntity))
+            {
+                var e = entities[i];
+                if (e.state.soloCamera == vcam.AsEntity)
                     return true;
+                if (GetEntityComponentData<CM_ChannelBlendState>(e.e).blender.IsLive(vcam.AsEntity))
+                    return true;
+            }
             return false;
         }
 
@@ -276,9 +292,15 @@ namespace Cinemachine.ECS
         public void GetLiveVcams(int channel, List<Entity> vcams, bool deep)
         {
             ActiveChannelStateJobs.Complete();
+            var e = GetChannelEntity(channel);
             vcams.Clear();
-            GetEntityComponentData<CM_ChannelBlendState>(
-                GetChannelEntity(channel)).blender.GetLiveVcams(vcams);
+            var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
+            if (solo != Entity.Null)
+            {
+                vcams.Add(solo);
+                return;
+            }
+            GetEntityComponentData<CM_ChannelBlendState>(e).blender.GetLiveVcams(vcams);
             if (deep && entityManager != null)
             {
                 int start = 0;
@@ -675,12 +697,7 @@ namespace Cinemachine.ECS
                 float activateAfter = c.activateAfter;
                 float minDuration = c.minDuration;
 
-                Entity desiredVcam = state.soloCamera;
-                if (desiredVcam == Entity.Null)
-                    desiredVcam = blendState.priorityQueue.EntityAt(0);
-                else
-                    activateAfter = minDuration = 0;
-
+                Entity desiredVcam = blendState.priorityQueue.EntityAt(0);
                 Entity currentVcam = blendState.blender.ActiveVirtualCamera;
                 if (blendState.activationTime != 0)
                 {
@@ -745,7 +762,8 @@ namespace Cinemachine.ECS
                 ref CM_ChannelState state,
                 [ReadOnly] ref CM_ChannelBlendState blendState)
             {
-                state.activeVcam = blendState.blender.ActiveVirtualCamera;
+                state.activeVcam = (state.soloCamera == Entity.Null)
+                    ? state.soloCamera : state.activeVcam = blendState.blender.ActiveVirtualCamera;
             }
         }
     }
