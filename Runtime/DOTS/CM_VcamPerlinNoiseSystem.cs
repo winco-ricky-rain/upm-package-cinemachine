@@ -114,12 +114,9 @@ namespace Cinemachine.ECS
                     (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
                     {
                         var profile = uniqueTypes[i].noiseProfile;
-                        if (profile != null)
+                        if (profile != null && state.deltaTime >= 0)
                         {
-                            var job = new PerlinNoiseJob()
-                            {
-                                deltaTime = state.deltaTime
-                            };
+                            var job = new PerlinNoiseJob() { deltaTime = state.deltaTime };
                             if (profile.OrientationNoise.Length > 0)
                                 job.rotNoise0 = profile.OrientationNoise[0];
                             if (profile.OrientationNoise.Length > 1)
@@ -137,6 +134,7 @@ namespace Cinemachine.ECS
         struct PerlinNoiseJob : IJobProcessComponentData<
             CM_VcamPositionState, CM_VcamRotationState, CM_VcamPerlinNoiseState, CM_VcamPerlinNoise>
         {
+            // Note: only 3 rotation channels supported, that's it.  No independent pos noise.
             public NoiseSettings.TransformNoiseParams rotNoise0;
             public NoiseSettings.TransformNoiseParams rotNoise1;
             public NoiseSettings.TransformNoiseParams rotNoise2;
@@ -148,10 +146,7 @@ namespace Cinemachine.ECS
                 ref CM_VcamPerlinNoiseState noiseState,
                 [ReadOnly] ref CM_VcamPerlinNoise noise)
             {
-                if (deltaTime < 0)
-                    return;
-
-                noiseState.noiseTime += deltaTime * noise.frequencyGain;
+                noiseState.noiseTime += math.max(0, deltaTime) * noise.frequencyGain;
                 var e = NoiseAt(rotNoise0, noiseState.noiseTime, noise.noiseSeed)
                     + NoiseAt(rotNoise1, noiseState.noiseTime, noise.noiseSeed)
                     + NoiseAt(rotNoise2, noiseState.noiseTime, noise.noiseSeed);

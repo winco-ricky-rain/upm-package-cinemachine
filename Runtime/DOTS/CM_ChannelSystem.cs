@@ -395,10 +395,11 @@ namespace Cinemachine.ECS
             {
                 var cache = channelEntities[i];
                 var e = cache.e;
+
                 var c = entityManager.GetComponentData<CM_Channel>(e);
-                if (!isPlaying || timeNow < cache.state.notPlayingTimeModeExpiry)
-                    cache.state.deltaTime = -1;
-                else
+                cache.state.deltaTime = -1;
+                if (isPlaying || timeNow < cache.state.notPlayingTimeModeExpiry
+                        || cache.state.soloCamera != Entity.Null)
                 {
                     switch (c.timeMode)
                     {
@@ -412,9 +413,9 @@ namespace Cinemachine.ECS
                 entityManager.SetComponentData(e, cache.state);
                 channelEntities[i] = cache;
 
-                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(e);
-                bs.blender.PreUpdate();
-                entityManager.SetComponentData(e, bs);
+                var blendState = entityManager.GetComponentData<CM_ChannelBlendState>(e);
+                blendState.blender.PreUpdate();
+                entityManager.SetComponentData(e, blendState);
             }
         }
 
