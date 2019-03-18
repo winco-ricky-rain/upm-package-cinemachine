@@ -563,6 +563,7 @@ namespace Cinemachine.ECS
         void DestroyDanglingStateComponents()
         {
             // Deallocate our resources
+            ActiveChannelStateJobs.Complete();
             if (m_danglingBlendStateGroup.CalculateLength() > 0)
             {
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
