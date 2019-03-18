@@ -54,7 +54,7 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
-    public struct CM_VcamTransposerState : ISystemStateComponentData
+    public struct CM_VcamTransposerState : IComponentData
     {
         /// State information used for damping
         public float3 previousTargetPosition;

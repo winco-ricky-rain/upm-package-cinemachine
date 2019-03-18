@@ -52,8 +52,8 @@ namespace Cinemachine.ECS
                     if (m.GetSharedComponentData<CM_VcamChannel>(e).channel
                             != m.GetComponentData<CM_Channel>(e).channel)
                     {
-                        var c = m.GetComponentData<CM_ChannelBlendState>(e);
-                        return c.blender.State.cameraState;
+                        var blendState = m.GetComponentData<CM_ChannelBlendState>(e);
+                        return blendState.blender.State.cameraState;
                     }
                 }
 

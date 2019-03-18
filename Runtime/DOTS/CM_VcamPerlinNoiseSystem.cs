@@ -54,7 +54,7 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
-    public struct CM_VcamPerlinNoiseState : ISystemStateComponentData
+    public struct CM_VcamPerlinNoiseState : IComponentData
     {
         public float noiseTime;
     }

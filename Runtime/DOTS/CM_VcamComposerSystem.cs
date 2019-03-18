@@ -106,7 +106,7 @@ namespace Cinemachine.ECS
     }
 
     // Internal use only
-    struct CM_VcamComposerState : ISystemStateComponentData
+    struct CM_VcamComposerState : IComponentData
     {
         public float3 cameraPos;
         public float3 cameraPosPrevFrame;
@@ -266,6 +266,7 @@ namespace Cinemachine.ECS
                     var job = new ComposerJob
                     {
                         deltaTime = state.deltaTime,
+                        fixedDelta = 0, //GML Time.fixedDeltaTime,
                         targetLookup = targetLookup
                     };
                     composerDeps = job.ScheduleGroup(filteredGroup, composerDeps);
@@ -281,6 +282,7 @@ namespace Cinemachine.ECS
             CM_VcamLookAtTarget, CM_VcamComposer>
         {
             public float deltaTime;
+            public float fixedDelta;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
             public void Execute(
@@ -326,7 +328,7 @@ namespace Cinemachine.ECS
                     if (composer.centerOnActivate != 0)
                         rect = new MathHelpers.rect2d { pos = rect.pos + (rect.size / 2), size = float2.zero }; // Force to center
                     RotateToScreenBounds(targetDir, posState.up, rect,
-                        ref rigOrientation, composerState.fov, composer.damping, -1);
+                        ref rigOrientation, composerState.fov, composer.damping, -1, fixedDelta);
                 }
                 else
                 {
@@ -344,9 +346,9 @@ namespace Cinemachine.ECS
                     // First force the previous rotation into the hard bounds, no damping,
                     // then move it through the soft zone, with damping
                     RotateToScreenBounds(targetDir, posState.up, composerState.fovHardGuideRect,
-                        ref rigOrientation, composerState.fov, composer.damping, -1);
+                        ref rigOrientation, composerState.fov, composer.damping, -1, fixedDelta);
                     RotateToScreenBounds(targetDir, posState.up,composerState.fovSoftGuideRect,
-                        ref rigOrientation, composerState.fov, composer.damping, deltaTime);
+                        ref rigOrientation, composerState.fov, composer.damping, deltaTime, fixedDelta);
                 }
                 composerState.cameraPosPrevFrame = posState.raw + posState.correction;
                 composerState.lookAtPrevFrame = rotState.lookAtPoint;
@@ -360,7 +362,8 @@ namespace Cinemachine.ECS
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void RotateToScreenBounds(
                 float3 targetDirUnit, float3 upUnit, MathHelpers.rect2d screenRect,
-                ref quaternion rigOrientation, float2 fov, float2 damping, float deltaTime)
+                ref quaternion rigOrientation, float2 fov, float2 damping,
+                float deltaTime, float fixedDelta)
             {
                 var rotToRect = rigOrientation.GetCameraRotationToTarget(targetDirUnit, upUnit);
 
@@ -382,7 +385,7 @@ namespace Cinemachine.ECS
 
                 // Apply damping
                 rotToRect = MathHelpers.Damp(
-                    rotToRect, math.select(float2.zero, damping, deltaTime >= 0), deltaTime);
+                    rotToRect, math.select(float2.zero, damping, deltaTime >= 0), deltaTime, fixedDelta);
 
                 // Rotate
                 rigOrientation = rigOrientation.ApplyCameraRotation(rotToRect, upUnit);

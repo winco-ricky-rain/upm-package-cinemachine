@@ -88,7 +88,7 @@ namespace Cinemachine.ECS
         }
     }
 
-    public struct CM_ChannelState : ISystemStateComponentData
+    public struct CM_ChannelState : IComponentData
     {
         public float notPlayingTimeModeExpiry;
         public float deltaTime;
@@ -498,6 +498,7 @@ namespace Cinemachine.ECS
         ComponentGroup m_channelsGroup;
         ComponentGroup m_missingChannelStateGroup;
         ComponentGroup m_missingBlendStateGroup;
+        ComponentGroup m_danglingBlendStateGroup;
 
         EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
         JobHandle ActiveChannelStateJobs { get; set; }
@@ -524,6 +525,10 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_Channel>(),
                 ComponentType.Exclude<CM_ChannelBlendState>());
 
+            m_danglingBlendStateGroup = GetComponentGroup(
+                ComponentType.Exclude<CM_Channel>(),
+                ComponentType.ReadWrite<CM_ChannelBlendState>());
+
             m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
             entityManager = World.GetOrCreateManager<EntityManager>();
             m_vcamSequence = 1;
@@ -531,17 +536,7 @@ namespace Cinemachine.ECS
 
         protected override void OnDestroyManager()
         {
-            var entities = GetChannelCache(false);
-            for (int i = 0; i < entities.Length; ++i)
-            {
-                // GML this is probably wrong...
-                // Sneakily bypassing "illegal to access other systems during destruction" warning.
-                // Is there some other way to dispose of these things?
-                var bs = entityManager.GetComponentData<CM_ChannelBlendState>(entities[i].e);
-                bs.blender.Dispose();
-                bs.priorityQueue.Dispose();
-                entityManager.SetComponentData(entities[i].e, bs);
-            }
+            DestroyDanglingStateComponents();
             if (channelCache.IsCreated)
                 channelCache.Dispose();
             base.OnDestroyManager();
@@ -561,6 +556,26 @@ namespace Cinemachine.ECS
                 a = m_missingBlendStateGroup.ToEntityArray(Allocator.TempJob);
                 for (int i = 0; i < a.Length; ++i)
                     cb.AddComponent(a[i], new CM_ChannelBlendState());
+                a.Dispose();
+            }
+        }
+
+        void DestroyDanglingStateComponents()
+        {
+            // Deallocate our resources
+            if (m_danglingBlendStateGroup.CalculateLength() > 0)
+            {
+                var cb  = m_missingStateBarrier.CreateCommandBuffer();
+                var a = m_danglingBlendStateGroup.ToEntityArray(Allocator.TempJob);
+                for (int i = 0; i < a.Length; ++i)
+                {
+                    var blendState = entityManager.GetComponentData<CM_ChannelBlendState>(a[i]);
+                    blendState.blender.Dispose();
+                    blendState.priorityQueue.Dispose();
+                    entityManager.SetComponentData(a[i], blendState);
+                    cb.RemoveComponent<CM_ChannelBlendState>(a[i]);
+                    cb.DestroyEntity(a[i]);
+                }
                 a.Dispose();
             }
         }

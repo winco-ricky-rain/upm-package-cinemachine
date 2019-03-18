@@ -78,7 +78,7 @@ namespace Cinemachine.ECS
     /// GML todo: yuck
     /// </summary>
     [Serializable]
-    public struct CM_VcamLensState : ISystemStateComponentData
+    public struct CM_VcamLensState : IComponentData
     {
         public float fov;
         public float nearClip;
@@ -141,7 +141,7 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
-    public struct CM_VcamPositionState : ISystemStateComponentData
+    public struct CM_VcamPositionState : IComponentData
     {
         /// <summary> Raw (un-corrected) world space position of this camera </summary>
         public float3 raw;
@@ -169,7 +169,7 @@ namespace Cinemachine.ECS
     }
 
     [Serializable]
-    public struct CM_VcamRotationState : ISystemStateComponentData
+    public struct CM_VcamRotationState : IComponentData
     {
         /// <summary>
         /// The world space focus point of the camera.  What the camera wants to look at.
