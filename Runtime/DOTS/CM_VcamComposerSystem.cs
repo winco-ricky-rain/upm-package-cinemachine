@@ -267,6 +267,8 @@ namespace Cinemachine.ECS
                     {
                         deltaTime = state.deltaTime,
                         fixedDelta = 0, //GML Time.fixedDeltaTime,
+                        aspect = c.settings.aspect,
+                        orthographic = c.settings.IsOrthographic,
                         targetLookup = targetLookup
                     };
                     composerDeps = job.ScheduleGroup(filteredGroup, composerDeps);
@@ -283,6 +285,8 @@ namespace Cinemachine.ECS
         {
             public float deltaTime;
             public float fixedDelta;
+            public float aspect;
+            public bool orthographic;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
             public void Execute(
@@ -296,6 +300,7 @@ namespace Cinemachine.ECS
                 targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo);
 
                 rotState.lookAtPoint = targetInfo.position;
+                rotState.lookAtRadius = targetInfo.radius;
                 rotState.correction = quaternion.identity;
 
                 var camPos = posState.raw + posState.correction;
@@ -309,25 +314,26 @@ namespace Cinemachine.ECS
 
                 // Expensive FOV calculations
                 if (!composerState.CacheIsValid(
-                    lensState.orthographic != 0, lensState.aspect, lensState.fov,
+                    orthographic, aspect, lensState.fov,
                     composer.GetSoftGuideRect(), composer.GetHardGuideRect(),
                     targetDistance))
                 {
                     composerState.UpdateCache(
-                        lensState.orthographic != 0, lensState.aspect, lensState.fov,
+                        orthographic, aspect, lensState.fov,
                         composer.GetSoftGuideRect(), composer.GetHardGuideRect(),
                         targetDistance);
                 }
 
                 var rigOrientation = rotState.raw;
                 var targetDir = math.normalizesafe(rotState.lookAtPoint - camPos);
+                float r = math.atan2(targetInfo.radius, targetDistance);
+                var softGuide = ShrinkRect(composerState.fovSoftGuideRect, new float2(r, r) / composerState.fov);
                 if (deltaTime < 0)
                 {
                     // No damping, just snap to central bounds, skipping the soft zone
-                    var rect = composerState.fovSoftGuideRect;
                     if (composer.centerOnActivate != 0)
-                        rect = new MathHelpers.rect2d { pos = rect.pos + (rect.size / 2), size = float2.zero }; // Force to center
-                    RotateToScreenBounds(targetDir, posState.up, rect,
+                        softGuide = new MathHelpers.rect2d { pos = softGuide.pos + (softGuide.size / 2), size = float2.zero }; // Force to center
+                    RotateToScreenBounds(targetDir, posState.up, softGuide,
                         ref rigOrientation, composerState.fov, composer.damping, -1, fixedDelta);
                 }
                 else
@@ -345,9 +351,10 @@ namespace Cinemachine.ECS
 
                     // First force the previous rotation into the hard bounds, no damping,
                     // then move it through the soft zone, with damping
-                    RotateToScreenBounds(targetDir, posState.up, composerState.fovHardGuideRect,
+                    var hardGuide = ShrinkRect(composerState.fovHardGuideRect, new float2(r, r) / composerState.fov);
+                    RotateToScreenBounds(targetDir, posState.up, hardGuide,
                         ref rigOrientation, composerState.fov, composer.damping, -1, fixedDelta);
-                    RotateToScreenBounds(targetDir, posState.up,composerState.fovSoftGuideRect,
+                    RotateToScreenBounds(targetDir, posState.up, softGuide,
                         ref rigOrientation, composerState.fov, composer.damping, deltaTime, fixedDelta);
                 }
                 composerState.cameraPosPrevFrame = posState.raw + posState.correction;
@@ -357,6 +364,15 @@ namespace Cinemachine.ECS
                     math.normalizesafe(composerState.lookAtPrevFrame - composerState.cameraPosPrevFrame), posState.up);
 
                 rotState.raw = composerState.cameraOrientationPrevFrame;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            MathHelpers.rect2d ShrinkRect(MathHelpers.rect2d rect, float2 d)
+            {
+                float2 s = rect.size * 0.5f;
+                float2 c = rect.pos + s;
+                s = math.max(float2.zero, s - d);
+                return new MathHelpers.rect2d { pos = c - s, size = s * 2 };
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

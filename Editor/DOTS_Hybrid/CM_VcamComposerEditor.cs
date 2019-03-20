@@ -72,6 +72,35 @@ namespace Cinemachine.Editor.ECS_Hybrid
                 ToRect(Target.Value.GetSoftGuideRect()));
         }
 
+        // Oh gawd there has to be a nicer way to do this!
+        Texture2D targetMarkerTex = null;
+        Texture2D GetTargetMarkerTex()
+        {
+            if (targetMarkerTex == null)
+            {
+                const int size = 128;
+                const float th = 1f;
+                Color[] pix = new Color[size * size];
+                Color c = CinemachineSettings.ComposerSettings.TargetColour;
+                float radius = size / 2 - th;
+                Vector2 center = new Vector2(size-1, size-1) / 2;
+                for (int y = 0; y < size; ++y)
+                {
+                    for (int x = 0; x < size; ++x)
+                    {
+                        float d = Vector2.Distance(new Vector2(x, y), center);
+                        d = Mathf.Abs((d - radius) / th);
+                        var a = Mathf.Clamp01(1 - d);
+                        pix[y * size + x] = new Color(1, 1, 1, a);
+                    }
+                }
+                targetMarkerTex = new Texture2D(size, size);
+                targetMarkerTex.SetPixels(pix);
+                targetMarkerTex.Apply();
+            }
+            return targetMarkerTex;
+        }
+
         protected virtual void OnGUI()
         {
             if (Target == null)
@@ -93,24 +122,26 @@ namespace Cinemachine.Editor.ECS_Hybrid
             // Draw an on-screen gizmo for the target
             if (state.HasLookAt && isLive)
             {
-                Vector3 targetScreenPosition = brain.OutputCamera.WorldToScreenPoint(state.ReferenceLookAt);
-                if (targetScreenPosition.z > 0)
+                Vector3 c = brain.OutputCamera.WorldToScreenPoint(state.ReferenceLookAt);
+                if (c.z > 0)
                 {
-                    targetScreenPosition.y = Screen.height - targetScreenPosition.y;
+                    c.y = Screen.height - c.y;
+                    var p2 = state.ReferenceLookAt
+                        + state.FinalOrientation * new Vector3(state.ReferenceLookAtRadius, 0, 0);
+                    p2 = brain.OutputCamera.WorldToScreenPoint(p2);
+                    float radius = Mathf.Max(3, Mathf.Abs(p2.x - c.x));
+                    Rect r = new Rect(c, Vector3.zero);
 
-                    GUI.color = CinemachineSettings.ComposerSettings.TargetColour;
-                    Rect r = new Rect(targetScreenPosition, Vector2.zero);
-                    float size = (CinemachineSettings.ComposerSettings.TargetSize
-                        + CinemachineScreenComposerGuides.kGuideBarWidthPx) / 2;
-                    GUI.DrawTexture(r.Inflated(new Vector2(size, size)), Texture2D.whiteTexture);
-                    size -= CinemachineScreenComposerGuides.kGuideBarWidthPx;
-                    if (size > 0)
-                    {
-                        Vector4 overlayOpacityScalar
-                            = new Vector4(1f, 1f, 1f, CinemachineSettings.ComposerSettings.OverlayOpacity);
-                        GUI.color = Color.black * overlayOpacityScalar;
-                        GUI.DrawTexture(r.Inflated(new Vector2(size, size)), Texture2D.whiteTexture);
-                    }
+                    var oldColor = GUI.color;
+                    GUI.color = Color.black;
+                    GUI.DrawTexture(r.Inflated(new Vector2(2.5f, 2.5f)), Texture2D.whiteTexture, ScaleMode.StretchToFill);
+                    var color = CinemachineSettings.ComposerSettings.TargetColour;
+                    GUI.color = color;
+                    GUI.DrawTexture(r.Inflated(new Vector2(1.5f, 1.5f)), Texture2D.whiteTexture, ScaleMode.StretchToFill);
+                    color.a = Mathf.Lerp(1f, CinemachineSettings.ComposerSettings.OverlayOpacity, (radius - 10f) / 50f);
+                    GUI.color = color;
+                    GUI.DrawTexture(r.Inflated(new Vector2(radius, radius)), GetTargetMarkerTex(), ScaleMode.StretchToFill);
+                    GUI.color = oldColor;
                 }
             }
         }

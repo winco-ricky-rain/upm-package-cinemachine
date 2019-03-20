@@ -85,6 +85,7 @@ namespace Cinemachine.ECS
                 {
                     var c = m.GetComponentData<CM_VcamRotationState>(e);
                     state.ReferenceLookAt = c.lookAtPoint;
+                    state.ReferenceLookAtRadius = c.lookAtRadius;
                     state.RawOrientation = math.normalizesafe(c.raw);
                     state.OrientationCorrection = math.normalizesafe(c.correction);
                 }

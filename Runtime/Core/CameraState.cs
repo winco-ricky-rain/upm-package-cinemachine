@@ -8,12 +8,12 @@ namespace Cinemachine
     /// The output of the Cinemachine engine for a specific virtual camera.  The information
     /// in this struct can be blended, and provides what is needed to calculate an
     /// appropriate camera position, orientation, and lens setting.
-    /// 
+    ///
     /// Raw values are what the Cinemachine behaviours generate.  The correction channel
     /// holds perturbations to the raw values - e.g. noise or smoothing, or obstacle
     /// avoidance corrections.  Coirrections are not considered when making time-based
     /// calculations such as damping.
-    /// 
+    ///
     /// The Final position and orientation is the comination of the raw values and
     /// their corrections.
     /// </summary>
@@ -31,10 +31,12 @@ namespace Cinemachine
 
         /// <summary>
         /// The world space focus point of the camera.  What the camera wants to look at.
-        /// There is a special constant define to represent "nothing".  Be careful to 
+        /// There is a special constant define to represent "nothing".  Be careful to
         /// check for that (or check the HasLookAt property).
         /// </summary>
         public Vector3 ReferenceLookAt { get; set; }
+
+        public float ReferenceLookAtRadius { get; set; }
 
         /// <summary>
         /// Returns true if this state has a valid ReferenceLookAt value.
@@ -152,12 +154,9 @@ namespace Cinemachine
                 state.Lens = LensSettings.Default;
                 state.ReferenceUp = Vector3.up;
                 state.ReferenceLookAt = kNoPoint;
-                state.RawPosition = Vector3.zero;
                 state.RawOrientation = Quaternion.identity;
                 state.ShotQuality = 1;
-                state.PositionCorrection = Vector3.zero;
                 state.OrientationCorrection = Quaternion.identity;
-                state.PositionDampingBypass = Vector3.zero;
                 state.BlendHint = BlendHintValue.Nothing;
                 return state;
             }
@@ -165,17 +164,17 @@ namespace Cinemachine
 
         /// <summary>Opaque structure represent extra blendable stuff and its weight.
         /// The base system ignores this data - it is intended for extension modules</summary>
-        public struct CustomBlendable 
-        { 
+        public struct CustomBlendable
+        {
             /// <summary>The custom stuff that the extension module will consider</summary>
-            public Object m_Custom; 
+            public Object m_Custom;
             /// <summary>The weight of the custom stuff.  Must be 0...1</summary>
-            public float m_Weight; 
+            public float m_Weight;
 
             /// <summary>Constructor with specific values</summary>
             /// <param name="custom">The custom stuff that the extension module will consider</param>
             /// <param name="weight">The weight of the custom stuff.  Must be 0...1</param>
-            public CustomBlendable(Object custom, float weight) 
+            public CustomBlendable(Object custom, float weight)
                 { m_Custom = custom; m_Weight = weight; }
         };
 
@@ -186,13 +185,13 @@ namespace Cinemachine
         CustomBlendable mCustom3;
         List<CustomBlendable> m_CustomOverflow;
 
-        /// <summary>The number of custom blendables that will be applied to the camera.  
-        /// The base system manages but otherwise ignores this data - it is intended for 
+        /// <summary>The number of custom blendables that will be applied to the camera.
+        /// The base system manages but otherwise ignores this data - it is intended for
         /// extension modules</summary>
         public int NumCustomBlendables { get; private set; }
 
-        /// <summary>Get a custom blendable that will be applied to the camera.  
-        /// The base system manages but otherwise ignores this data - it is intended for 
+        /// <summary>Get a custom blendable that will be applied to the camera.
+        /// The base system manages but otherwise ignores this data - it is intended for
         /// extension modules</summary>
         /// <param name="index">Which one to get.  Must be in range [0...NumCustomBlendables)</param>
         /// <returns>The custom blendable at the specified index.</returns>
@@ -204,7 +203,7 @@ namespace Cinemachine
                 case 1: return mCustom1;
                 case 2: return mCustom2;
                 case 3: return mCustom3;
-                default: 
+                default:
                 {
                     index -= 4;
                     if (m_CustomOverflow != null && index < m_CustomOverflow.Count)
@@ -234,9 +233,9 @@ namespace Cinemachine
         }
 
         /// <summary>Add a custom blendable to the pot for eventual application to the camera.
-        /// The base system manages but otherwise ignores this data - it is intended for 
+        /// The base system manages but otherwise ignores this data - it is intended for
         /// extension modules</summary>
-        /// <param name="b">The custom blendable to add.  If b.m_Custom is the same as an 
+        /// <param name="b">The custom blendable to add.  If b.m_Custom is the same as an
         /// already-added custom blendable, then they will be merged and the weights combined.</param>
         public void AddCustomBlendable(CustomBlendable b)
         {
@@ -255,7 +254,7 @@ namespace Cinemachine
                 case 1: mCustom1 = b; break;
                 case 2: mCustom2 = b; break;
                 case 3: mCustom3 = b; break;
-                default: 
+                default:
                 {
                     if (m_CustomOverflow == null)
                         m_CustomOverflow = new List<CustomBlendable>();
@@ -303,17 +302,18 @@ namespace Cinemachine
 
             state.PositionCorrection = ApplyPosBlendHint(
                 stateA.PositionCorrection, stateA.BlendHint,
-                stateB.PositionCorrection, stateB.BlendHint, 
-                state.PositionCorrection, 
+                stateB.PositionCorrection, stateB.BlendHint,
+                state.PositionCorrection,
                 Vector3.Lerp(stateA.PositionCorrection, stateB.PositionCorrection, t));
 
             state.OrientationCorrection = ApplyRotBlendHint(
                 stateA.OrientationCorrection, stateA.BlendHint,
-                stateB.OrientationCorrection, stateB.BlendHint, 
-                state.OrientationCorrection, 
+                stateB.OrientationCorrection, stateB.BlendHint,
+                state.OrientationCorrection,
                 Quaternion.Slerp(stateA.OrientationCorrection, stateB.OrientationCorrection, t));
 
             // LookAt target
+            state.ReferenceLookAtRadius = Mathf.Lerp(stateA.ReferenceLookAtRadius, stateB.ReferenceLookAtRadius, t);
             if (!stateA.HasLookAt || !stateB.HasLookAt)
                 state.ReferenceLookAt = kNoPoint;
             else
@@ -339,22 +339,22 @@ namespace Cinemachine
                 state.ReferenceLookAt = Vector3.Lerp(
                         stateA.ReferenceLookAt, stateB.ReferenceLookAt, adjustedT);
             }
-            
+
             // Raw position
             state.RawPosition = ApplyPosBlendHint(
                 stateA.RawPosition, stateA.BlendHint,
-                stateB.RawPosition, stateB.BlendHint, 
+                stateB.RawPosition, stateB.BlendHint,
                 state.RawPosition, state.InterpolatePosition(
                     stateA.RawPosition, stateA.ReferenceLookAt,
                     stateB.RawPosition, stateB.ReferenceLookAt,
                     t));
 
             // Interpolate the LookAt in Screen Space if requested
-            if (state.HasLookAt 
+            if (state.HasLookAt
                 && ((stateA.BlendHint | stateB.BlendHint) & BlendHintValue.RadialAimBlend) != 0)
             {
                 state.ReferenceLookAt = state.RawPosition + Vector3.Slerp(
-                        stateA.ReferenceLookAt - state.RawPosition, 
+                        stateA.ReferenceLookAt - state.RawPosition,
                         stateB.ReferenceLookAt - state.RawPosition, adjustedT);
             }
 
@@ -370,7 +370,7 @@ namespace Cinemachine
                     if (angle > UnityVectorExtensions.Epsilon)
                         dirTarget = state.ReferenceLookAt - state.CorrectedPosition;
                 }
-                if (dirTarget.AlmostZero() 
+                if (dirTarget.AlmostZero()
                     || ((stateA.BlendHint | stateB.BlendHint) & BlendHintValue.IgnoreLookAtTarget) != 0)
                 {
                     // Don't know what we're looking at - can only slerp
@@ -405,7 +405,7 @@ namespace Cinemachine
             }
             state.RawOrientation = ApplyRotBlendHint(
                 stateA.RawOrientation, stateA.BlendHint,
-                stateB.RawOrientation, stateB.BlendHint, 
+                stateB.RawOrientation, stateB.BlendHint,
                 state.RawOrientation, newOrient);
 
             // Accumulate the custom blendables and apply the weights
@@ -440,8 +440,8 @@ namespace Cinemachine
         }
 
         static Vector3 ApplyPosBlendHint(
-            Vector3 posA, BlendHintValue hintA, 
-            Vector3 posB, BlendHintValue hintB, 
+            Vector3 posA, BlendHintValue hintA,
+            Vector3 posB, BlendHintValue hintB,
             Vector3 original, Vector3 blended)
         {
             if (((hintA | hintB) & BlendHintValue.NoPosition) == 0)
@@ -454,8 +454,8 @@ namespace Cinemachine
         }
 
         static Quaternion ApplyRotBlendHint(
-            Quaternion rotA, BlendHintValue hintA, 
-            Quaternion rotB, BlendHintValue hintB, 
+            Quaternion rotA, BlendHintValue hintA,
+            Quaternion rotB, BlendHintValue hintB,
             Quaternion original, Quaternion blended)
         {
             if (((hintA | hintB) & BlendHintValue.NoOrientation) == 0)

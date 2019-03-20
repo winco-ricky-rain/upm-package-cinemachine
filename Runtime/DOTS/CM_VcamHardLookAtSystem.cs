@@ -63,6 +63,7 @@ namespace Cinemachine.ECS
                     rotState = new CM_VcamRotationState
                     {
                         lookAtPoint = targetInfo.position,
+                        lookAtRadius = targetInfo.radius,
                         raw = q,
                         correction = quaternion.identity
                     };

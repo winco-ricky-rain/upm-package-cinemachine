@@ -178,6 +178,8 @@ namespace Cinemachine.ECS
         /// </summary>
         public float3 lookAtPoint;
 
+        public float lookAtRadius;
+
         /// <summary> Raw (un-corrected) world space orientation of this camera </summary>
         public quaternion raw;
 
