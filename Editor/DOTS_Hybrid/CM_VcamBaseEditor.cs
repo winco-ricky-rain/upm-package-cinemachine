@@ -96,8 +96,8 @@ namespace Cinemachine.Editor.ECS_Hybrid
             if (brain != null)
                 brain.m_ShowGameViewGuides = EditorGUILayout.Toggle(
                     new GUIContent(
-                        "Game Window Guides",
-                        "Enable the display of overlays in the Game window.  You can adjust colours and opacity in Edit/Preferences/Cinemachine."),
+                        "Game View Guides",
+                        "Enable the display of overlays in the Game view.  You can adjust colours and opacity in Edit/Preferences/Cinemachine."),
                     brain.m_ShowGameViewGuides);
 
             SaveDuringPlay.SaveDuringPlay.Enabled = EditorGUILayout.Toggle(

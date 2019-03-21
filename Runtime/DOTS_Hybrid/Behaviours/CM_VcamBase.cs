@@ -121,7 +121,7 @@ namespace Cinemachine.ECS_Hybrid
             return channel;
         }
 
-#if true // GML todo something here
+#if true // GML todo something better here
         protected Entity EnsureTargetCompliance(Transform target)
         {
             if (target == null)

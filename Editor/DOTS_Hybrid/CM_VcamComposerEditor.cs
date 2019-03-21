@@ -129,18 +129,22 @@ namespace Cinemachine.Editor.ECS_Hybrid
                     var p2 = state.ReferenceLookAt
                         + state.FinalOrientation * new Vector3(state.ReferenceLookAtRadius, 0, 0);
                     p2 = brain.OutputCamera.WorldToScreenPoint(p2);
-                    float radius = Mathf.Max(3, Mathf.Abs(p2.x - c.x));
+                    float radius = Mathf.Abs(p2.x - c.x);
                     Rect r = new Rect(c, Vector3.zero);
+                    float minSize = CinemachineScreenComposerGuides.kGuideBarWidthPx;
 
                     var oldColor = GUI.color;
                     GUI.color = Color.black;
-                    GUI.DrawTexture(r.Inflated(new Vector2(2.5f, 2.5f)), Texture2D.whiteTexture, ScaleMode.StretchToFill);
+                    GUI.DrawTexture(r.Inflated(new Vector2(minSize, minSize)), Texture2D.whiteTexture, ScaleMode.StretchToFill);
                     var color = CinemachineSettings.ComposerSettings.TargetColour;
                     GUI.color = color;
-                    GUI.DrawTexture(r.Inflated(new Vector2(1.5f, 1.5f)), Texture2D.whiteTexture, ScaleMode.StretchToFill);
-                    color.a = Mathf.Lerp(1f, CinemachineSettings.ComposerSettings.OverlayOpacity, (radius - 10f) / 50f);
-                    GUI.color = color;
-                    GUI.DrawTexture(r.Inflated(new Vector2(radius, radius)), GetTargetMarkerTex(), ScaleMode.StretchToFill);
+                    GUI.DrawTexture(r.Inflated(new Vector2(minSize * 0.66f, minSize * 0.66f)), Texture2D.whiteTexture, ScaleMode.StretchToFill);
+                    if (radius > minSize)
+                    {
+                        color.a = Mathf.Lerp(1f, CinemachineSettings.ComposerSettings.OverlayOpacity, (radius - 10f) / 50f);
+                        GUI.color = color;
+                        GUI.DrawTexture(r.Inflated(new Vector2(radius, radius)), GetTargetMarkerTex(), ScaleMode.StretchToFill);
+                    }
                     GUI.color = oldColor;
                 }
             }

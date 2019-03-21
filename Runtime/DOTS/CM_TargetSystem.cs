@@ -52,10 +52,12 @@ namespace Cinemachine.ECS
         {
             m_mainGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Target>(),
-                ComponentType.ReadOnly<LocalToWorld>());
+                ComponentType.ReadOnly<LocalToWorld>(),
+                ComponentType.Exclude<CM_Group>());
 
             m_groupGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_Target>(),
+                ComponentType.ReadWrite<CM_Target>(),
+                ComponentType.ReadWrite<CM_Group>(),
                 ComponentType.ReadOnly(typeof(CM_GroupBufferElement)));
 
             m_missingGroupGroup = GetComponentGroup(
@@ -113,9 +115,9 @@ namespace Cinemachine.ECS
                 var setGroupsJob = new SetGroupInfo
                 {
                     infoArray = infoArray,
-                    hashMap = m_targetLookup.ToConcurrent(),
+                    hashMap = m_targetLookup.ToConcurrent()
                 };
-                TargetTableWriteHandle = setGroupsJob.ScheduleGroup(m_mainGroup, TargetTableWriteHandle);
+                TargetTableWriteHandle = setGroupsJob.ScheduleGroup(m_groupGroup, TargetTableWriteHandle);
             }
             return TargetTableWriteHandle;
         }
@@ -179,22 +181,22 @@ namespace Cinemachine.ECS
                         var b = buffer[i];
                         if (hashMap.TryGetValue(b.target, out TargetInfo item))
                         {
-                            float w = math.max(1, b.weight / maxWeight);
+                            float w = b.weight / maxWeight;
                             float3 p = math.lerp(avgPos, item.position, w);
                             float3 r = math.lerp(0, item.radius, w) * new float3(1, 1, 1);
                             float3 p0 = p - r;
                             float3 p1 = p + r;
                             minPos = math.select(p0, math.min(minPos, p0), gotOne);
-                            maxPos = math.select(p1, math.min(maxPos, p1), gotOne);
+                            maxPos = math.select(p1, math.max(maxPos, p1), gotOne);
                             gotOne = true;
                         }
-                        infoArray[index] = new TargetInfo
-                        {
-                            position = (minPos + maxPos) / 2,
-                            radius = math.length(maxPos - minPos) / 2,
-                            rotation = quaternion.identity
-                        };
                     }
+                    infoArray[index] = new TargetInfo
+                    {
+                        position = (minPos + maxPos) / 2,
+                        radius = math.length(maxPos - minPos) / 2,
+                        rotation = quaternion.identity
+                    };
                 }
             }
         }
@@ -207,8 +209,10 @@ namespace Cinemachine.ECS
 
             public void Execute(Entity entity, int index, ref CM_Target t)
             {
-                hashMap.TryAdd(entity, infoArray[index]);
-                t.radius = infoArray[index].radius;
+                var info = infoArray[index];
+                if (!hashMap.TryAdd(entity, info))
+                    info.radius = 99;
+                t.radius = info.radius;
             }
         }
 
