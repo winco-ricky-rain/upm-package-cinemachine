@@ -337,8 +337,10 @@ namespace Cinemachine.ECS
         public void ResolveUndefinedBlends(int channel, GetBlendDelegate blendLookup)
         {
             ActiveChannelStateJobs.Complete();
-            GetEntityComponentData<CM_ChannelBlendState>(
-                GetChannelEntity(channel)).blender.ResolveUndefinedBlends(blendLookup);
+            var e = GetChannelEntity(channel);
+            var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
+            blendState.blender.ResolveUndefinedBlends(blendLookup);
+            SetEntityComponentData(e, blendState);
         }
 
         /// <summary>
@@ -394,7 +396,7 @@ namespace Cinemachine.ECS
             var e = GetChannelEntity(channel);
             var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
             blendState.blender.ReleaseBlendableOverride(overrideId);
-            if (blendState.blender.NumActiveFrames == 0)
+            if (blendState.blender.NumOverrideFrames == 0)
             {
                 var state = GetEntityComponentData<CM_ChannelState>(e);
                 state.notPlayingTimeModeExpiry = 0;
@@ -642,8 +644,11 @@ namespace Cinemachine.ECS
         {
             public void Execute([ReadOnly] ref CM_Channel c, ref CM_ChannelBlendState blendState)
             {
+                var data = blendState.priorityQueue.GetUnsafeDataPtr();
+                if (data == null)
+                    return;
                 var array = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<CM_PriorityQueue.QueueEntry>(
-                    blendState.priorityQueue.GetUnsafeDataPtr(), blendState.priorityQueue.Length, Allocator.None);
+                    data, blendState.priorityQueue.Length, Allocator.None);
 
                 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                     var safety = AtomicSafetyHandle.Create();

@@ -64,7 +64,7 @@ namespace Cinemachine.ECS
         public ref CM_Blend ElementAt(int i)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (i >= capacity)
+            if (i >= length)
                 throw new System.IndexOutOfRangeException("Array access out of range");
 #endif
             return ref stack[i];
@@ -79,9 +79,9 @@ namespace Cinemachine.ECS
                 stack = (CM_Blend*)UnsafeUtility.Malloc(
                     sizeof(CM_Blend) * size, UnsafeUtility.AlignOf<CM_Blend>(), Allocator.Persistent);
                 UnsafeUtility.MemClear(stack, sizeof(CM_Blend) * size);
-                if (old != null)
+                if (length > 0)
                 {
-                    UnsafeUtility.MemCpy(stack, old, NumActiveFrames * sizeof(CM_Blend));
+                    UnsafeUtility.MemCpy(stack, old, length * sizeof(CM_Blend));
                     UnsafeUtility.Free(old, Allocator.Persistent);
                 }
                 capacity = size;
@@ -150,9 +150,11 @@ namespace Cinemachine.ECS
             {
                 stack[NumActiveFrames].timeInBlend += deltaTime;
                 if (stack[NumActiveFrames].IsComplete())
+                {
+                    ++NumActiveFrames; // include the last one
                     break;
+                }
             }
-            ++NumActiveFrames; // include the last one
 
             // Clean out any garbage created by completed blend
             for (int i = NumActiveFrames; i < numFrames; ++i)
@@ -180,7 +182,7 @@ namespace Cinemachine.ECS
 
         Frame* frameStack;
         int capacity;
-        public int NumActiveFrames { get; private set; }
+        public int NumOverrideFrames { get; private set; }
 
         private int mLastFrameId;
         private int mActiveVcamIndex;
@@ -197,7 +199,7 @@ namespace Cinemachine.ECS
                 UnsafeUtility.Free(frameStack, Allocator.Persistent);
             frameStack = null;
             capacity = 0;
-            NumActiveFrames = 0;
+            NumOverrideFrames = 0;
         }
 
         /// <summary>Get the current active virtual camera.</summary>
@@ -216,9 +218,9 @@ namespace Cinemachine.ECS
         {
             get
             {
-                for (int i = 0; i < mCurrentBlend.NumActiveFrames; ++i)
+                if (mCurrentBlend.NumActiveFrames > 1)
                 {
-                    var blend = mCurrentBlend.ElementAt(i);
+                    var blend = mCurrentBlend.ElementAt(0);
                     if (!blend.IsUndefined() && !blend.IsComplete())
                         return true;
                 }
@@ -234,7 +236,7 @@ namespace Cinemachine.ECS
                 if (count == 0)
                     return new CM_BlendState { cameraState = CameraState.Default };
                 var blend0 = mCurrentBlend.ElementAt(0);
-                if (count == 1)
+                if (count == 1 || blend0.IsComplete())
                     return new CM_BlendState
                     {
                         cam = blend0.cam,
@@ -242,13 +244,14 @@ namespace Cinemachine.ECS
                         outgoingCam = Entity.Null,
                         cameraState = mCurrentBlend.GetState()
                     };
-                return new CM_BlendState
+                var state = new CM_BlendState
                 {
                     cam = blend0.cam,
                     weight = blend0.BlendWeight(),
                     outgoingCam = mCurrentBlend.ElementAt(1).cam,
                     cameraState = mCurrentBlend.GetState()
                 };
+                return state;
             }
         }
 
@@ -270,7 +273,7 @@ namespace Cinemachine.ECS
         public void PreUpdate()
         {
             mNativeFrame.EnsureCapacity(mNativeFrame.NumActiveFrames + 1);
-            mCurrentBlend.EnsureCapacity(NumActiveFrames + mNativeFrame.NumActiveFrames + 2);
+            mCurrentBlend.EnsureCapacity(NumOverrideFrames + mNativeFrame.NumActiveFrames + 2);
         }
 
         public void ResolveUndefinedBlends(GetBlendDelegate blendLookup)
@@ -340,15 +343,15 @@ namespace Cinemachine.ECS
         /// was returned by SetBlendableOverride</param>
         public void ReleaseBlendableOverride(int overrideId)
         {
-            for (int src = 0; src < NumActiveFrames; ++src)
+            for (int src = 0; src < NumOverrideFrames; ++src)
             {
                 if (frameStack[src].id == overrideId)
                 {
-                    int numLeft = NumActiveFrames - src - 1;
+                    int numLeft = NumOverrideFrames - src - 1;
                     if (numLeft > 0)
                         UnsafeUtility.MemMove(
                             frameStack + src, frameStack + src + 1, numLeft * sizeof(Frame));
-                    --NumActiveFrames;
+                    --NumOverrideFrames;
                     break;
                 }
             }
@@ -357,14 +360,14 @@ namespace Cinemachine.ECS
         /// Get the frame index corresponding to the ID
         int GetOrCreateBrainFrameIndex(int withId)
         {
-            for (int i = 0; i < NumActiveFrames; ++i)
+            for (int i = 0; i < NumOverrideFrames; ++i)
             {
                 int id = frameStack[i].id;
                 if (id == withId)
                     return i;
             }
             // Not found - add it
-            int newIndex = NumActiveFrames++;
+            int newIndex = NumOverrideFrames++;
             if (capacity <= newIndex)
             {
                 var old = frameStack;
@@ -376,7 +379,7 @@ namespace Cinemachine.ECS
                     UnsafeUtility.MemCpy(frameStack, old, capacity * sizeof(Frame));
                     UnsafeUtility.Free(old, Allocator.Persistent);
                 }
-                capacity = NumActiveFrames;
+                capacity = NumOverrideFrames;
             }
             frameStack[newIndex] = new Frame() { id = withId };
             return newIndex;
@@ -385,6 +388,9 @@ namespace Cinemachine.ECS
         // Can be called from a job
         void UpdateNativeFrame(float deltaTime, Entity activeCamera)
         {
+            if (mNativeFrame.NumActiveFrames == 0)
+                mNativeFrame.PushEmpty();
+
             // Are we transitioning cameras?
             var blend = mNativeFrame.ElementAt(0);
             if (activeCamera != blend.cam)
@@ -411,7 +417,7 @@ namespace Cinemachine.ECS
             // Most-recent overrides dominate
             mCurrentBlend.NumActiveFrames = 0;
             mActiveVcamIndex = 0;
-            for (int i = NumActiveFrames-1; i >= 0; --i)
+            for (int i = NumOverrideFrames-1; i >= 0; --i)
             {
                 var frame = frameStack[i];
                 if (frame.camB == Entity.Null)
