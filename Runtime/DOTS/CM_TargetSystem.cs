@@ -210,8 +210,7 @@ namespace Cinemachine.ECS
             public void Execute(Entity entity, int index, ref CM_Target t)
             {
                 var info = infoArray[index];
-                if (!hashMap.TryAdd(entity, info))
-                    info.radius = 99;
+                hashMap.TryAdd(entity, info);
                 t.radius = info.radius;
             }
         }
