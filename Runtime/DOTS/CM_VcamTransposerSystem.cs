@@ -143,20 +143,21 @@ namespace Cinemachine.ECS
                 if (!targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
                     return;
 
+                deltaTime = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+
                 var targetPos = targetInfo.position;
                 var targetRot = GetRotationForBindingMode(
                         targetInfo.rotation, transposer.bindingMode,
                         targetPos - posState.raw);
 
-                bool applyDamping = deltaTime >= 0 && posState.previousFrameDataIsValid != 0;
                 var prevPos = transposerState.previousTargetPosition + targetInfo.warpDelta;
                 targetRot = ApplyRotationDamping(
                     deltaTime, 0,
-                    math.select(0, transposer.angularDamping, applyDamping),
+                    math.select(0, transposer.angularDamping, deltaTime >= 0),
                     transposerState.previousTargetRotation, targetRot);
                 targetPos = ApplyPositionDamping(
                     deltaTime, 0,
-                    math.select(float3.zero, transposer.damping, applyDamping),
+                    math.select(float3.zero, transposer.damping, deltaTime >= 0),
                     prevPos, targetPos, targetRot);
 
                 transposerState = new CM_VcamTransposerState

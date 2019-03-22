@@ -297,7 +297,7 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamLookAtTarget lookAt,
                 [ReadOnly] ref CM_VcamComposer composer)
             {
-                if (targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo))
+                if (!targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo))
                     return;
 
                 rotState.lookAtPoint = targetInfo.position;
@@ -323,6 +323,8 @@ namespace Cinemachine.ECS
                         composer.GetSoftGuideRect(), composer.GetHardGuideRect(),
                         targetDistance);
                 }
+
+                deltaTime = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
 
                 var rigOrientation = rotState.raw;
                 var targetDir = math.normalizesafe(rotState.lookAtPoint - camPos);
