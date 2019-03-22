@@ -297,11 +297,11 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamLookAtTarget lookAt,
                 [ReadOnly] ref CM_VcamComposer composer)
             {
-                targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo);
+                if (targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo))
+                    return;
 
                 rotState.lookAtPoint = targetInfo.position;
                 rotState.lookAtRadius = targetInfo.radius;
-                rotState.correction = quaternion.identity;
 
                 var camPos = posState.raw + posState.correction;
                 float targetDistance = math.length(rotState.lookAtPoint - camPos);

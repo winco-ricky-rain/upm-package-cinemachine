@@ -54,20 +54,20 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamLookAtTarget lookAt)
             {
-                if (targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo))
+                if (!targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo))
+                    return;
+
+                var q = math.normalizesafe(rotState.raw, quaternion.identity);
+                float3 dir = math.normalizesafe(targetInfo.position - posState.raw, math.forward(q));
+                float3 up = math.normalizesafe(posState.up, math.up());
+                q = q.LookRotationUnit(dir, up);
+                rotState = new CM_VcamRotationState
                 {
-                    var q = math.normalizesafe(rotState.raw, quaternion.identity);
-                    float3 dir = math.normalizesafe(targetInfo.position - posState.raw, math.forward(q));
-                    float3 up = math.normalizesafe(posState.up, math.up());
-                    q = q.LookRotationUnit(dir, up);
-                    rotState = new CM_VcamRotationState
-                    {
-                        lookAtPoint = targetInfo.position,
-                        lookAtRadius = targetInfo.radius,
-                        raw = q,
-                        correction = quaternion.identity
-                    };
-                }
+                    lookAtPoint = targetInfo.position,
+                    lookAtRadius = targetInfo.radius,
+                    raw = q,
+                    correction = quaternion.identity
+                };
             }
         }
     }

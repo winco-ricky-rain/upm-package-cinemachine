@@ -140,37 +140,37 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamTransposer transposer,
                 [ReadOnly] ref CM_VcamFollowTarget follow)
             {
-                if (targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
+                if (!targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
+                    return;
+
+                var targetPos = targetInfo.position;
+                var targetRot = GetRotationForBindingMode(
+                        targetInfo.rotation, transposer.bindingMode,
+                        targetPos - posState.raw);
+
+                bool applyDamping = deltaTime >= 0 && posState.previousFrameDataIsValid != 0;
+                var prevPos = transposerState.previousTargetPosition + targetInfo.warpDelta;
+                targetRot = ApplyRotationDamping(
+                    deltaTime, 0,
+                    math.select(0, transposer.angularDamping, applyDamping),
+                    transposerState.previousTargetRotation, targetRot);
+                targetPos = ApplyPositionDamping(
+                    deltaTime, 0,
+                    math.select(float3.zero, transposer.damping, applyDamping),
+                    prevPos, targetPos, targetRot);
+
+                transposerState = new CM_VcamTransposerState
                 {
-                    var targetPos = targetInfo.position;
-                    var targetRot = GetRotationForBindingMode(
-                            targetInfo.rotation, transposer.bindingMode,
-                            targetPos - posState.raw);
+                    previousTargetPosition = targetPos,
+                    previousTargetRotation = targetRot
+                };
 
-                    bool applyDamping = deltaTime >= 0 && posState.previousFrameDataIsValid != 0;
-                    var prevPos = transposerState.previousTargetPosition + targetInfo.warpDelta;
-                    targetRot = ApplyRotationDamping(
-                        deltaTime, 0,
-                        math.select(0, transposer.angularDamping, applyDamping),
-                        transposerState.previousTargetRotation, targetRot);
-                    targetPos = ApplyPositionDamping(
-                        deltaTime, 0,
-                        math.select(float3.zero, transposer.damping, applyDamping),
-                        prevPos, targetPos, targetRot);
-
-                    transposerState = new CM_VcamTransposerState
-                    {
-                        previousTargetPosition = targetPos,
-                        previousTargetRotation = targetRot
-                    };
-
-                    posState = new CM_VcamPositionState
-                    {
-                        raw = targetPos + math.mul(targetRot, transposer.followOffset),
-                        dampingBypass = float3.zero,
-                        up = math.mul(targetRot, math.up())
-                    };
-                }
+                posState = new CM_VcamPositionState
+                {
+                    raw = targetPos + math.mul(targetRot, transposer.followOffset),
+                    dampingBypass = float3.zero,
+                    up = math.mul(targetRot, math.up())
+                };
             }
         }
 

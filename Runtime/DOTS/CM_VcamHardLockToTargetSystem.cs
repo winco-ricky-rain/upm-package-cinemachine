@@ -57,11 +57,10 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamHardLockToTarget hardLock,
                 [ReadOnly] ref CM_VcamFollowTarget follow)
             {
-                if (targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
-                {
-                    posState.raw = targetInfo.position;
-                    rotState.raw = math.select(rotState.raw.value, targetInfo.rotation.value, hardLock.lockRotation);
-                }
+                if (!targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
+                    return;
+                posState.raw = targetInfo.position;
+                rotState.raw = math.select(rotState.raw.value, targetInfo.rotation.value, hardLock.lockRotation);
             }
         }
     }
