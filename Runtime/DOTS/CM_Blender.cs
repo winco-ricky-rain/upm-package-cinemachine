@@ -293,6 +293,13 @@ namespace Cinemachine.ECS
             }
         }
 
+        public Entity GetNewlyActivatedVcam()
+        {
+            if (mNativeFrame.NumActiveFrames > 0 && mNativeFrame.ElementAt(0).IsUndefined())
+                return mNativeFrame.ElementAt(0).cam;
+            return Entity.Null;
+        }
+
         // Can be called from job
         public void Update(float deltaTime, Entity activeCamera)
         {

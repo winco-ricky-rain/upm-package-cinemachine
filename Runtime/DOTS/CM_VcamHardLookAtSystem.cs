@@ -61,13 +61,9 @@ namespace Cinemachine.ECS
                 float3 dir = math.normalizesafe(targetInfo.position - posState.raw, math.forward(q));
                 float3 up = math.normalizesafe(posState.up, math.up());
                 q = q.LookRotationUnit(dir, up);
-                rotState = new CM_VcamRotationState
-                {
-                    lookAtPoint = targetInfo.position,
-                    lookAtRadius = targetInfo.radius,
-                    raw = q,
-                    correction = quaternion.identity
-                };
+                rotState.lookAtPoint = targetInfo.position;
+                rotState.lookAtRadius = targetInfo.radius;
+                rotState.raw = q;
             }
         }
     }

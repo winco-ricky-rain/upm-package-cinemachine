@@ -373,7 +373,6 @@ namespace Cinemachine.ECS
         {
             public void Execute(Entity entity, int index, ref CM_VcamPositionState posState)
             {
-                posState.dampingBypass = float3.zero; // GML should this be moved to init?
                 posState.previousFrameDataIsValid = 1;
             }
         }

@@ -143,7 +143,7 @@ namespace Cinemachine.ECS
                 if (!targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
                     return;
 
-                deltaTime = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
 
                 var targetPos = targetInfo.position;
                 var targetRot = GetRotationForBindingMode(
@@ -152,26 +152,19 @@ namespace Cinemachine.ECS
 
                 var prevPos = transposerState.previousTargetPosition + targetInfo.warpDelta;
                 targetRot = ApplyRotationDamping(
-                    deltaTime, 0,
-                    math.select(0, transposer.angularDamping, deltaTime >= 0),
+                    dt, 0,
+                    math.select(0, transposer.angularDamping, dt >= 0),
                     transposerState.previousTargetRotation, targetRot);
                 targetPos = ApplyPositionDamping(
-                    deltaTime, 0,
-                    math.select(float3.zero, transposer.damping, deltaTime >= 0),
+                    dt, 0,
+                    math.select(float3.zero, transposer.damping, dt >= 0),
                     prevPos, targetPos, targetRot);
 
-                transposerState = new CM_VcamTransposerState
-                {
-                    previousTargetPosition = targetPos,
-                    previousTargetRotation = targetRot
-                };
+                transposerState.previousTargetPosition = targetPos;
+                transposerState.previousTargetRotation = targetRot;
 
-                posState = new CM_VcamPositionState
-                {
-                    raw = targetPos + math.mul(targetRot, transposer.followOffset),
-                    dampingBypass = float3.zero,
-                    up = math.mul(targetRot, math.up())
-                };
+                posState.raw = targetPos + math.mul(targetRot, transposer.followOffset);
+                posState.up = math.mul(targetRot, math.up());
             }
         }
 

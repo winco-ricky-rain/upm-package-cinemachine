@@ -324,13 +324,13 @@ namespace Cinemachine.ECS
                         targetDistance);
                 }
 
-                deltaTime = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
 
                 var rigOrientation = rotState.raw;
                 var targetDir = math.normalizesafe(rotState.lookAtPoint - camPos);
                 float r = math.atan2(targetInfo.radius, targetDistance);
                 var softGuide = ShrinkRect(composerState.fovSoftGuideRect, new float2(r, r) / composerState.fov);
-                if (deltaTime < 0)
+                if (dt < 0)
                 {
                     // No damping, just snap to central bounds, skipping the soft zone
                     if (composer.centerOnActivate != 0)
@@ -357,7 +357,7 @@ namespace Cinemachine.ECS
                     RotateToScreenBounds(targetDir, posState.up, hardGuide,
                         ref rigOrientation, composerState.fov, composer.damping, -1, fixedDelta);
                     RotateToScreenBounds(targetDir, posState.up, softGuide,
-                        ref rigOrientation, composerState.fov, composer.damping, deltaTime, fixedDelta);
+                        ref rigOrientation, composerState.fov, composer.damping, dt, fixedDelta);
                 }
                 composerState.cameraPosPrevFrame = posState.raw + posState.correction;
                 composerState.lookAtPrevFrame = rotState.lookAtPoint;

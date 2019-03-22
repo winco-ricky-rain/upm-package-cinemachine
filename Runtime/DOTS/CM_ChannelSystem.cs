@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -334,15 +335,6 @@ namespace Cinemachine.ECS
             }
         }
 
-        public void ResolveUndefinedBlends(int channel, GetBlendDelegate blendLookup)
-        {
-            ActiveChannelStateJobs.Complete();
-            var e = GetChannelEntity(channel);
-            var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
-            blendState.blender.ResolveUndefinedBlends(blendLookup);
-            SetEntityComponentData(e, blendState);
-        }
-
         /// <summary>
         /// Override the current camera and current blend.  This setting will trump
         /// any in-game logic that sets virtual camera priorities and Enabled states.
@@ -496,6 +488,37 @@ namespace Cinemachine.ECS
             group.ResetFilter();
         }
 
+        /// <summary>
+        /// This must be called before getting the active cam and blend state
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="blendLookup"></param>
+        public void ResolveUndefinedBlends(int channel, GetBlendDelegate blendLookup)
+        {
+            ActiveChannelStateJobs.Complete();
+            var e = GetChannelEntity(channel);
+            var blendState = GetEntityComponentData<CM_ChannelBlendState>(e);
+
+            // Take this opportunity to bump the sequence number of any newly-activated vcam
+            MoveVcamToTopOfPrioritySubqueue(blendState.blender.GetNewlyActivatedVcam());
+
+            blendState.blender.ResolveUndefinedBlends(blendLookup);
+            SetEntityComponentData(e, blendState);
+        }
+
+        public void MoveVcamToTopOfPrioritySubqueue(Entity vcam)
+        {
+            if (vcam != Entity.Null)
+            {
+                if (entityManager.HasComponent<CM_VcamPriority>(vcam))
+                {
+                    var priority = entityManager.GetComponentData<CM_VcamPriority>(vcam);
+                    priority.vcamSequence = NextVcamSequence;
+                    entityManager.SetComponentData(vcam, priority);
+                }
+            }
+        }
+
         ComponentGroup m_vcamGroup;
         ComponentGroup m_channelsGroup;
         ComponentGroup m_missingChannelStateGroup;
@@ -507,7 +530,7 @@ namespace Cinemachine.ECS
         EntityManager entityManager;
 
         int m_vcamSequence = 1;
-        public int NextVcamSequence { get { return m_vcamSequence++; } }
+        public int NextVcamSequence { get { return Interlocked.Increment(ref m_vcamSequence); } }
 
         protected override void OnCreateManager()
         {

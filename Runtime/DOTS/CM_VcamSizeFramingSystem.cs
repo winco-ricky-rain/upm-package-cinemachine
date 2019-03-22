@@ -204,7 +204,7 @@ namespace Cinemachine.ECS
                 fwd /= d;
                 float targetHeight = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
                 targetHeight /= math.max(0.01f, framing.screenFit);
-                deltaTime = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
 
                 // Move the camera
                 if (framing.adjustmentMode != CM_VcamSizeFraming.AdjustmentMode.ZoomOnly)
@@ -224,7 +224,7 @@ namespace Cinemachine.ECS
                     // Apply damping
                     targetDelta = framingState.prevFramingDistance + MathHelpers.Damp(
                         targetDelta - framingState.prevFramingDistance,
-                        math.select(0, framing.damping, deltaTime >= 0), deltaTime);
+                        math.select(0, framing.damping, dt >= 0), dt);
 
                     framingState.prevFramingDistance = targetDelta;
                     posState.correction -= fwd * targetDelta;
@@ -241,8 +241,8 @@ namespace Cinemachine.ECS
                     // Apply damping
                     targetFOV = math.select(
                         targetFOV, framingState.prevFOV + MathHelpers.Damp(
-                            targetFOV - framingState.prevFOV, framing.damping, deltaTime),
-                        deltaTime >= 0);
+                            targetFOV - framingState.prevFOV, framing.damping, dt),
+                        dt >= 0);
                     lensState.fov = targetFOV;
                 }
                 framingState.prevFOV = lensState.fov;
@@ -275,7 +275,7 @@ namespace Cinemachine.ECS
 
                 float targetHeight = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
                 targetHeight /= math.max(0.01f, framing.screenFit);
-                deltaTime = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
 
                 var limit = framing.orthoSizeRange * 2;
                 targetHeight = math.clamp(targetHeight, limit.x, limit.y);
@@ -284,8 +284,8 @@ namespace Cinemachine.ECS
                 targetHeight *= 0.5f;
                 targetHeight = math.select(
                     targetHeight, framingState.prevFOV + MathHelpers.Damp(
-                        targetHeight - framingState.prevFOV, framing.damping, deltaTime),
-                    deltaTime >= 0);
+                        targetHeight - framingState.prevFOV, framing.damping, dt),
+                    dt >= 0);
 
                 lensState.fov = framingState.prevFOV = targetHeight;
             }
