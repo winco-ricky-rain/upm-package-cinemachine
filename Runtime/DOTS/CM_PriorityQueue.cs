@@ -48,9 +48,14 @@ namespace Cinemachine.ECS
                 if (data != null)
                     UnsafeUtility.Free(data, Allocator.Persistent);
                 Length = length;
-                data = (QueueEntry*)UnsafeUtility.Malloc(
-                    sizeof(QueueEntry) * Length,
-                    UnsafeUtility.AlignOf<QueueEntry>(), Allocator.Persistent);
+                data = null;
+                if (length > 0)
+                {
+                    int size = sizeof(QueueEntry) * length;
+                    data = (QueueEntry*)UnsafeUtility.Malloc(size,
+                        UnsafeUtility.AlignOf<QueueEntry>(), Allocator.Persistent);
+                    UnsafeUtility.MemClear(data, size);
+                }
             }
         }
 

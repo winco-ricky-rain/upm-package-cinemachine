@@ -231,7 +231,7 @@ namespace Cinemachine.ECS
             var e = GetChannelEntity(channel);
             var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
             if (solo != Entity.Null)
-                return new CM_BlendState { cam = solo, weight = 1 };;
+                return new CM_BlendState { cam = solo, weight = 1 };
             return GetEntityComponentData<CM_ChannelBlendState>(e).blender.State;
         }
 
