@@ -176,7 +176,7 @@ namespace Cinemachine.ECS
 
         [BurstCompile]
         struct SizeFramingJob : IJobProcessComponentData<
-            CM_VcamSizeFramingState, CM_VcamPositionState, CM_VcamLensState,
+            CM_VcamSizeFramingState, CM_VcamLensState, CM_VcamPositionState,
             CM_VcamRotationState, CM_VcamLookAtTarget, CM_VcamSizeFraming>
         {
             public float deltaTime;
@@ -186,8 +186,8 @@ namespace Cinemachine.ECS
 
             public void Execute(
                 ref CM_VcamSizeFramingState framingState,
-                ref CM_VcamPositionState posState,
                 ref CM_VcamLensState lensState,
+                ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamRotationState rotState,
                 [ReadOnly] ref CM_VcamLookAtTarget lookAt,
                 [ReadOnly] ref CM_VcamSizeFraming framing)
@@ -251,7 +251,7 @@ namespace Cinemachine.ECS
 
         [BurstCompile]
         struct SizeFramingJobOrtho : IJobProcessComponentData<
-            CM_VcamSizeFramingState, CM_VcamPositionState, CM_VcamLensState,
+            CM_VcamSizeFramingState, CM_VcamLensState, CM_VcamPositionState,
             CM_VcamRotationState, CM_VcamLookAtTarget, CM_VcamSizeFraming>
         {
             public float deltaTime;
@@ -261,14 +261,33 @@ namespace Cinemachine.ECS
 
             public void Execute(
                 ref CM_VcamSizeFramingState framingState,
-                ref CM_VcamPositionState posState,
                 ref CM_VcamLensState lensState,
+                [ReadOnly] ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamRotationState rotState,
                 [ReadOnly] ref CM_VcamLookAtTarget lookAt,
                 [ReadOnly] ref CM_VcamSizeFraming framing)
             {
                 if (!targetLookup.TryGetValue(lookAt.target, out CM_TargetSystem.TargetInfo targetInfo))
                     return;
+
+                if (targetInfo.radius < CM_VcamSizeFraming.kMinScreenFitSize)
+                    return;
+
+                float targetHeight = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
+                targetHeight /= math.max(0.01f, framing.screenFit);
+                deltaTime = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+
+                var limit = framing.orthoSizeRange * 2;
+                targetHeight = math.clamp(targetHeight, limit.x, limit.y);
+
+                // Apply damping
+                targetHeight *= 0.5f;
+                targetHeight = math.select(
+                    targetHeight, framingState.prevFOV + MathHelpers.Damp(
+                        targetHeight - framingState.prevFOV, framing.damping, deltaTime),
+                    deltaTime >= 0);
+
+                lensState.fov = framingState.prevFOV = targetHeight;
             }
         }
     }
