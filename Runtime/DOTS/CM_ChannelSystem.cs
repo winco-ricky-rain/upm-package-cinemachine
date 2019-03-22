@@ -645,7 +645,7 @@ namespace Cinemachine.ECS
             public void Execute([ReadOnly] ref CM_Channel c, ref CM_ChannelBlendState blendState)
             {
                 var data = blendState.priorityQueue.GetUnsafeDataPtr();
-                if (data == null)
+                if (data == null || blendState.priorityQueue.Length < 2)
                     return;
                 var array = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<CM_PriorityQueue.QueueEntry>(
                     data, blendState.priorityQueue.Length, Allocator.None);

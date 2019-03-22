@@ -428,34 +428,34 @@ namespace Cinemachine.ECS
                     // Special case: track is only blending out
                     if (mActiveVcamIndex == mCurrentBlend.NumActiveFrames)
                         ++mActiveVcamIndex;
-                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
+                    ++mCurrentBlend.NumActiveFrames;
+                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames-1) = new CM_Blend
                     {
                         cam = frame.camA,
                         blendCurve = BlendCurve.Linear,
                         duration = -1,
                         timeInBlend = frame.weightB
                     };
-                    ++mCurrentBlend.NumActiveFrames;
                 }
                 else
                 {
-                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
+                    ++mCurrentBlend.NumActiveFrames;
+                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames-1) = new CM_Blend
                     {
                         cam = frame.camB,
                         blendCurve = BlendCurve.Linear,
                         duration = 1,
                         timeInBlend = frame.weightB
                     };
-                    ++mCurrentBlend.NumActiveFrames;
 
                     if (frame.camA != Entity.Null)
                     {
-                        mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames) = new CM_Blend
+                        ++mCurrentBlend.NumActiveFrames;
+                        mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames-1) = new CM_Blend
                         {
                             cam = frame.camA,
                             duration = 0
                         };
-                        ++mCurrentBlend.NumActiveFrames;
                         break; // We're done, blend is complete
                     }
                 }
@@ -466,7 +466,7 @@ namespace Cinemachine.ECS
             {
                 int numFrames = mNativeFrame.NumActiveFrames;
                 for (int i = 0; i < numFrames; ++i)
-                    mCurrentBlend.ElementAt(mCurrentBlend.NumActiveFrames++) = mNativeFrame.ElementAt(i);
+                    mCurrentBlend.ElementAt(++mCurrentBlend.NumActiveFrames-1) = mNativeFrame.ElementAt(i);
             }
             mActiveVcamIndex = math.min(mActiveVcamIndex, mNativeFrame.NumActiveFrames-1);
         }
