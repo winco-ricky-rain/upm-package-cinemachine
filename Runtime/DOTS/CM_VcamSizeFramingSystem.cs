@@ -17,7 +17,7 @@ namespace Cinemachine.ECS
         /// <summary>How much of the screen to fill with the bounding box of the targets.</summary>
         [Tooltip("The bounding box of the targets should occupy this amount of the screen space.  "
             + "1 means fill the whole screen.  0.5 means fill half the screen, etc.")]
-        public float screenFit;
+        public float2 screenFit;
 
         /// <summary>What screen dimensions to consider when framing</summary>
         [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
@@ -202,16 +202,19 @@ namespace Cinemachine.ECS
                     return;
 
                 fwd /= d;
-                float targetHeight = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
-                targetHeight /= math.max(0.01f, framing.screenFit);
+                float h = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
+                float2 height2 = h / math.max(CM_VcamSizeFraming.kMinScreenFitSize, framing.screenFit);
                 float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
 
                 // Move the camera
                 if (framing.adjustmentMode != CM_VcamSizeFraming.AdjustmentMode.ZoomOnly)
                 {
-                    // What distance would be needed to get the adjusted
-                    // target height, at the current FOV
-                    float targetDistance = targetHeight / (2f * math.tan(math.radians(lensState.fov) * 0.5f));
+                    // What distance would be needed to get the target height, at the current FOV
+                    float2 targetDistance2 = height2 / (2f * math.tan(math.radians(lensState.fov) * 0.5f));
+                    float targetDistance = math.select(
+                        targetDistance2.y,
+                        math.select(targetDistance2.x, d, d < targetDistance2.x),
+                        d > targetDistance2.y);
 
                     // Clamp to respect min/max distance settings
                     targetDistance = math.clamp(
@@ -235,8 +238,12 @@ namespace Cinemachine.ECS
                 // Apply zoom
                 if (framing.adjustmentMode != CM_VcamSizeFraming.AdjustmentMode.DollyOnly)
                 {
-                    float targetFOV = 2f * math.degrees(math.atan(targetHeight / (2 * d)));
-                    targetFOV = math.clamp(targetFOV, framing.fovRange.x, framing.fovRange.y);
+                    float current = lensState.fov;
+                    float2 targetFOV2 = 2f * math.degrees(math.atan(height2 / (2 * d)));
+                    float targetFOV = math.select(
+                        targetFOV2.y,
+                        math.select(targetFOV2.x, current, current < targetFOV2.x),
+                        current > targetFOV2.y);
 
                     // Apply damping
                     targetFOV = math.select(
@@ -273,9 +280,15 @@ namespace Cinemachine.ECS
                 if (targetInfo.radius < CM_VcamSizeFraming.kMinScreenFitSize)
                     return;
 
-                float targetHeight = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
-                targetHeight /= math.max(0.01f, framing.screenFit);
+                float h = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
+                float2 height2 = h / math.max(0.01f, framing.screenFit);
                 float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+
+                float current = lensState.fov * 2;
+                float targetHeight = math.select(
+                    height2.y,
+                    math.select(height2.x, current, current < height2.x),
+                    lensState.fov > height2.y);
 
                 var limit = framing.orthoSizeRange * 2;
                 targetHeight = math.clamp(targetHeight, limit.x, limit.y);

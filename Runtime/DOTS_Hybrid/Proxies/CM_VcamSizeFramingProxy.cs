@@ -11,6 +11,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             var v = Value;
             v.screenFit = math.max(CM_VcamSizeFraming.kMinScreenFitSize, v.screenFit);
+            v.screenFit.y = math.max(v.screenFit.x, v.screenFit.y);
             v.damping = math.max(0, v.damping);
             v.dollyRange.y = math.max(v.dollyRange.x, v.dollyRange.y);
             v.targetDistance = math.max(float2.zero, v.targetDistance);
