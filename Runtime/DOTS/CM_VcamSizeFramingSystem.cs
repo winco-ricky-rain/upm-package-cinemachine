@@ -128,7 +128,7 @@ namespace Cinemachine.ECS
             var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
-                return default; // no targets yet
+                return inputDeps; // no targets yet
 
             JobHandle framingDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
@@ -204,7 +204,7 @@ namespace Cinemachine.ECS
                 fwd /= d;
                 float h = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
                 float2 height2 = h / math.max(CM_VcamSizeFraming.kMinScreenFitSize, framing.screenFit);
-                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid);
 
                 // Move the camera
                 if (framing.adjustmentMode != CM_VcamSizeFraming.AdjustmentMode.ZoomOnly)
@@ -282,7 +282,7 @@ namespace Cinemachine.ECS
 
                 float h = GetTargetHeight(targetInfo.radius, framing.framingMode, aspect);
                 float2 height2 = h / math.max(0.01f, framing.screenFit);
-                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid);
 
                 float current = lensState.fov * 2;
                 float targetHeight = math.select(

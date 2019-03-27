@@ -64,8 +64,8 @@ namespace Cinemachine.ECS
         public ref CM_Blend ElementAt(int i)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (i >= length)
-                throw new System.IndexOutOfRangeException("Array access out of range");
+            if (i < 0 || i >= length)
+                throw new System.IndexOutOfRangeException("CM_ChainedBlend Array access out of range");
 #endif
             return ref stack[i];
         }

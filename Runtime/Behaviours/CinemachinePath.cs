@@ -20,13 +20,13 @@ namespace Cinemachine
             [Tooltip("Position in path-local space")]
             public Vector3 position;
 
-            /// <summary>Offset from the position, which defines the tangent of the curve at the waypoint.  
-            /// The length of the tangent encodes the strength of the bezier handle.  
+            /// <summary>Offset from the position, which defines the tangent of the curve at the waypoint.
+            /// The length of the tangent encodes the strength of the bezier handle.
             /// The same handle is used symmetrically on both sides of the waypoint, to ensure smoothness.</summary>
             [Tooltip("Offset from the position, which defines the tangent of the curve at the waypoint.  The length of the tangent encodes the strength of the bezier handle.  The same handle is used symmetrically on both sides of the waypoint, to ensure smoothness.")]
             public Vector3 tangent;
 
-            /// <summary>Defines the roll of the path at this waypoint.  
+            /// <summary>Defines the roll of the path at this waypoint.
             /// The other orientation axes are inferred from the tangent and world up.</summary>
             [Tooltip("Defines the roll of the path at this waypoint.  The other orientation axes are inferred from the tangent and world up.")]
             public float roll;
@@ -58,7 +58,7 @@ namespace Cinemachine
         /// <summary>True if the path ends are joined to form a continuous loop</summary>
         public override bool Looped { get { return m_Looped; } }
 
-        /// <summary>When calculating the distance cache, sample the path this many 
+        /// <summary>When calculating the distance cache, sample the path this many
         /// times between points</summary>
         public override int DistanceCacheSampleStepsPerSegment { get { return m_Resolution; } }
 

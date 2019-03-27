@@ -86,7 +86,7 @@ namespace Cinemachine.ECS
         public float dutch;
         public float2 lensShift;
 
-        public byte orthographic;
+        public bool orthographic;
         public float aspect;
 
         public static CM_VcamLensState FromLens(CM_VcamLens v)
@@ -98,7 +98,7 @@ namespace Cinemachine.ECS
                 farClip = v.farClip,
                 dutch = v.dutch,
                 lensShift = v.lensShift,
-                orthographic = 0,
+                orthographic = false,
                 aspect = 1
             };
         }
@@ -162,7 +162,7 @@ namespace Cinemachine.ECS
         public float3 up;
 
         /// GML not sure where to put this
-        public byte previousFrameDataIsValid; // GML todo: flags
+        public bool previousFrameDataIsValid; // GML todo: flags
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float3 GetCorrected() { return raw + correction; }
@@ -278,8 +278,7 @@ namespace Cinemachine.ECS
                     var initJob = new InitVcamJob
                     {
                         channelSettings = c.settings,
-                        orthographic = (c.settings.projection == CM_Channel.Settings.Projection.Orthographic)
-                            ? (byte)1 : (byte)0,
+                        orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic,
                         positions = GetComponentDataFromEntity<LocalToWorld>(true)
                     };
                     vcamDeps = initJob.ScheduleGroup(filteredGroup, vcamDeps);
@@ -293,7 +292,7 @@ namespace Cinemachine.ECS
             CM_VcamLensState, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLens>
         {
             public CM_Channel.Settings channelSettings;
-            public byte orthographic;
+            public bool orthographic;
             [ReadOnly] public ComponentDataFromEntity<LocalToWorld> positions;
 
             public void Execute(
@@ -373,7 +372,7 @@ namespace Cinemachine.ECS
         {
             public void Execute(Entity entity, int index, ref CM_VcamPositionState posState)
             {
-                posState.previousFrameDataIsValid = 1;
+                posState.previousFrameDataIsValid = true;
             }
         }
 

@@ -69,7 +69,7 @@ namespace Cinemachine.ECS
                         FarClipPlane = c.farClip,
                         Dutch = c.dutch,
                         LensShift = c.lensShift,
-                        Orthographic = c.orthographic != 0,
+                        Orthographic = c.orthographic,
                         SensorSize = new Vector2(c.aspect, 1f) // GML todo: physical camera
                     };
                     noLens = false;

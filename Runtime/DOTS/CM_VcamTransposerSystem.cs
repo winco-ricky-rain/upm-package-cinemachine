@@ -108,7 +108,7 @@ namespace Cinemachine.ECS
             var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
-                return default; // no targets yet
+                return inputDeps; // no targets yet
 
             JobHandle vcamDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
@@ -143,7 +143,7 @@ namespace Cinemachine.ECS
                 if (!targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
                     return;
 
-                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid);
 
                 var targetPos = targetInfo.position;
                 var targetRot = GetRotationForBindingMode(

@@ -31,11 +31,11 @@ namespace Cinemachine.ECS
 
         /// <summary>If set, movement along the Y axis will be ignored for
         /// lookahead calculations</summary>
-        public byte lookaheadIgnoreY; // GML todo: flags
+        public bool lookaheadIgnoreY; // GML todo: flags
 
         /// <summary>Force target to center of screen when this camera activates.
         /// If false, will clamp target to the edges of the dead zone</summary>
-        public byte centerOnActivate; // GML todo: flags
+        public bool centerOnActivate; // GML todo: flags
 
         /// <summary>How aggressively the camera tries to follow the target on the screen.
         /// Small numbers are more responsive, rapidly orienting the camera to keep the
@@ -256,7 +256,7 @@ namespace Cinemachine.ECS
             var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
-                return default; // no targets yet
+                return inputDeps; // no targets yet
 
             JobHandle composerDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
@@ -324,7 +324,7 @@ namespace Cinemachine.ECS
                         targetDistance);
                 }
 
-                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid != 0);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid);
 
                 var rigOrientation = rotState.raw;
                 var targetDir = math.normalizesafe(rotState.lookAtPoint - camPos);
@@ -333,7 +333,7 @@ namespace Cinemachine.ECS
                 if (dt < 0)
                 {
                     // No damping, just snap to central bounds, skipping the soft zone
-                    if (composer.centerOnActivate != 0)
+                    if (composer.centerOnActivate)
                         softGuide = new MathHelpers.rect2d { pos = softGuide.pos + (softGuide.size / 2), size = float2.zero }; // Force to center
                     RotateToScreenBounds(targetDir, posState.up, softGuide,
                         ref rigOrientation, composerState.fov, composer.damping, -1, fixedDelta);

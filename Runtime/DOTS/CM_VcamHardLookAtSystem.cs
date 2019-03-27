@@ -35,7 +35,7 @@ namespace Cinemachine.ECS
             var targetSystem = World.GetExistingManager<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
-                return default; // no targets yet
+                return inputDeps; // no targets yet
 
             var job = new LookAtTargetJob() { targetLookup = targetLookup };
             var jobDeps = job.ScheduleGroup(m_vcamGroup, inputDeps);
