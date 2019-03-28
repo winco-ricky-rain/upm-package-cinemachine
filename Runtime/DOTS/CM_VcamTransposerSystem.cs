@@ -110,20 +110,27 @@ namespace Cinemachine.ECS
             if (!targetLookup.IsCreated)
                 return inputDeps; // no targets yet
 
-            JobHandle vcamDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
-            channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
-                {
-                    var job = new TrackTargetJob
-                    {
-                        deltaTime = state.deltaTime,
-                        targetLookup = targetLookup
-                    };
-                    vcamDeps = job.ScheduleGroup(filteredGroup, vcamDeps);
-                });
+            JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, inputDeps, new TransposerJobLaunch { targetLookup = targetLookup });
 
             return targetSystem.RegisterTargetLookupReadJobs(vcamDeps);
+        }
+
+        struct TransposerJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        {
+            public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+            public JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
+            {
+                var job = new TrackTargetJob
+                {
+                    deltaTime = state.deltaTime,
+                    targetLookup = targetLookup
+                };
+                return job.ScheduleGroup(filteredGroup, inputDeps);
+            }
         }
 
         [BurstCompile]

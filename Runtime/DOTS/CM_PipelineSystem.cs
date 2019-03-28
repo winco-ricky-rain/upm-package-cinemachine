@@ -269,22 +269,29 @@ namespace Cinemachine.ECS
                 a.Dispose();
             }
 
-            JobHandle vcamDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
             channelSystem.InitChannelStates();
-            channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
-                {
-                    var initJob = new InitVcamJob
-                    {
-                        channelSettings = c.settings,
-                        orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic,
-                        positions = GetComponentDataFromEntity<LocalToWorld>(true)
-                    };
-                    vcamDeps = initJob.ScheduleGroup(filteredGroup, vcamDeps);
-                });
-
+            JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, inputDeps,
+                new InitVcamJobLaunch { preBodySystem = this });
             return vcamDeps;
+        }
+
+        struct InitVcamJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        {
+            public CM_VcamPreBodySystem preBodySystem;
+            public JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
+            {
+                var initJob = new InitVcamJob
+                {
+                    channelSettings = c.settings,
+                    orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic,
+                    positions = preBodySystem.GetComponentDataFromEntity<LocalToWorld>(true)
+                };
+                return initJob.ScheduleGroup(filteredGroup, inputDeps);
+            }
         }
 
         [BurstCompile]

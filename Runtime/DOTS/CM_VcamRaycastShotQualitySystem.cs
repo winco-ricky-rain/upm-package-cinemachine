@@ -28,37 +28,52 @@ namespace Cinemachine.ECS
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            JobHandle deps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
-            channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
+            JobHandle jobDeps = channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, inputDeps, new QualityJobLaunch() );
+            return jobDeps;
+        }
+
+        struct QualityJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        {
+            public JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
+            {
+                var objectCount = filteredGroup.CalculateLength();
+
+                // These will be deallocated by the final job
+                var raycastCommands = new NativeArray<RaycastCommand>(objectCount, Allocator.TempJob);
+                var raycastHits = new NativeArray<RaycastHit>(objectCount, Allocator.TempJob);
+
+                var setupRaycastsJob = new SetupRaycastsJob()
                 {
-                    var objectCount = filteredGroup.CalculateLength();
+                    layerMask = -5, // GML todo: how to set this?
+                    minDstanceFromTarget = 0, // GML todo: how to set this?
+                    raycasts = raycastCommands
+                };
+                var setupDeps = setupRaycastsJob.ScheduleGroup(filteredGroup, inputDeps);
+                var raycastDeps = RaycastCommand.ScheduleBatch(raycastCommands, raycastHits, 32, setupDeps);
 
-                    // These will be deallocated by the final job
-                    var raycastCommands = new NativeArray<RaycastCommand>(objectCount, Allocator.TempJob);
-                    var raycastHits = new NativeArray<RaycastHit>(objectCount, Allocator.TempJob);
-
-                    var setupRaycastsJob = new SetupRaycastsJob()
+                if (c.settings.IsOrthographic)
+                {
+                    var qualityJobOrtho = new CalculateQualityJobOrtho()
                     {
-                        layerMask = -5, // GML todo: how to set this?
-                        minDstanceFromTarget = 0, // GML todo: how to set this?
-                        raycasts = raycastCommands
-                    };
-                    var setupDeps = setupRaycastsJob.ScheduleGroup(filteredGroup, deps);
-                    var raycastDeps = RaycastCommand.ScheduleBatch(raycastCommands, raycastHits, 32, setupDeps);
-
-                    var qualityJob = new CalculateQualityJob()
-                    {
-                        isOrthographic = c.settings.IsOrthographic,
                         aspect = c.settings.aspect,
                         hits = raycastHits,         // deallocates on completion
                         raycasts = raycastCommands  // deallocates on completion
                     };
-                    deps = qualityJob.ScheduleGroup(filteredGroup, raycastDeps);
-                });
+                    return qualityJobOrtho.ScheduleGroup(filteredGroup, raycastDeps);
+                }
 
-            return deps;
+                var qualityJob = new CalculateQualityJob()
+                {
+                    aspect = c.settings.aspect,
+                    hits = raycastHits,         // deallocates on completion
+                    raycasts = raycastCommands  // deallocates on completion
+                };
+                return qualityJob.ScheduleGroup(filteredGroup, raycastDeps);
+            }
         }
 
         [BurstCompile]
@@ -95,7 +110,6 @@ namespace Cinemachine.ECS
         struct CalculateQualityJob : IJobProcessComponentDataWithEntity<
             CM_VcamShotQuality, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLensState>
         {
-            public bool isOrthographic;
             public float aspect;
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastHit> hits;
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastCommand> raycasts;
@@ -109,15 +123,36 @@ namespace Cinemachine.ECS
                 if (index >= raycasts.Length)
                     return; // WTF!!!!
 
+                float3 offset = rotState.lookAtPoint - posState.GetCorrected();
+                offset = math.mul(math.inverse(rotState.raw), offset); // camera-space
+                bool isOnscreen = IsTargetOnscreen(offset, lens.fov, aspect);
                 bool noObstruction = hits[index].normal == Vector3.zero;
+                bool isVisible = noObstruction && isOnscreen;
+                shotQuality.value = math.select(0f, 1f, isVisible);
+            }
+        }
+
+        [BurstCompile]
+        struct CalculateQualityJobOrtho : IJobProcessComponentDataWithEntity<
+            CM_VcamShotQuality, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLensState>
+        {
+            public float aspect;
+            [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastHit> hits;
+            [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<RaycastCommand> raycasts;
+
+            public void Execute(
+                Entity entity, int index,
+                ref CM_VcamShotQuality shotQuality, [ReadOnly] ref CM_VcamPositionState posState,
+                [ReadOnly] ref CM_VcamRotationState rotState, [ReadOnly] ref CM_VcamLensState lens)
+            {
+                // GML hack
+                if (index >= raycasts.Length)
+                    return; // WTF!!!!
 
                 float3 offset = rotState.lookAtPoint - posState.GetCorrected();
                 offset = math.mul(math.inverse(rotState.raw), offset); // camera-space
-                var fov = lens.fov;
-                bool isOnscreen =
-                    (!isOrthographic & IsTargetOnscreen(offset, fov, aspect))
-                    | (isOrthographic & IsTargetOnscreenOrtho(offset, fov, aspect));
-
+                bool isOnscreen = IsTargetOnscreenOrtho(offset, lens.fov, aspect);
+                bool noObstruction = hits[index].normal == Vector3.zero;
                 bool isVisible = noObstruction && isOnscreen;
                 shotQuality.value = math.select(0f, 1f, isVisible);
             }

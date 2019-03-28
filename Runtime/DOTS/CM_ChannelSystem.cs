@@ -436,56 +436,64 @@ namespace Cinemachine.ECS
             }
         }
 
-        public delegate void OnVcamGroupDelegate(
-            ComponentGroup filteredGroup,
-            Entity channelEntity,
-            CM_Channel c,
-            CM_ChannelState state);
+        public interface VcamGroupCallback
+        {
+            JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps);
+        }
 
         /// <summary>Invoke a callback for each channel's vcams</summary>
         /// <param name="group">all the vcams</param>
         /// <param name="cb">the callback to invoke per channel</param>
-        public void InvokePerVcamChannel(ComponentGroup group, OnVcamGroupDelegate cb)
+        /// <param name="inputDeps">job handle to pass to callback</param>
+        public JobHandle InvokePerVcamChannel<T>(
+            ComponentGroup group, JobHandle inputDeps, T cb) where T : struct, VcamGroupCallback
         {
-            if (entityManager == null)
-                return;
-            var entities = GetChannelCache(false);
-            for (int i = 0; i < entities.Length; ++i)
+            if (entityManager != null)
             {
-                var channel = entities[i];
-                for (int j = 0; j < entities.Length; ++j)
+                var entities = GetChannelCache(false);
+                for (int i = 0; i < entities.Length; ++i)
                 {
-                    var cache = entities[j];
-                    group.SetFilter(new CM_VcamChannel { channel = cache.c.channel });
-                    if (group.CalculateLength() > 0)
-                        cb(group, cache.e, cache.c, cache.state);
+                    for (int j = 0; j < entities.Length; ++j)
+                    {
+                        var cache = entities[j];
+                        group.SetFilter(new CM_VcamChannel { channel = cache.c.channel });
+                        if (group.CalculateLength() > 0)
+                            inputDeps = cb.Invoke(group, cache.e, cache.c, cache.state, inputDeps);
+                    }
                 }
+                group.ResetFilter();
             }
-            group.ResetFilter();
+            return inputDeps;
         }
 
         /// <summary>Invoke a callback for each channel's vcams</summary>
         /// <param name="group">all the vcams</param>
         /// <param name="c2">Other shared component for grouping</param>
         /// <param name="cb">the callback to invoke per channel</param>
-        public void InvokePerVcamChannel<T>(ComponentGroup group, T c2, OnVcamGroupDelegate cb)
-            where T : struct, ISharedComponentData
+        /// <param name="inputDeps">job handle to pass to callback</param>
+        public JobHandle InvokePerVcamChannel<COMPONENT, CB>(
+            ComponentGroup group, JobHandle inputDeps, COMPONENT c2, CB cb)
+                where COMPONENT : struct, ISharedComponentData
+                where CB : struct, VcamGroupCallback
         {
-            if (entityManager == null)
-                return;
-            var entities = GetChannelCache(false);
-            for (int i = 0; i < entities.Length; ++i)
+            if (entityManager != null)
             {
-                var channel = entities[i];
-                for (int j = 0; j < entities.Length; ++j)
+                var entities = GetChannelCache(false);
+                for (int i = 0; i < entities.Length; ++i)
                 {
-                    var cache = entities[j];
-                    group.SetFilter(new CM_VcamChannel { channel = cache.c.channel }, c2);
-                    if (group.CalculateLength() > 0)
-                        cb(group, cache.e, cache.c, cache.state);
+                    for (int j = 0; j < entities.Length; ++j)
+                    {
+                        var cache = entities[j];
+                        group.SetFilter(new CM_VcamChannel { channel = cache.c.channel }, c2);
+                        if (group.CalculateLength() > 0)
+                            inputDeps = cb.Invoke(group, cache.e, cache.c, cache.state, inputDeps);
+                    }
                 }
+                group.ResetFilter();
             }
-            group.ResetFilter();
+            return inputDeps;
         }
 
         /// <summary>
@@ -611,20 +619,10 @@ namespace Cinemachine.ECS
             ActiveChannelStateJobs.Complete();
 
             // Init the blendstates and populate the queues
-            JobHandle populateDeps = inputDeps;
-            InvokePerVcamChannel(
-                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
-                {
-                    var blendState = entityManager.GetComponentData<CM_ChannelBlendState>(e);
-                    blendState.priorityQueue.AllocateData(filteredGroup.CalculateLength());
-                    entityManager.SetComponentData(e, blendState);
-
-                    var populateJob = new PopulatePriorityQueueJob
-                        { qualities = GetComponentDataFromEntity<CM_VcamShotQuality>(true) };
-                    populateJob.AssignDataPtr(ref blendState);
-
-                    populateDeps = populateJob.ScheduleGroup(filteredGroup, populateDeps);
-                });
+            JobHandle populateDeps = InvokePerVcamChannel(
+                m_vcamGroup, inputDeps,
+                new InitBlendStatesJobLaunch
+                    { channelSystem = this, entityManager = entityManager });
 
             var sortJob = new SortQueueJob();
             var sortDeps = sortJob.ScheduleGroup(m_channelsGroup, populateDeps);
@@ -637,6 +635,26 @@ namespace Cinemachine.ECS
 
             ActiveChannelStateJobs = fetchDeps;
             return fetchDeps;
+        }
+
+        struct InitBlendStatesJobLaunch : VcamGroupCallback
+        {
+            public CM_ChannelSystem channelSystem;
+            public EntityManager entityManager;
+            public JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
+            {
+                var blendState = entityManager.GetComponentData<CM_ChannelBlendState>(channelEntity);
+                blendState.priorityQueue.AllocateData(filteredGroup.CalculateLength());
+                entityManager.SetComponentData(channelEntity, blendState);
+
+                var populateJob = new PopulatePriorityQueueJob
+                    { qualities = channelSystem.GetComponentDataFromEntity<CM_VcamShotQuality>(true) };
+                populateJob.AssignDataPtr(ref blendState);
+
+                return populateJob.ScheduleGroup(filteredGroup, inputDeps);
+            }
         }
 
         [BurstCompile]

@@ -6,6 +6,7 @@ using Unity.Burst;
 using System;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 
 namespace Cinemachine.ECS
@@ -104,30 +105,37 @@ namespace Cinemachine.ECS
             uniqueTypes.Clear();
             EntityManager.GetAllUniqueSharedComponentData(uniqueTypes);
 
-            JobHandle vcamDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
 
+            JobHandle vcamDeps = inputDeps;
             for (int i = 0; i < uniqueTypes.Count; ++i)
             {
-                channelSystem.InvokePerVcamChannel(
-                    m_vcamGroup, uniqueTypes[i],
-                    (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
-                    {
-                        var profile = uniqueTypes[i].noiseProfile;
-                        if (profile != null && state.deltaTime >= 0)
-                        {
-                            var job = new PerlinNoiseJob() { deltaTime = state.deltaTime };
-                            if (profile.OrientationNoise.Length > 0)
-                                job.rotNoise0 = profile.OrientationNoise[0];
-                            if (profile.OrientationNoise.Length > 1)
-                                job.rotNoise1 = profile.OrientationNoise[1];
-                            if (profile.OrientationNoise.Length > 2)
-                                job.rotNoise2 = profile.OrientationNoise[2];
-                            vcamDeps = job.ScheduleGroup(filteredGroup, vcamDeps);
-                        }
-                    });
+                vcamDeps = channelSystem.InvokePerVcamChannel(
+                    m_vcamGroup, vcamDeps, uniqueTypes[i],
+                    new NoiseJobLaunch { profile = uniqueTypes[i].noiseProfile });
             }
             return vcamDeps;
+        }
+
+        struct NoiseJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        {
+            public NoiseSettings profile;
+            public JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
+            {
+                if (profile == null || state.deltaTime < 0)
+                    return inputDeps;
+
+                var job = new PerlinNoiseJob() { deltaTime = state.deltaTime };
+                if (profile.OrientationNoise.Length > 0)
+                    job.rotNoise0 = profile.OrientationNoise[0];
+                if (profile.OrientationNoise.Length > 1)
+                    job.rotNoise1 = profile.OrientationNoise[1];
+                if (profile.OrientationNoise.Length > 2)
+                    job.rotNoise2 = profile.OrientationNoise[2];
+                return job.ScheduleGroup(filteredGroup, inputDeps);
+            }
         }
 
         [BurstCompile]

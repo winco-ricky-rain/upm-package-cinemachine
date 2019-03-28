@@ -258,23 +258,30 @@ namespace Cinemachine.ECS
             if (!targetLookup.IsCreated)
                 return inputDeps; // no targets yet
 
-            JobHandle composerDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
-            channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
-                {
-                    var job = new ComposerJob
-                    {
-                        deltaTime = state.deltaTime,
-                        fixedDelta = 0, //GML Time.fixedDeltaTime,
-                        aspect = c.settings.aspect,
-                        orthographic = c.settings.IsOrthographic,
-                        targetLookup = targetLookup
-                    };
-                    composerDeps = job.ScheduleGroup(filteredGroup, composerDeps);
-                });
+            JobHandle composerDeps = channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, inputDeps, new ComposerJobLaunch { targetLookup = targetLookup });
 
             return targetSystem.RegisterTargetLookupReadJobs(composerDeps);
+        }
+
+        struct ComposerJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        {
+            public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+            public JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
+            {
+                var job = new ComposerJob
+                {
+                    deltaTime = state.deltaTime,
+                    fixedDelta = 0, //GML Time.fixedDeltaTime,
+                    aspect = c.settings.aspect,
+                    orthographic = c.settings.IsOrthographic,
+                    targetLookup = targetLookup
+                };
+                return job.ScheduleGroup(filteredGroup, inputDeps);
+            }
         }
 
         [BurstCompile]

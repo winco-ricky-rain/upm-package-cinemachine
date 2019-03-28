@@ -130,36 +130,40 @@ namespace Cinemachine.ECS
             if (!targetLookup.IsCreated)
                 return inputDeps; // no targets yet
 
-            JobHandle framingDeps = inputDeps;
             var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
-            channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, (ComponentGroup filteredGroup, Entity e, CM_Channel c, CM_ChannelState state) =>
-                {
-                    if (c.settings.IsOrthographic)
-                    {
-                        var job = new SizeFramingJobOrtho
-                        {
-                            deltaTime = state.deltaTime,
-                            fixedDelta = 0, //GML Time.fixedDeltaTime,
-                            aspect = c.settings.aspect,
-                            targetLookup = targetLookup
-                        };
-                        framingDeps = job.ScheduleGroup(filteredGroup, framingDeps);
-                    }
-                    else
-                    {
-                        var job = new SizeFramingJob
-                        {
-                            deltaTime = state.deltaTime,
-                            fixedDelta = 0, //GML Time.fixedDeltaTime,
-                            aspect = c.settings.aspect,
-                            targetLookup = targetLookup
-                        };
-                        framingDeps = job.ScheduleGroup(filteredGroup, framingDeps);
-                    }
-                });
+            JobHandle framingDeps = channelSystem.InvokePerVcamChannel(
+                m_vcamGroup, inputDeps, new InitVcamJobLaunch { targetLookup = targetLookup });
 
             return targetSystem.RegisterTargetLookupReadJobs(framingDeps);
+        }
+
+        struct InitVcamJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        {
+            public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+            public JobHandle Invoke(
+                ComponentGroup filteredGroup, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
+            {
+                if (c.settings.IsOrthographic)
+                {
+                    var orthoJob = new SizeFramingJobOrtho
+                    {
+                        deltaTime = state.deltaTime,
+                        fixedDelta = 0, //GML Time.fixedDeltaTime,
+                        aspect = c.settings.aspect,
+                        targetLookup = targetLookup
+                    };
+                    return orthoJob.ScheduleGroup(filteredGroup, inputDeps);
+                }
+                var job = new SizeFramingJob
+                {
+                    deltaTime = state.deltaTime,
+                    fixedDelta = 0, //GML Time.fixedDeltaTime,
+                    aspect = c.settings.aspect,
+                    targetLookup = targetLookup
+                };
+                return job.ScheduleGroup(filteredGroup, inputDeps);
+            }
         }
 
         // Helper for jobs
@@ -231,7 +235,6 @@ namespace Cinemachine.ECS
 
                     framingState.prevFramingDistance = targetDelta;
                     posState.correction -= fwd * targetDelta;
-                    cameraPos -= fwd * targetDelta;
                     d += targetDelta;
                 }
 
