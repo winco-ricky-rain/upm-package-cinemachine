@@ -124,7 +124,7 @@ namespace Cinemachine.ECS
                     return; // WTF!!!!
 
                 float3 offset = rotState.lookAtPoint - posState.GetCorrected();
-                offset = math.mul(math.inverse(rotState.raw), offset); // camera-space
+                offset = math.mul(math.inverse(rotState.GetCorrected()), offset); // camera-space
                 bool isOnscreen = IsTargetOnscreen(offset, lens.fov, aspect);
                 bool noObstruction = hits[index].normal == Vector3.zero;
                 bool isVisible = noObstruction && isOnscreen;
@@ -150,7 +150,7 @@ namespace Cinemachine.ECS
                     return; // WTF!!!!
 
                 float3 offset = rotState.lookAtPoint - posState.GetCorrected();
-                offset = math.mul(math.inverse(rotState.raw), offset); // camera-space
+                offset = math.mul(math.inverse(rotState.GetCorrected()), offset); // camera-space
                 bool isOnscreen = IsTargetOnscreenOrtho(offset, lens.fov, aspect);
                 bool noObstruction = hits[index].normal == Vector3.zero;
                 bool isVisible = noObstruction && isOnscreen;
