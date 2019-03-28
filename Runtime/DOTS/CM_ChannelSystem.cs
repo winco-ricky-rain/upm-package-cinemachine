@@ -501,7 +501,8 @@ namespace Cinemachine.ECS
         /// </summary>
         /// <param name="channel"></param>
         /// <param name="blendLookup"></param>
-        public void ResolveUndefinedBlends(int channel, GetBlendDelegate blendLookup)
+        public void ResolveUndefinedBlends<T>(int channel, T blendLookup)
+            where T : struct, GetBlendCallback
         {
             ActiveChannelStateJobs.Complete();
             var e = GetChannelEntity(channel);

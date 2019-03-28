@@ -336,25 +336,31 @@ namespace Cinemachine.ECS_Hybrid
             var channelSystem = ActiveChannelSystem;
             if (channelSystem != null)
             {
-                var c = Channel;
                 channelSystem.ResolveUndefinedBlends(
-                    Channel.channel, (Entity fromCam, Entity toCam) =>
-                    {
-                        var def = c.defaultBlend;
-                        if (customBlends != null)
-                            def = customBlends.GetBlendForVirtualCameras(fromCam, toCam, def);
+                    Channel.channel, new FetchBlendDefinition { brain = this });
+            }
+        }
 
-                        if (CM_Brain.OnCreateBlend != null)
-                            def = CM_Brain.OnCreateBlend(gameObject,
-                                CM_EntityVcam.GetEntityVcam(fromCam),
-                                CM_EntityVcam.GetEntityVcam(toCam), def);
+        struct FetchBlendDefinition : GetBlendCallback
+        {
+            public CM_Brain brain;
+            public CM_BlendDefinition Invoke(Entity fromCam, Entity toCam)
+            {
+                var def = brain.Channel.defaultBlend;
+                if (brain.customBlends != null)
+                    def = brain.customBlends.GetBlendForVirtualCameras(fromCam, toCam, def);
 
-                        return new CM_BlendDefinition
-                        {
-                            curve = def.BlendCurve,
-                            duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
-                        };
-                    });
+                // Invoke the cusom blend callback
+                if (CM_Brain.OnCreateBlend != null)
+                    def = CM_Brain.OnCreateBlend(brain.gameObject,
+                        CM_EntityVcam.GetEntityVcam(fromCam),
+                        CM_EntityVcam.GetEntityVcam(toCam), def);
+
+                return new CM_BlendDefinition
+                {
+                    curve = def.BlendCurve,
+                    duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
+                };
             }
         }
 

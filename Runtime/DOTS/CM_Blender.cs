@@ -7,7 +7,10 @@ using System.Collections.Generic;
 
 namespace Cinemachine.ECS
 {
-    public delegate CM_BlendDefinition GetBlendDelegate(Entity fromCam, Entity toCam);
+    public interface GetBlendCallback
+    {
+        CM_BlendDefinition Invoke(Entity fromCam, Entity toCam);
+    }
 
     public struct CM_BlendDefinition
     {
@@ -276,14 +279,14 @@ namespace Cinemachine.ECS
             mCurrentBlend.EnsureCapacity(NumOverrideFrames + mNativeFrame.NumActiveFrames + 2);
         }
 
-        public void ResolveUndefinedBlends(GetBlendDelegate blendLookup)
+        public void ResolveUndefinedBlends<T>(T cb) where T : struct, GetBlendCallback
         {
             for (int i = 0; i < mNativeFrame.NumActiveFrames-1; ++i)
             {
                 var blend = mNativeFrame.ElementAt(i);
                 if (blend.IsUndefined())
                 {
-                    var def = blendLookup(mNativeFrame.ElementAt(i+1).cam, blend.cam);
+                    var def = cb.Invoke(mNativeFrame.ElementAt(i+1).cam, blend.cam);
                     blend.blendCurve = def.curve;
                     blend.duration = def.duration;
                     mNativeFrame.ElementAt(i) = blend;

@@ -82,7 +82,6 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamChannel>());
 
             m_missingStateGroup = GetComponentGroup(
-                ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.Exclude<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>());
