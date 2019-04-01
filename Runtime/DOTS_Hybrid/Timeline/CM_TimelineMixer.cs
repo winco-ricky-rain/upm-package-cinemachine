@@ -18,7 +18,7 @@ using Cinemachine;
 
         static CM_ChannelSystem ActiveChannelSystem
         {
-            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
+            get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
         }
 
         public override void OnPlayableDestroy(Playable playable)

@@ -240,7 +240,7 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.Exclude<CM_VcamLensState>());
 
-            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
+            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
@@ -269,7 +269,7 @@ namespace Cinemachine.ECS
                 a.Dispose();
             }
 
-            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             channelSystem.InitChannelStates();
             JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, inputDeps,

@@ -272,12 +272,12 @@ namespace Cinemachine.ECS_Hybrid
 
         EntityManager ActiveEntityManager
         {
-            get { return World.Active?.GetExistingManager<EntityManager>(); }
+            get { return World.Active?.EntityManager; }
         }
 
         static CM_ChannelSystem ActiveChannelSystem
         {
-            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
+            get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
         }
 
         CM_ChannelState ChannelState

@@ -109,7 +109,6 @@ namespace Cinemachine.ECS
         ComponentGroup m_danglingStateGroup;
 
         EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
-        EntityManager entityManager;
 
         protected override void OnCreateManager()
         {
@@ -126,8 +125,7 @@ namespace Cinemachine.ECS
                 ComponentType.Exclude<CM_Path>(),
                 ComponentType.ReadWrite<CM_PathState>());
 
-            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
-            entityManager = World.GetOrCreateManager<EntityManager>();
+            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnDestroyManager()
@@ -139,7 +137,7 @@ namespace Cinemachine.ECS
                 var a = m_danglingStateGroup.ToEntityArray(Allocator.TempJob);
                 for (int i = 0; i < a.Length; ++i)
                 {
-                    var s = entityManager.GetComponentData<CM_PathState>(a[i]);
+                    var s = EntityManager.GetComponentData<CM_PathState>(a[i]);
                     s.Dispose();
                     cb.RemoveComponent<CM_PathState>(a[i]);
                     cb.DestroyEntity(a[i]);
@@ -352,10 +350,10 @@ namespace Cinemachine.ECS
 
         T GetEntityComponentData<T>(Entity e) where T : struct, IComponentData
         {
-            if (e != Entity.Null && entityManager != null)
+            if (e != Entity.Null && EntityManager != null)
             {
-                if (entityManager.HasComponent<T>(e))
-                    return entityManager.GetComponentData<T>(e);
+                if (EntityManager.HasComponent<T>(e))
+                    return EntityManager.GetComponentData<T>(e);
             }
             return new T();
         }
@@ -388,7 +386,7 @@ namespace Cinemachine.ECS
                 return state.PathLength;
             }
             var pathDef = GetEntityComponentData<CM_Path>(path);
-            var buffer = entityManager.GetBuffer<CM_PathElement>(path);
+            var buffer = EntityManager.GetBuffer<CM_PathElement>(path);
             int count = buffer.Length;
             return math.select(0, math.select(count - 1, count, pathDef.looped), count > 1);
         }
@@ -399,7 +397,7 @@ namespace Cinemachine.ECS
         {
             var state = GetEntityComponentData<CM_PathState>(path);
             state.valid = false;
-            entityManager.SetComponentData(path, state);
+            EntityManager.SetComponentData(path, state);
         }
 
         /// <summary>Standardize the unit, so that it lies between MinUmit and MaxUnit</summary>
@@ -412,7 +410,7 @@ namespace Cinemachine.ECS
             var pathDef = GetEntityComponentData<CM_Path>(path);
             if (units == PositionUnits.PathUnits)
             {
-                var buffer = entityManager.GetBuffer<CM_PathElement>(path);
+                var buffer = EntityManager.GetBuffer<CM_PathElement>(path);
                 int count = buffer.Length;
                 return ClampValue(pos, math.select(count - 1, count, pathDef.looped), pathDef.looped);
             }

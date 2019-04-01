@@ -37,13 +37,13 @@ namespace Cinemachine.ECS
 
         static CM_ChannelSystem ActiveChannelSystem
         {
-            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
+            get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
         }
 
         public static CameraState StateFromEntity(Entity e)
         {
             CameraState state = CameraState.Default;
-            var m = World.Active?.GetExistingManager<EntityManager>();
+            var m = World.Active?.EntityManager;
             if (m != null && e != Entity.Null)
             {
                 // Is this entity a channel?

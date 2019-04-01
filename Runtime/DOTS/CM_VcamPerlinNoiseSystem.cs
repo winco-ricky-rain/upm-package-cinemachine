@@ -84,7 +84,7 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamPerlinNoise>(),
                 ComponentType.Exclude<CM_VcamPerlinNoiseState>());
 
-            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
+            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         List<CM_VcamPerlinNoiseDefinition> uniqueTypes;
@@ -105,7 +105,7 @@ namespace Cinemachine.ECS
             uniqueTypes.Clear();
             EntityManager.GetAllUniqueSharedComponentData(uniqueTypes);
 
-            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
 
             JobHandle vcamDeps = inputDeps;
             for (int i = 0; i < uniqueTypes.Count; ++i)

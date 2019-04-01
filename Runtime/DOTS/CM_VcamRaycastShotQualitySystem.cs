@@ -28,7 +28,7 @@ namespace Cinemachine.ECS
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             JobHandle jobDeps = channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, inputDeps, new QualityJobLaunch() );
             return jobDeps;

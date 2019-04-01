@@ -28,7 +28,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                var m = World.Active?.GetExistingManager<CM_ChannelSystem>();
+                var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
                 return m == null ? false : m.IsLive(this);
             }
         }
@@ -68,7 +68,7 @@ namespace Cinemachine.ECS_Hybrid
 
         protected EntityManager ActiveEntityManager
         {
-            get { return World.Active?.GetExistingManager<EntityManager>(); }
+            get { return World.Active?.EntityManager; }
         }
 
         public T GetEntityComponentData<T>() where T : struct, IComponentData
@@ -84,7 +84,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                var m = World.Active?.GetExistingManager<CM_ChannelSystem>();
+                var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
                 if (m != null)
                     return m.GetChannelState(ParentChannel);
                 return new CM_ChannelState();
@@ -95,7 +95,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                var m = World.Active?.GetExistingManager<CM_ChannelSystem>();
+                var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
                 if (m != null)
                     return m.GetChannelComponent(ParentChannel);
                 return new CM_Channel();
@@ -108,7 +108,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             var channel = ParentChannel;
             var m = ActiveEntityManager;
-            var channelSystem = World.Active?.GetExistingManager<CM_ChannelSystem>();
+            var channelSystem = World.Active?.GetExistingSystem<CM_ChannelSystem>();
             if (m != null && channelSystem != null)
             {
                 var e = channelSystem.GetChannelEntity(channel);

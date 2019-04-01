@@ -231,14 +231,10 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamChannel>());
 
             m_missingStateGroup = GetComponentGroup(
-                ComponentType.ReadWrite<CM_VcamRotationState>(),
-                ComponentType.ReadOnly<CM_VcamPositionState>(),
-                ComponentType.ReadOnly<CM_VcamLensState>(),
-                ComponentType.ReadOnly<CM_VcamLookAtTarget>(),
                 ComponentType.ReadOnly<CM_VcamComposer>(),
                 ComponentType.Exclude<CM_VcamComposerState>());
 
-            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
+            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
@@ -253,12 +249,12 @@ namespace Cinemachine.ECS
                 a.Dispose();
             }
 
-            var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
+            var targetSystem = World.GetOrCreateSystem<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
                 return inputDeps; // no targets yet
 
-            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             JobHandle composerDeps = channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, inputDeps, new ComposerJobLaunch { targetLookup = targetLookup });
 

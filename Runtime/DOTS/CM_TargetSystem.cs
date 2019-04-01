@@ -65,7 +65,7 @@ namespace Cinemachine.ECS
                 ComponentType.Exclude<CM_Group>());
 
             m_targetLookup = new NativeHashMap<Entity, TargetInfo>(64, Allocator.Persistent);
-            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
+            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnDestroyManager()

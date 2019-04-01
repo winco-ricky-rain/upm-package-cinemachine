@@ -97,10 +97,7 @@ namespace Cinemachine.ECS_Hybrid
             return -1;
         }
 
-        protected EntityManager ActiveEntityManager
-        {
-            get { return World.Active?.GetExistingManager<EntityManager>(); }
-        }
+        protected EntityManager ActiveEntityManager { get { return World.Active?.EntityManager; } }
 
 #if true // GML todo something better here
         protected Entity EnsureTargetCompliance(Transform target)

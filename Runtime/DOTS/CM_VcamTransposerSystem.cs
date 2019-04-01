@@ -83,10 +83,9 @@ namespace Cinemachine.ECS
 
             m_missingStateGroup = GetComponentGroup(
                 ComponentType.Exclude<CM_VcamTransposerState>(),
-                ComponentType.ReadOnly<CM_VcamTransposer>(),
-                ComponentType.ReadOnly<CM_VcamFollowTarget>());
+                ComponentType.ReadOnly<CM_VcamTransposer>());
 
-            m_missingStateBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
+            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
@@ -97,19 +96,16 @@ namespace Cinemachine.ECS
                 var cb  = m_missingStateBarrier.CreateCommandBuffer();
                 var a = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
                 for (int i = 0; i < a.Length; ++i)
-                {
                     cb.AddComponent(a[i], new CM_VcamTransposerState());
-                    cb.SetComponent(a[i], new CM_VcamPositionState()); // invalidate prev pos
-                }
                 a.Dispose();
             }
 
-            var targetSystem = World.GetOrCreateManager<CM_TargetSystem>();
+            var targetSystem = World.GetOrCreateSystem<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
                 return inputDeps; // no targets yet
 
-            var channelSystem = World.GetOrCreateManager<CM_ChannelSystem>();
+            var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, inputDeps, new TransposerJobLaunch { targetLookup = targetLookup });
 

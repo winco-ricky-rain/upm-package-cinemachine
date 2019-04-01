@@ -33,7 +33,7 @@ namespace Cinemachine.ECS
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var targetSystem = World.GetExistingManager<CM_TargetSystem>();
+            var targetSystem = World.GetExistingSystem<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);
             if (!targetLookup.IsCreated)
                 return inputDeps; // no targets yet

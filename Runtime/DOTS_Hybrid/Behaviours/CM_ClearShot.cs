@@ -45,7 +45,7 @@ namespace Cinemachine.ECS_Hybrid
 
         static CM_ChannelSystem ActiveChannelSystem
         {
-            get { return World.Active?.GetExistingManager<CM_ChannelSystem>(); }
+            get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
         }
 
         CM_ChannelState ChannelState
