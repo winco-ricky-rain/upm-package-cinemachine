@@ -374,22 +374,32 @@ namespace Cinemachine.ECS_Hybrid
 
             // Send activation events
             var channelSystem = ActiveChannelSystem;
-            if (channelSystem != null)
+            var entityManager = ActiveEntityManager;
+            if (channelSystem != null && entityManager != null)
             {
                 var c = Channel;
                 var deltaTime = ChannelState.deltaTime;
                 var worldUp = math.mul(c.settings.worldOrientation, math.up());
 
                 scratchList.Clear();
-                channelSystem.GetLiveVcams(Channel.channel, scratchList, true);
+                channelSystem.GetLiveVcams(Channel.channel, scratchList, true); // deep
                 var previous = liveVcamsPreviousFrame.Count > 0
                     ? CM_EntityVcam.GetEntityVcam(liveVcamsPreviousFrame[0]) : null;
                 bool isBlending = channelSystem.IsBlending(c.channel);
                 for (int i = scratchList.Count - 1; i >= 0; --i)
                 {
-                    if (!liveVcamsPreviousFrame.Contains(scratchList[i]))
+                    var e = scratchList[i];
+
+                    // Mark it live
+                    if (entityManager.HasComponent<CM_VcamPositionState>(e))
                     {
-                        var vcam = CM_EntityVcam.GetEntityVcam(scratchList[i]);
+                        var s = entityManager.GetComponentData<CM_VcamPositionState>(e);
+                        s.isLive = true;
+                        entityManager.SetComponentData(e, s);
+                    }
+                    if (!liveVcamsPreviousFrame.Contains(e))
+                    {
+                        var vcam = CM_EntityVcam.GetEntityVcam(e);
                         if (vcam != null)
                         {
                             // Notify incoming camera of transition.

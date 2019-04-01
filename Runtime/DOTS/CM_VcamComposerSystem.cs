@@ -327,7 +327,7 @@ namespace Cinemachine.ECS
                         targetDistance);
                 }
 
-                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid);
+                float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid && posState.isLive);
 
                 var rigOrientation = rotState.raw;
                 var targetDir = math.normalizesafe(rotState.lookAtPoint - camPos);

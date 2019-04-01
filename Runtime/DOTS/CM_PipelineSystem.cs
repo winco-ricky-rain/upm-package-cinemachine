@@ -163,6 +163,7 @@ namespace Cinemachine.ECS
 
         /// GML not sure where to put this
         public bool previousFrameDataIsValid; // GML todo: flags
+        public bool isLive;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float3 GetCorrected() { return raw + correction; }
@@ -380,6 +381,7 @@ namespace Cinemachine.ECS
             public void Execute(Entity entity, int index, ref CM_VcamPositionState posState)
             {
                 posState.previousFrameDataIsValid = true;
+                posState.isLive = false;
             }
         }
 

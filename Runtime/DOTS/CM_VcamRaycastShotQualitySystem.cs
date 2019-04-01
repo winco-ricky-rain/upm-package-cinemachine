@@ -28,6 +28,7 @@ namespace Cinemachine.ECS
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            //Debug.Log("Unfiltered length = " + m_vcamGroup.CalculateLength());
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             JobHandle jobDeps = channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, inputDeps, new QualityJobLaunch() );
@@ -41,6 +42,7 @@ namespace Cinemachine.ECS
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 var objectCount = filteredGroup.CalculateLength();
+                //Debug.Log("Filtered length = " + objectCount);
 
                 // These will be deallocated by the final job
                 var raycastCommands = new NativeArray<RaycastCommand>(objectCount, Allocator.TempJob);
@@ -92,7 +94,10 @@ namespace Cinemachine.ECS
             {
                 // GML hack
                 if (index >= raycasts.Length)
+                {
+                    //Debug.LogFormat("A. Index = " + index);
                     return; // WTF!!!!
+                }
 
                 // GML todo: check for no lookAt condition
 
@@ -121,7 +126,10 @@ namespace Cinemachine.ECS
             {
                 // GML hack
                 if (index >= raycasts.Length)
+                {
+                    //Debug.LogFormat("B. Index = " + index);
                     return; // WTF!!!!
+                }
 
                 float3 offset = rotState.lookAtPoint - posState.GetCorrected();
                 offset = math.mul(math.inverse(rotState.GetCorrected()), offset); // camera-space
