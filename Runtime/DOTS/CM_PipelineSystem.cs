@@ -220,8 +220,6 @@ namespace Cinemachine.ECS
         ComponentGroup m_missingRotStateGroup;
         ComponentGroup m_missingLensStateGroup;
 
-        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
-
         protected override void OnCreateManager()
         {
             m_vcamGroup = GetComponentGroup(
@@ -240,35 +238,20 @@ namespace Cinemachine.ECS
             m_missingLensStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.Exclude<CM_VcamLensState>());
-
-            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing state components
-            if (m_missingPosStateGroup.CalculateLength() > 0
-                || m_missingRotStateGroup.CalculateLength() > 0
-                || m_missingLensStateGroup.CalculateLength() > 0)
-            {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
-
-                var a = m_missingPosStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_VcamPositionState());
-                a.Dispose();
-
-                a = m_missingRotStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_VcamRotationState
-                        { raw = quaternion.identity, correction = quaternion.identity });
-                a.Dispose();
-
-                a = m_missingLensStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], CM_VcamLensState.FromLens(CM_VcamLens.Default));
-                a.Dispose();
-            }
+            if (m_missingPosStateGroup.CalculateLength() > 0)
+                EntityManager.AddComponent(m_missingPosStateGroup,
+                        ComponentType.ReadWrite<CM_VcamPositionState>());
+            if (m_missingRotStateGroup.CalculateLength() > 0)
+                EntityManager.AddComponent(m_missingRotStateGroup,
+                        ComponentType.ReadWrite<CM_VcamRotationState>());
+            if (m_missingLensStateGroup.CalculateLength() > 0)
+                EntityManager.AddComponent(m_missingLensStateGroup,
+                    ComponentType.ReadWrite<CM_VcamLensState>());
 
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             channelSystem.InitChannelStates();

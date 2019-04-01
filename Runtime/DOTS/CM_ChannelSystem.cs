@@ -534,7 +534,6 @@ namespace Cinemachine.ECS
         ComponentGroup m_missingBlendStateGroup;
         ComponentGroup m_danglingBlendStateGroup;
 
-        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
         JobHandle ActiveChannelStateJobs { get; set; }
 
         int m_vcamSequence = 1;
@@ -563,7 +562,6 @@ namespace Cinemachine.ECS
                 ComponentType.Exclude<CM_Channel>(),
                 ComponentType.ReadWrite<CM_ChannelBlendState>());
 
-            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
             m_vcamSequence = 1;
         }
 
@@ -578,19 +576,12 @@ namespace Cinemachine.ECS
         void CreateMissingStateComponents()
         {
             // Add any missing state components
-            if (m_missingChannelStateGroup.CalculateLength() > 0
-                || m_missingBlendStateGroup.CalculateLength() > 0)
-            {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                var a = m_missingChannelStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_ChannelState());
-                a.Dispose();
-                a = m_missingBlendStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_ChannelBlendState());
-                a.Dispose();
-            }
+            if (m_missingChannelStateGroup.CalculateLength() > 0)
+                EntityManager.AddComponent(m_missingChannelStateGroup,
+                    ComponentType.ReadWrite<CM_ChannelState>());
+            if (m_missingBlendStateGroup.CalculateLength() > 0)
+                EntityManager.AddComponent(m_missingBlendStateGroup,
+                    ComponentType.ReadWrite<CM_ChannelBlendState>());
         }
 
         void DestroyDanglingStateComponents()
@@ -599,18 +590,15 @@ namespace Cinemachine.ECS
             ActiveChannelStateJobs.Complete();
             if (m_danglingBlendStateGroup.CalculateLength() > 0)
             {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
                 var a = m_danglingBlendStateGroup.ToEntityArray(Allocator.TempJob);
                 for (int i = 0; i < a.Length; ++i)
                 {
                     var blendState = EntityManager.GetComponentData<CM_ChannelBlendState>(a[i]);
                     blendState.blender.Dispose();
                     blendState.priorityQueue.Dispose();
-                    EntityManager.SetComponentData(a[i], blendState);
-                    cb.RemoveComponent<CM_ChannelBlendState>(a[i]);
-                    cb.DestroyEntity(a[i]);
                 }
                 a.Dispose();
+                EntityManager.DestroyEntity(m_danglingBlendStateGroup);
             }
         }
 

@@ -70,8 +70,6 @@ namespace Cinemachine.ECS
         ComponentGroup m_vcamGroup;
         ComponentGroup m_missingStateGroup;
 
-        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
-
         protected override void OnCreateManager()
         {
             m_vcamGroup = GetComponentGroup(
@@ -84,21 +82,14 @@ namespace Cinemachine.ECS
             m_missingStateGroup = GetComponentGroup(
                 ComponentType.Exclude<CM_VcamTransposerState>(),
                 ComponentType.ReadOnly<CM_VcamTransposer>());
-
-            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing transposer state components
             if (m_missingStateGroup.CalculateLength() > 0)
-            {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                var a = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_VcamTransposerState());
-                a.Dispose();
-            }
+                EntityManager.AddComponent(m_missingStateGroup,
+                    ComponentType.ReadWrite<CM_VcamTransposerState>());
 
             var targetSystem = World.GetOrCreateSystem<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);

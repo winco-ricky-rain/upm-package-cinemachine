@@ -108,8 +108,6 @@ namespace Cinemachine.ECS
         ComponentGroup m_missingStateGroup;
         ComponentGroup m_danglingStateGroup;
 
-        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
-
         protected override void OnCreateManager()
         {
             m_pathGroup = GetComponentGroup(
@@ -124,8 +122,6 @@ namespace Cinemachine.ECS
             m_danglingStateGroup = GetComponentGroup(
                 ComponentType.Exclude<CM_Path>(),
                 ComponentType.ReadWrite<CM_PathState>());
-
-            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnDestroyManager()
@@ -133,16 +129,14 @@ namespace Cinemachine.ECS
             // Deallocate our resources
             if (m_danglingStateGroup.CalculateLength() > 0)
             {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
                 var a = m_danglingStateGroup.ToEntityArray(Allocator.TempJob);
                 for (int i = 0; i < a.Length; ++i)
                 {
                     var s = EntityManager.GetComponentData<CM_PathState>(a[i]);
                     s.Dispose();
-                    cb.RemoveComponent<CM_PathState>(a[i]);
-                    cb.DestroyEntity(a[i]);
                 }
                 a.Dispose();
+                EntityManager.DestroyEntity(m_danglingStateGroup);
             }
         }
 
@@ -150,13 +144,8 @@ namespace Cinemachine.ECS
         {
             // Add any missing group components
             if (m_missingStateGroup.CalculateLength() > 0)
-            {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                var a = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_PathState());
-                a.Dispose();
-            }
+                EntityManager.AddComponent(m_missingStateGroup,
+                    ComponentType.ReadWrite<CM_PathState>());
 
             var pathJob = new DistanceCacheJob()
             {

@@ -68,7 +68,6 @@ namespace Cinemachine.ECS
     {
         ComponentGroup m_vcamGroup;
         ComponentGroup m_missingStateGroup;
-        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
 
         protected override void OnCreateManager()
         {
@@ -83,8 +82,6 @@ namespace Cinemachine.ECS
             m_missingStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_VcamPerlinNoise>(),
                 ComponentType.Exclude<CM_VcamPerlinNoiseState>());
-
-            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         List<CM_VcamPerlinNoiseDefinition> uniqueTypes;
@@ -92,13 +89,8 @@ namespace Cinemachine.ECS
         {
             // Add any missing state components
             if (m_missingStateGroup.CalculateLength() > 0)
-            {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                var a = m_missingStateGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_VcamPerlinNoiseState());
-                a.Dispose();
-            }
+                EntityManager.AddComponent(m_missingStateGroup,
+                    ComponentType.ReadWrite<CM_VcamPerlinNoiseState>());
 
             if (uniqueTypes == null)
                 uniqueTypes = new List<CM_VcamPerlinNoiseDefinition>();

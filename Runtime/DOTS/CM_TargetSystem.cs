@@ -37,8 +37,6 @@ namespace Cinemachine.ECS
         ComponentGroup m_groupGroup;
         ComponentGroup m_missingGroupGroup;
 
-        EndSimulationEntityCommandBufferSystem m_missingStateBarrier;
-
         public struct TargetInfo
         {
             public float3 position;
@@ -65,7 +63,6 @@ namespace Cinemachine.ECS
                 ComponentType.Exclude<CM_Group>());
 
             m_targetLookup = new NativeHashMap<Entity, TargetInfo>(64, Allocator.Persistent);
-            m_missingStateBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnDestroyManager()
@@ -78,17 +75,12 @@ namespace Cinemachine.ECS
         {
             // Add any missing group components
             if (m_missingGroupGroup.CalculateLength() > 0)
-            {
-                var cb  = m_missingStateBarrier.CreateCommandBuffer();
-                var a = m_missingGroupGroup.ToEntityArray(Allocator.TempJob);
-                for (int i = 0; i < a.Length; ++i)
-                    cb.AddComponent(a[i], new CM_Group());
-                a.Dispose();
-            }
+                EntityManager.AddComponent(m_missingGroupGroup,
+                    ComponentType.ReadWrite<CM_Group>());
 
             // Make sure all readers have finished with the table
             TargetTableReadJobHandle.Complete();
-            TargetTableReadJobHandle = default;
+            TargetTableReadJobHandle = default(JobHandle);
 
             var objectCount = m_mainGroup.CalculateLength();
             var groupCount = m_groupGroup == null ? 0 : m_groupGroup.CalculateLength();
