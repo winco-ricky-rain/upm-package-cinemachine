@@ -12,6 +12,8 @@ namespace Cinemachine.ECS_Hybrid
         {
             var v = Value;
             v.settings.worldOrientation = math.normalizesafe(v.settings.worldOrientation);
+            v.activateAfter = math.max(0, v.activateAfter);
+            v.minDuration = math.max(0, v.minDuration);
             Value = v;
         }
 

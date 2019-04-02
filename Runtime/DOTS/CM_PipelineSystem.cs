@@ -271,6 +271,7 @@ namespace Cinemachine.ECS
                 var initJob = new InitVcamJob
                 {
                     channelSettings = c.settings,
+                    up = math.mul(c.settings.worldOrientation, math.up()),
                     orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic,
                     positions = preBodySystem.GetComponentDataFromEntity<LocalToWorld>(true)
                 };
@@ -283,6 +284,7 @@ namespace Cinemachine.ECS
             CM_VcamLensState, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLens>
         {
             public CM_Channel.Settings channelSettings;
+            public float3 up;
             public bool orthographic;
             [ReadOnly] public ComponentDataFromEntity<LocalToWorld> positions;
 
@@ -298,14 +300,14 @@ namespace Cinemachine.ECS
                 lensState.orthographic = orthographic;
 
                 posState.dampingBypass = float3.zero;
-                posState.up = math.mul(channelSettings.worldOrientation, math.up());
+                posState.up = up;
                 posState.correction = float3.zero;
                 rotState.correction = quaternion.identity;
                 if (positions.Exists(entity))
                 {
                     var m = positions[entity].Value;
                     posState.raw = m.GetTranslationFromTRS();
-                    rotState.raw = m.GetRotationFromTRS();
+                    rotState.raw = quaternion.LookRotation(math.rotate(m, new float3(0, 0, 1)), up);
                 }
                 // GML todo: set the lookAt point if lookAt target
             }

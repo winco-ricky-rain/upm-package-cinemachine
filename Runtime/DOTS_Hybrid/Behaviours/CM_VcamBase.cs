@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Entities;
 using Cinemachine.ECS;
+using Unity.Mathematics;
 using Unity.Transforms;
 
 namespace Cinemachine.ECS_Hybrid
@@ -141,7 +142,7 @@ namespace Cinemachine.ECS_Hybrid
                 if (!m.HasComponent<CM_Target>(e))
                     m.AddComponentData(e, new CM_Target());
                 if (!m.HasComponent<LocalToWorld>(e))
-                    m.AddComponentData(e, new LocalToWorld());
+                    m.AddComponentData(e, new LocalToWorld { Value = float4x4.identity });
                 if (!m.HasComponent<CopyTransformFromGameObject>(e))
                     m.AddComponentData(e, new CopyTransformFromGameObject());
             }
