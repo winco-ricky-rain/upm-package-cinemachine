@@ -9,6 +9,7 @@ namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
     [SaveDuringPlay]
+    [ExecuteAlways]
     public class CM_GroupProxy : DynamicBufferProxy<CM_GroupBufferElement>
     {
         [Serializable] public struct Target

@@ -25,39 +25,27 @@ namespace Cinemachine.ECS
 
     [Serializable]
     [InternalBufferCapacity(8)]
-    public struct CM_PathElement : IBufferElementData
+    public struct CM_PathWaypointElement : IBufferElementData
     {
         /// <summary>Position of the waypoint in path-local space</summary>
-        [Tooltip("Position of the waypoint in path-local space")]
-        public float3 position;
-
-        /// <summary>
-        /// Defines the roll of the path at this waypoint, in degrees.
-        /// The other orientation axes are inferred from the tangent and world up.
-        /// </summary>
-        [Tooltip("Defines the roll of the path at this waypoint, in degrees.  "
-            + "The other orientation axes are inferred from the tangent and world up.")]
-        public float roll;
-
-        /// <summary>Used when auto-generating tangents in 4 dimensions</summary>
-        public float4 AsFloat4 { get { return new float4(position.x, position.y, position.x, roll); } }
-
-        /// <summary>
-        /// If true, then tangent is set manually, otherwise it's automatically generated
-        /// </summary>
-        [Tooltip("If true, then tangent is set manually, otherwise it's automatically generated")]
-        public bool manualTangent;
+        [Tooltip("Position of the waypoint in path-local space, and roll")]
+        public float4 positionRoll;
 
         /// <summary>
         /// Offset from the position, which defines the tangent of the curve at the waypoint.
         /// The length of the tangent encodes the strength of the bezier handle.
-        /// The same tangent is used symmetrically on both sides of the waypoint, to ensure smoothness.
         /// </summary>
         [Tooltip("Offset from the position, which defines the tangent of the curve at the waypoint.  "
-            + "The length of the tangent encodes the strength of the bezier handle.  "
-            + "The same tangent is used symmetrically on both sides of the waypoint, to ensure smoothness.")]
-        public float4 tangent;
+            + "The length of the tangent encodes the strength of the bezier handle.")]
+        public float4 tangentIn;
 
+        /// <summary>
+        /// Offset from the position, which defines the tangent of the curve at the waypoint.
+        /// The length of the tangent encodes the strength of the bezier handle.
+        /// </summary>
+        [Tooltip("Offset from the position, which defines the tangent of the curve at the waypoint.  "
+            + "The length of the tangent encodes the strength of the bezier handle.")]
+        public float4 tangentOut;
     }
 
     /// Cache of path distances
@@ -113,7 +101,7 @@ namespace Cinemachine.ECS
             m_pathGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Path>(),
                 ComponentType.ReadWrite<CM_PathState>(),
-                ComponentType.ReadOnly(typeof(CM_PathElement)));
+                ComponentType.ReadOnly(typeof(CM_PathWaypointElement)));
 
             m_missingStateGroup = GetComponentGroup(
                 ComponentType.ReadOnly<CM_Path>(),
@@ -149,16 +137,16 @@ namespace Cinemachine.ECS
 
             var pathJob = new DistanceCacheJob()
             {
-                pathBuffers = GetBufferFromEntity<CM_PathElement>()
+                pathBuffers = GetBufferFromEntity<CM_PathWaypointElement>()
             };
             var pathDeps = pathJob.ScheduleGroup(m_pathGroup, inputDeps);
             return pathDeps;
         }
 
-        [BurstCompile]
+        //[BurstCompile] // can't because of allocations
         struct DistanceCacheJob : IJobForEachWithEntity<CM_Path, CM_PathState>
         {
-            [ReadOnly] public BufferFromEntity<CM_PathElement> pathBuffers;
+            [ReadOnly] public BufferFromEntity<CM_PathWaypointElement> pathBuffers;
 
             public void Execute(
                 Entity entity, int index,
@@ -166,28 +154,29 @@ namespace Cinemachine.ECS
                 ref CM_PathState state)
             {
                 var buffer = pathBuffers[entity];
-                int numPoints = buffer.Length;
                 int resolution = math.max(1, path.resolution);
-                int numSamples = resolution * math.select(numPoints, numPoints + 1, path.looped);
-                numSamples = math.select(numSamples, 0, numPoints < 2);
-                if (state.valid && state.Length == numSamples)
-                    return;
-
-                // Resample the path
-                float minPos = 0;
+                int numPoints = buffer.Length;
                 float maxPos = math.select(numPoints - 1, numPoints, path.looped);
                 maxPos = math.select(maxPos, 0, numPoints < 2);
-                float stepSize = 1f / resolution;
+
+                // GML temp
+                ComputeSmoothTangents(ref buffer, path.looped);
+
+                int numKeys = (int)math.round(resolution * maxPos);
+                numKeys = math.select(numKeys, 0, numPoints < 2) + 1;
+                if (state.valid && state.Length == numKeys)
+                    return;
+
 
                 // Sample the positions
-                int numKeys = (int)math.round(resolution * (maxPos - minPos) + 0.5f) + 1;
+                float stepSize = 1f / resolution;
                 state.Allocate(numKeys);
                 state.p2d2pStep = new float2(stepSize, 0);
 
                 float pathLength = 0;
                 float3 p0 = EvaluatePosition(0, path, buffer);
                 state.p2d2pAt(0).x = 0;
-                float pos = minPos;
+                float pos = 0;
                 for (int i = 1; i < numKeys; ++i)
                 {
                     pos += stepSize;
@@ -218,38 +207,39 @@ namespace Cinemachine.ECS
                         state.p2d2pAt(i).y = state.p2d2pStep.y * (t + posIndex - 1);
                     }
                 }
+                state.valid = true;
             }
 
-#if false // GML todo
-            void UpdateControlPoints()
+            void ComputeSmoothTangents(ref DynamicBuffer<CM_PathWaypointElement> waypoints, bool looped)
             {
-                int numPoints = (m_Waypoints == null) ? 0 : m_Waypoints.Length;
-                if (numPoints > 1
-                    && (Looped != m_IsLoopedCache
-                        || m_ControlPoints1 == null || m_ControlPoints1.Length != numPoints
-                        || m_ControlPoints2 == null || m_ControlPoints2.Length != numPoints))
+                int numPoints = waypoints.Length;
+                if (numPoints > 1)
                 {
-                    Vector4[] p1 = new Vector4[numPoints];
-                    Vector4[] p2 = new Vector4[numPoints];
-                    Vector4[] K = new Vector4[numPoints];
+                    NativeArray<float4> K =  new NativeArray<float4>(numPoints, Allocator.Temp);
+                    NativeArray<float4> p1 = new NativeArray<float4>(numPoints, Allocator.Temp);
+                    NativeArray<float4> p2 = new NativeArray<float4>(numPoints, Allocator.Temp);
                     for (int i = 0; i < numPoints; ++i)
-                        K[i] = m_Waypoints[i].AsVector4;
-                    if (Looped)
-                        SplineHelpers.ComputeSmoothControlPointsLooped(ref K, ref p1, ref p2);
+                        K[i] = p1[i] = p2[i] = waypoints[i].positionRoll;
+                    if (looped)
+                        BezierHelpers.ComputeSmoothControlPointsLooped(K, p1, p2);
                     else
-                        SplineHelpers.ComputeSmoothControlPoints(ref K, ref p1, ref p2);
+                    {
+                        BezierHelpers.ComputeSmoothControlPoints(K, p1, p2);
+                        p2[numPoints-1] = K[0];
+                    }
 
-                    m_ControlPoints1 = new Waypoint[numPoints];
-                    m_ControlPoints2 = new Waypoint[numPoints];
                     for (int i = 0; i < numPoints; ++i)
                     {
-                        m_ControlPoints1[i] = Waypoint.FromVector4(p1[i]);
-                        m_ControlPoints2[i] = Waypoint.FromVector4(p2[i]);
+                        var v = waypoints[i];
+                        v.tangentIn = p2[math.select(i, numPoints, i == 0) - 1] - K[i];
+                        v.tangentOut = p1[i] - K[i];
+                        waypoints[i] = v;
                     }
-                    m_IsLoopedCache = Looped;
+                    K.Dispose();
+                    p1.Dispose();
+                    p2.Dispose();
                 }
             }
-#endif
         }
 
         /// <summary>Get a standardized clamped path position, taking spins into account if looped</summary>
@@ -270,15 +260,16 @@ namespace Cinemachine.ECS
         /// <returns>Local-space position of the point along at path at pos</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 EvaluatePosition(
-            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathElement> buffer)
+            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
         {
             // GML todo: get rid of this check
             if (buffer.Length == 0)
                 return float3.zero;
             float t = GetBoundingIndices(pos, buffer.Length, path.looped, out int indexA, out int indexB);
-            var a = buffer[indexA].AsFloat4;
-            var b = buffer[indexB].AsFloat4;
-            return MathHelpers.Bezier(t, a, a + buffer[indexA].tangent, b - buffer[indexB].tangent, b).xyz;
+            var a = buffer[indexA].positionRoll.xyz;
+            var b = buffer[indexB].positionRoll.xyz;
+            return MathHelpers.Bezier(t,
+                a, a + buffer[indexA].tangentOut.xyz, b + buffer[indexB].tangentIn.xyz, b);
         }
 
         /// <summary>Get the tangent of the curve at a point along the path.</summary>
@@ -287,16 +278,16 @@ namespace Cinemachine.ECS
         /// Length of the vector represents the tangent strength</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 EvaluateTangent(
-            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathElement> buffer)
+            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
         {
             // GML todo: get rid of this check
-            if (buffer.Length == 0)
+            if (buffer.Length < 2)
                 return float3.zero;
             float t = GetBoundingIndices(pos, buffer.Length, path.looped, out int indexA, out int indexB);
-            var a = buffer[indexA].AsFloat4;
-            var b = buffer[indexB].AsFloat4;
+            var a = buffer[indexA].positionRoll.xyz;
+            var b = buffer[indexB].positionRoll.xyz;
             return MathHelpers.BezierTangent(
-                t, a, a + buffer[indexA].tangent, b - buffer[indexB].tangent, b).xyz;
+                t, a, a + buffer[indexA].tangentOut.xyz, b + buffer[indexB].tangentIn.xyz, b);
         }
 
         /// <summary>Get the orientation the curve at a point along the path.</summary>
@@ -304,26 +295,21 @@ namespace Cinemachine.ECS
         /// <returns>World-space orientation of the path, as defined by tangent, up, and roll.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static quaternion EvaluateOrientation(
-            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathElement> buffer)
+            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
         {
-            // GML todo: get rid of this check
-            if (buffer.Length == 0)
-                return quaternion.identity;
-
-            float t = GetBoundingIndices(pos, buffer.Length, path.looped, out int indexA, out int indexB);
-            float rollA = buffer[indexA].roll;
-            float rollB = buffer[indexB].roll;
-            float roll = MathHelpers.Bezier(t,
-                rollA, rollA + buffer[indexA].tangent.w,
-                rollB + buffer[indexB].tangent.w, rollB);
-
-            // GML this isn't so good... should take the adjacent tangent
             float3 fwd = EvaluateTangent(pos, path, buffer);
             if (fwd.AlmostZero())
                 return quaternion.identity;
 
+            float t = GetBoundingIndices(pos, buffer.Length, path.looped, out int indexA, out int indexB);
+            float rollA = buffer[indexA].positionRoll.w;
+            float rollB = buffer[indexB].positionRoll.w;
+            float roll = MathHelpers.Bezier(t,
+                rollA, rollA + buffer[indexA].tangentOut.w,
+                rollB + buffer[indexB].tangentIn.w, rollB);
+
             quaternion q = quaternion.LookRotation(fwd, new float3(0, 1, 0));
-            return math.mul(q, quaternion.AxisAngle(new float3(1, 0, 0), roll));
+            return math.mul(q, quaternion.AxisAngle(new float3(0, 0, 1), roll));
         }
 
         /// <summary>Returns lerp amount between bounds A and B</summary>
@@ -333,7 +319,9 @@ namespace Cinemachine.ECS
         {
             pos = ClampValue(pos, length, looped);
             indexA = (int)math.floor(pos);
+            indexA = math.select(indexA, indexA - 1, !looped && indexA > 0 && indexA == length - 1);
             indexB = math.select(indexA + 1, 0, indexA == length - 1);
+//Debug.Log("pos=" + pos + " [" + indexA + "," + indexB + "]");
             return pos - indexA;
         }
 
@@ -375,7 +363,7 @@ namespace Cinemachine.ECS
                 return state.PathLength;
             }
             var pathDef = GetEntityComponentData<CM_Path>(path);
-            var buffer = EntityManager.GetBuffer<CM_PathElement>(path);
+            var buffer = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
             int count = buffer.Length;
             return math.select(0, math.select(count - 1, count, pathDef.looped), count > 1);
         }
@@ -399,7 +387,7 @@ namespace Cinemachine.ECS
             var pathDef = GetEntityComponentData<CM_Path>(path);
             if (units == PositionUnits.PathUnits)
             {
-                var buffer = EntityManager.GetBuffer<CM_PathElement>(path);
+                var buffer = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
                 int count = buffer.Length;
                 return ClampValue(pos, math.select(count - 1, count, pathDef.looped), pathDef.looped);
             }
