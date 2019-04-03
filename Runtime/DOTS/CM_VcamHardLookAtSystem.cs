@@ -44,7 +44,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct LookAtTargetJob : IJobProcessComponentData<
+        struct LookAtTargetJob : IJobForEach<
             CM_VcamRotationState, CM_VcamPositionState, CM_VcamLookAtTarget>
         {
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;

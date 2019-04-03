@@ -115,7 +115,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct HashTargets : IJobProcessComponentDataWithEntity<LocalToWorld, CM_Target>
+        struct HashTargets : IJobForEachWithEntity<LocalToWorld, CM_Target>
         {
             public NativeHashMap<Entity, TargetInfo>.Concurrent hashMap;
 
@@ -137,7 +137,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct UpdateGroups : IJobProcessComponentDataWithEntity<CM_Group>
+        struct UpdateGroups : IJobForEachWithEntity<CM_Group>
         {
             [ReadOnly] public BufferFromEntity<CM_GroupBufferElement> groupBuffers;
             [ReadOnly] public NativeHashMap<Entity, TargetInfo> hashMap;
@@ -194,7 +194,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct SetGroupInfo : IJobProcessComponentDataWithEntity<CM_Target>
+        struct SetGroupInfo : IJobForEachWithEntity<CM_Target>
         {
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<TargetInfo> infoArray;
             public NativeHashMap<Entity, TargetInfo>.Concurrent hashMap;

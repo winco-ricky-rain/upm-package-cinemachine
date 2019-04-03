@@ -79,7 +79,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct SetupRaycastsJob : IJobProcessComponentDataWithEntity<CM_VcamPositionState, CM_VcamRotationState>
+        struct SetupRaycastsJob : IJobForEachWithEntity<CM_VcamPositionState, CM_VcamRotationState>
         {
             public int layerMask;
             public float minDstanceFromTarget;
@@ -112,7 +112,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct CalculateQualityJob : IJobProcessComponentDataWithEntity<
+        struct CalculateQualityJob : IJobForEachWithEntity<
             CM_VcamShotQuality, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLensState>
         {
             public float aspect;
@@ -141,7 +141,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct CalculateQualityJobOrtho : IJobProcessComponentDataWithEntity<
+        struct CalculateQualityJobOrtho : IJobForEachWithEntity<
             CM_VcamShotQuality, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLensState>
         {
             public float aspect;

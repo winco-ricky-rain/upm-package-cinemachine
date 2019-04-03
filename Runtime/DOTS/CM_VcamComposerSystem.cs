@@ -272,7 +272,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct ComposerJob : IJobProcessComponentData<
+        struct ComposerJob : IJobForEach<
             CM_VcamComposerState, CM_VcamRotationState,
             CM_VcamPositionState, CM_VcamLensState,
             CM_VcamLookAtTarget, CM_VcamComposer>

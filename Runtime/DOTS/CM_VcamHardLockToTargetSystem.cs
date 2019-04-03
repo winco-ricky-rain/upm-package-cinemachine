@@ -45,7 +45,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct LockToTargetJob : IJobProcessComponentData<
+        struct LockToTargetJob : IJobForEach<
             CM_VcamPositionState, CM_VcamRotationState,
             CM_VcamHardLockToTarget, CM_VcamFollowTarget>
         {

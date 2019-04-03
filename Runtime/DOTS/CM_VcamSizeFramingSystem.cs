@@ -170,7 +170,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct SizeFramingJob : IJobProcessComponentData<
+        struct SizeFramingJob : IJobForEach<
             CM_VcamSizeFramingState, CM_VcamLensState, CM_VcamPositionState,
             CM_VcamRotationState, CM_VcamLookAtTarget, CM_VcamSizeFraming>
         {
@@ -251,7 +251,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct SizeFramingJobOrtho : IJobProcessComponentData<
+        struct SizeFramingJobOrtho : IJobForEach<
             CM_VcamSizeFramingState, CM_VcamLensState, CM_VcamPositionState,
             CM_VcamRotationState, CM_VcamLookAtTarget, CM_VcamSizeFraming>
         {

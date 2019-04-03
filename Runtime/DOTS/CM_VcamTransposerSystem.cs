@@ -120,7 +120,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct TrackTargetJob : IJobProcessComponentData<
+        struct TrackTargetJob : IJobForEach<
             CM_VcamPositionState, CM_VcamTransposerState,
             CM_VcamTransposer, CM_VcamFollowTarget>
         {

@@ -280,7 +280,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct InitVcamJob : IJobProcessComponentDataWithEntity<
+        struct InitVcamJob : IJobForEachWithEntity<
             CM_VcamLensState, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLens>
         {
             public CM_Channel.Settings channelSettings;
@@ -361,7 +361,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct FinalizePosJob : IJobProcessComponentDataWithEntity<CM_VcamPositionState>
+        struct FinalizePosJob : IJobForEachWithEntity<CM_VcamPositionState>
         {
             public void Execute(Entity entity, int index, ref CM_VcamPositionState posState)
             {
@@ -371,7 +371,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct PushToTransformJob : IJobProcessComponentData<
+        struct PushToTransformJob : IJobForEach<
             CM_VcamPositionState, CM_VcamRotationState, LocalToWorld>
         {
             public void Execute(

@@ -43,7 +43,7 @@ namespace Cinemachine.ECS_Hybrid
         }
 
         [BurstCompile]
-        struct StashTransforms : IJobProcessComponentDataWithEntity<CM_VcamPositionState, CM_VcamRotationState>
+        struct StashTransforms : IJobForEachWithEntity<CM_VcamPositionState, CM_VcamRotationState>
         {
             public NativeArray<TransformStash> transformStashes;
 

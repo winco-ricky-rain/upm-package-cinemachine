@@ -156,7 +156,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct DistanceCacheJob : IJobProcessComponentDataWithEntity<CM_Path, CM_PathState>
+        struct DistanceCacheJob : IJobForEachWithEntity<CM_Path, CM_PathState>
         {
             [ReadOnly] public BufferFromEntity<CM_PathElement> pathBuffers;
 

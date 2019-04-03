@@ -131,7 +131,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct PerlinNoiseJob : IJobProcessComponentData<
+        struct PerlinNoiseJob : IJobForEach<
             CM_VcamPositionState, CM_VcamRotationState, CM_VcamPerlinNoiseState, CM_VcamPerlinNoise>
         {
             // Note: only 3 rotation channels supported, that's it.  No independent pos noise.

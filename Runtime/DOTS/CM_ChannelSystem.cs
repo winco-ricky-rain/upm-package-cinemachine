@@ -646,7 +646,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        unsafe struct PopulatePriorityQueueJob : IJobProcessComponentDataWithEntity<CM_VcamPriority>
+        unsafe struct PopulatePriorityQueueJob : IJobForEachWithEntity<CM_VcamPriority>
         {
             [ReadOnly] public ComponentDataFromEntity<CM_VcamShotQuality> qualities;
             [NativeDisableUnsafePtrRestriction] public CM_PriorityQueue.QueueEntry* queue;
@@ -669,7 +669,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        unsafe struct SortQueueJob : IJobProcessComponentData<CM_Channel, CM_ChannelBlendState>
+        unsafe struct SortQueueJob : IJobForEach<CM_Channel, CM_ChannelBlendState>
         {
             public void Execute([ReadOnly] ref CM_Channel c, ref CM_ChannelBlendState blendState)
             {
@@ -736,7 +736,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct UpdateChannelJob : IJobProcessComponentData<
+        struct UpdateChannelJob : IJobForEach<
             CM_Channel, CM_ChannelState, CM_ChannelBlendState>
         {
             public float now;
@@ -796,7 +796,7 @@ namespace Cinemachine.ECS
         }
 
         [BurstCompile]
-        struct FetchActiveVcamJob : IJobProcessComponentData<CM_ChannelState, CM_ChannelBlendState>
+        struct FetchActiveVcamJob : IJobForEach<CM_ChannelState, CM_ChannelBlendState>
         {
             public void Execute(
                 ref CM_ChannelState state,
