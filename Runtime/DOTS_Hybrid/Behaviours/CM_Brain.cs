@@ -161,12 +161,16 @@ namespace Cinemachine.ECS_Hybrid
             get
             {
                 var channelSystem = ActiveChannelSystem;
-                if (channelSystem != null)
+                if (channelSystem != null && liveVcamsPreviousFrame.Count > 0)
                     return channelSystem.GetCurrentCameraState(Channel.channel);
+
                 var state = CameraState.Default;
                 var t = transform;
                 state.RawPosition = t.position;
                 state.RawOrientation = t.rotation;
+                var cam = OutputCamera;
+                if (cam != null)
+                    state.Lens = LensSettings.FromCamera(cam);
                 return state;
             }
         }
@@ -270,11 +274,6 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
-        EntityManager ActiveEntityManager
-        {
-            get { return World.Active?.EntityManager; }
-        }
-
         static CM_ChannelSystem ActiveChannelSystem
         {
             get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
@@ -284,7 +283,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                var m = ActiveEntityManager;
+                var m = World.Active?.EntityManager;
                 if (m != null && m.HasComponent<CM_ChannelState>(Entity))
                     return m.GetComponentData<CM_ChannelState>(Entity);
                 return new CM_ChannelState();
@@ -295,14 +294,14 @@ namespace Cinemachine.ECS_Hybrid
         {
             get
             {
-                var m = ActiveEntityManager;
+                var m = World.Active?.EntityManager;
                 if (m != null && m.HasComponent<CM_Channel>(Entity))
                     return m.GetComponentData<CM_Channel>(Entity);
                 return CM_Channel.Default;
             }
             set
             {
-                var m = ActiveEntityManager;
+                var m = World.Active?.EntityManager;
                 if (m != null && m.HasComponent<CM_Channel>(Entity))
                     m.SetComponentData(Entity, value);
             }
@@ -374,7 +373,7 @@ namespace Cinemachine.ECS_Hybrid
 
             // Send activation events
             var channelSystem = ActiveChannelSystem;
-            var entityManager = ActiveEntityManager;
+            var entityManager = World.Active?.EntityManager;
             if (channelSystem != null && entityManager != null)
             {
                 var c = Channel;
@@ -417,7 +416,8 @@ namespace Cinemachine.ECS_Hybrid
                 scratchList = temp;
             }
             // Move the camera
-            PushStateToUnityCamera(state);
+            if (liveVcamsPreviousFrame.Count > 0)
+                PushStateToUnityCamera(state);
         }
 
         private void FixedUpdate()
