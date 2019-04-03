@@ -159,14 +159,12 @@ namespace Cinemachine.ECS
                 float maxPos = math.select(numPoints - 1, numPoints, path.looped);
                 maxPos = math.select(maxPos, 0, numPoints < 2);
 
-                // GML temp
-                ComputeSmoothTangents(ref buffer, path.looped);
-
                 int numKeys = (int)math.round(resolution * maxPos);
                 numKeys = math.select(numKeys, 0, numPoints < 2) + 1;
                 if (state.valid && state.Length == numKeys)
                     return;
 
+                ComputeSmoothTangents(ref buffer, path.looped);
 
                 // Sample the positions
                 float stepSize = 1f / resolution;
@@ -321,7 +319,6 @@ namespace Cinemachine.ECS
             indexA = (int)math.floor(pos);
             indexA = math.select(indexA, indexA - 1, !looped && indexA > 0 && indexA == length - 1);
             indexB = math.select(indexA + 1, 0, indexA == length - 1);
-//Debug.Log("pos=" + pos + " [" + indexA + "," + indexB + "]");
             return pos - indexA;
         }
 
@@ -372,9 +369,12 @@ namespace Cinemachine.ECS
         /// or other cached path elements</summary>
         public void InvalidatePathCache(Entity path)
         {
-            var state = GetEntityComponentData<CM_PathState>(path);
-            state.valid = false;
-            EntityManager.SetComponentData(path, state);
+            if (EntityManager.HasComponent<CM_PathState>(path))
+            {
+                var state = GetEntityComponentData<CM_PathState>(path);
+                state.valid = false;
+                EntityManager.SetComponentData(path, state);
+            }
         }
 
         /// <summary>Standardize the unit, so that it lies between MinUmit and MaxUnit</summary>

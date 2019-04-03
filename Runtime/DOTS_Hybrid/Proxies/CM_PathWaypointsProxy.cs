@@ -4,6 +4,7 @@ using Unity.Entities;
 using Cinemachine.ECS;
 using System.Collections.Generic;
 using Unity.Transforms;
+using UnityEngine.UI;
 
 namespace Cinemachine.ECS_Hybrid
 {
@@ -12,5 +13,39 @@ namespace Cinemachine.ECS_Hybrid
     [RequireComponent(typeof(CM_PathProxy))]
     public class CM_PathWaypointsProxy : DynamicBufferProxy<CM_PathWaypointElement>
     {
+        bool TryGetEntityAndManager(out EntityManager entityManager, out Entity entity)
+        {
+            entityManager = null;
+            entity = Entity.Null;
+            // gameObject is not initialized yet in native when OnBeforeSerialized() is called via SmartReset()
+            if (gameObject == null)
+                return false;
+            var gameObjectEntity = GetComponent<GameObjectEntity>();
+            if (gameObjectEntity == null)
+                return false;
+            if (gameObjectEntity.EntityManager == null)
+                return false;
+            if (!gameObjectEntity.EntityManager.Exists(gameObjectEntity.Entity))
+                return false;
+            entityManager = gameObjectEntity.EntityManager;
+            entity = gameObjectEntity.Entity;
+            return true;
+        }
+
+        Entity Entity
+        {
+            get
+            {
+                if (TryGetEntityAndManager(out EntityManager m, out Entity entity))
+                    return entity;
+                return Entity.Null;
+            }
+        }
+
+        protected override void ValidateSerializedData(List<CM_PathWaypointElement> serializedData)
+        {
+            var pathSystem = World.Active?.GetExistingSystem<CM_PathSystem>();
+            pathSystem?.InvalidatePathCache(Entity);
+        }
     }
 }
