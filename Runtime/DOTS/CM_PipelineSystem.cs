@@ -214,28 +214,28 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamPreBodySystem : JobComponentSystem
     {
-        ComponentGroup m_rotGroup;
-        ComponentGroup m_vcamGroup;
-        ComponentGroup m_missingPosStateGroup;
-        ComponentGroup m_missingRotStateGroup;
-        ComponentGroup m_missingLensStateGroup;
+        EntityQuery m_rotGroup;
+        EntityQuery m_vcamGroup;
+        EntityQuery m_missingPosStateGroup;
+        EntityQuery m_missingRotStateGroup;
+        EntityQuery m_missingLensStateGroup;
 
         protected override void OnCreateManager()
         {
-            m_vcamGroup = GetComponentGroup(
+            m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.ReadOnly<CM_VcamLens>(),
                 ComponentType.ReadWrite<CM_VcamLensState>(),
                 ComponentType.ReadWrite<CM_VcamPositionState>(),
                 ComponentType.ReadWrite<CM_VcamRotationState>());
 
-            m_missingPosStateGroup = GetComponentGroup(
+            m_missingPosStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.Exclude<CM_VcamPositionState>());
-            m_missingRotStateGroup = GetComponentGroup(
+            m_missingRotStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.Exclude<CM_VcamRotationState>());
-            m_missingLensStateGroup = GetComponentGroup(
+            m_missingLensStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.Exclude<CM_VcamLensState>());
         }
@@ -265,7 +265,7 @@ namespace Cinemachine.ECS
         {
             public CM_VcamPreBodySystem preBodySystem;
             public JobHandle Invoke(
-                ComponentGroup filteredGroup, Entity channelEntity,
+                EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 var initJob = new InitVcamJob
@@ -275,7 +275,7 @@ namespace Cinemachine.ECS
                     orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic,
                     positions = preBodySystem.GetComponentDataFromEntity<LocalToWorld>(true)
                 };
-                return initJob.ScheduleGroup(filteredGroup, inputDeps);
+                return initJob.Schedule(filteredGroup, inputDeps);
             }
         }
 
@@ -335,14 +335,14 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamFinalizeSystem : JobComponentSystem
     {
-        ComponentGroup m_posGroup;
-        ComponentGroup m_transformGroup;
+        EntityQuery m_posGroup;
+        EntityQuery m_transformGroup;
 
         protected override void OnCreateManager()
         {
-            m_posGroup = GetComponentGroup(
+            m_posGroup = GetEntityQuery(
                 ComponentType.ReadWrite<CM_VcamPositionState>());
-            m_transformGroup = GetComponentGroup(
+            m_transformGroup = GetEntityQuery(
                 ComponentType.ReadWrite<LocalToWorld>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamRotationState>(),
@@ -352,10 +352,10 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             var posJob = new FinalizePosJob();
-            var posDeps = posJob.ScheduleGroup(m_posGroup, inputDeps);
+            var posDeps = posJob.Schedule(m_posGroup, inputDeps);
 
             var transformJob = new PushToTransformJob();
-            var transformDeps = transformJob.ScheduleGroup(m_transformGroup, posDeps);
+            var transformDeps = transformJob.Schedule(m_transformGroup, posDeps);
 
             return transformDeps;
         }

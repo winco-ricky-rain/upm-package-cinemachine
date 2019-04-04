@@ -66,12 +66,12 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamPerlinNoiseSystem : JobComponentSystem
     {
-        ComponentGroup m_vcamGroup;
-        ComponentGroup m_missingStateGroup;
+        EntityQuery m_vcamGroup;
+        EntityQuery m_missingStateGroup;
 
         protected override void OnCreateManager()
         {
-            m_vcamGroup = GetComponentGroup(
+            m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadWrite<CM_VcamRotationState>(),
                 ComponentType.ReadWrite<CM_VcamPositionState>(),
                 ComponentType.ReadWrite<CM_VcamPerlinNoiseState>(),
@@ -79,7 +79,7 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamPerlinNoiseDefinition>(),
                 ComponentType.ReadOnly<CM_VcamChannel>());
 
-            m_missingStateGroup = GetComponentGroup(
+            m_missingStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamPerlinNoise>(),
                 ComponentType.Exclude<CM_VcamPerlinNoiseState>());
         }
@@ -113,7 +113,7 @@ namespace Cinemachine.ECS
         {
             public NoiseSettings profile;
             public JobHandle Invoke(
-                ComponentGroup filteredGroup, Entity channelEntity,
+                EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 if (profile == null || state.deltaTime < 0)
@@ -126,7 +126,7 @@ namespace Cinemachine.ECS
                     job.rotNoise1 = profile.OrientationNoise[1];
                 if (profile.OrientationNoise.Length > 2)
                     job.rotNoise2 = profile.OrientationNoise[2];
-                return job.ScheduleGroup(filteredGroup, inputDeps);
+                return job.Schedule(filteredGroup, inputDeps);
             }
         }
 

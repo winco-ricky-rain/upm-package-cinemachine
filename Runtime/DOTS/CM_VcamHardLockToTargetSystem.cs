@@ -20,11 +20,11 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamHardLockToTargetSystem : JobComponentSystem
     {
-        ComponentGroup m_vcamGroup;
+        EntityQuery m_vcamGroup;
 
         protected override void OnCreateManager()
         {
-            m_vcamGroup = GetComponentGroup(
+            m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadWrite<CM_VcamPositionState>(),
                 ComponentType.ReadWrite<CM_VcamRotationState>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>(),
@@ -39,7 +39,7 @@ namespace Cinemachine.ECS
                 return inputDeps; // no targets yet
 
             var job = new LockToTargetJob() { targetLookup = targetLookup };
-            var jobDeps = job.ScheduleGroup(m_vcamGroup, inputDeps);
+            var jobDeps = job.Schedule(m_vcamGroup, inputDeps);
 
             return targetSystem.RegisterTargetLookupReadJobs(jobDeps);
         }

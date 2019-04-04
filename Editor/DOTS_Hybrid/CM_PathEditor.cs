@@ -17,22 +17,23 @@ namespace Cinemachine.Editor.ECS_Hybrid
             Color pathColor, float width, float4x4 l2w)
         {
             quaternion ql2w = l2w.GetRotationFromTRS();
+            bool looped = path.looped;
 
             // Draw the path
             Color colorOld = Gizmos.color;
             Gizmos.color = pathColor;
             float step = 1f / math.max(1, path.resolution);
             float3 right = new float3(1, 0, 0) * width / 2;
-            float3 lastPos = math.transform(l2w, CM_PathSystem.EvaluatePosition(0, path, waypoints));
+            float3 lastPos = math.transform(l2w, CM_PathSystem.EvaluatePosition(0, looped, waypoints));
             float3 lastW = math.mul(
-                ql2w, math.mul(CM_PathSystem.EvaluateOrientation(0, path, waypoints), right));
+                ql2w, math.mul(CM_PathSystem.EvaluateOrientation(0, looped, waypoints), right));
 
             int count = waypoints.Length;
-            float maxPos = math.select(0, math.select(count - 1, count, path.looped), count > 1);
+            float maxPos = math.select(0, math.select(count - 1, count, looped), count > 1);
             for (float t = step; t <= maxPos + step / 2; t += step)
             {
-                float3 p = math.transform(l2w, CM_PathSystem.EvaluatePosition(t, path, waypoints));
-                quaternion q = CM_PathSystem.EvaluateOrientation(t, path, waypoints);
+                float3 p = math.transform(l2w, CM_PathSystem.EvaluatePosition(t, looped, waypoints));
+                quaternion q = CM_PathSystem.EvaluateOrientation(t, looped, waypoints);
                 float3 w = math.mul(ql2w, math.mul(q, right));
                 float3 w2 = w * 1.2f;
                 float3 p0 = p - w2;

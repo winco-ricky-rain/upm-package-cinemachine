@@ -14,11 +14,11 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamRaycastShotQualitySystem : JobComponentSystem
     {
-        ComponentGroup m_vcamGroup;
+        EntityQuery m_vcamGroup;
 
         protected override void OnCreateManager()
         {
-            m_vcamGroup = GetComponentGroup(
+            m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.ReadWrite<CM_VcamShotQuality>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
@@ -38,7 +38,7 @@ namespace Cinemachine.ECS
         struct QualityJobLaunch : CM_ChannelSystem.VcamGroupCallback
         {
             public JobHandle Invoke(
-                ComponentGroup filteredGroup, Entity channelEntity,
+                EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 var objectCount = filteredGroup.CalculateLength();
@@ -54,7 +54,7 @@ namespace Cinemachine.ECS
                     minDstanceFromTarget = 0, // GML todo: how to set this?
                     raycasts = raycastCommands
                 };
-                var setupDeps = setupRaycastsJob.ScheduleGroup(filteredGroup, inputDeps);
+                var setupDeps = setupRaycastsJob.Schedule(filteredGroup, inputDeps);
                 var raycastDeps = RaycastCommand.ScheduleBatch(raycastCommands, raycastHits, 32, setupDeps);
 
                 if (c.settings.IsOrthographic)
@@ -65,7 +65,7 @@ namespace Cinemachine.ECS
                         hits = raycastHits,         // deallocates on completion
                         raycasts = raycastCommands  // deallocates on completion
                     };
-                    return qualityJobOrtho.ScheduleGroup(filteredGroup, raycastDeps);
+                    return qualityJobOrtho.Schedule(filteredGroup, raycastDeps);
                 }
 
                 var qualityJob = new CalculateQualityJob()
@@ -74,7 +74,7 @@ namespace Cinemachine.ECS
                     hits = raycastHits,         // deallocates on completion
                     raycasts = raycastCommands  // deallocates on completion
                 };
-                return qualityJob.ScheduleGroup(filteredGroup, raycastDeps);
+                return qualityJob.Schedule(filteredGroup, raycastDeps);
             }
         }
 
@@ -92,13 +92,6 @@ namespace Cinemachine.ECS
                 [ReadOnly] ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamRotationState rotState)
             {
-                // GML hack
-                if (index >= raycasts.Length)
-                {
-                    //Debug.LogFormat("A. Index = " + index);
-                    return; // WTF!!!!
-                }
-
                 // GML todo: check for no lookAt condition
 
                 // cast back towards the camera to filter out target's collider
@@ -124,13 +117,6 @@ namespace Cinemachine.ECS
                 ref CM_VcamShotQuality shotQuality, [ReadOnly] ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamRotationState rotState, [ReadOnly] ref CM_VcamLensState lens)
             {
-                // GML hack
-                if (index >= raycasts.Length)
-                {
-                    //Debug.LogFormat("B. Index = " + index);
-                    return; // WTF!!!!
-                }
-
                 float3 offset = rotState.lookAtPoint - posState.GetCorrected();
                 offset = math.mul(math.inverse(rotState.GetCorrected()), offset); // camera-space
                 bool isOnscreen = IsTargetOnscreen(offset, lens.fov, aspect);
@@ -153,10 +139,6 @@ namespace Cinemachine.ECS
                 ref CM_VcamShotQuality shotQuality, [ReadOnly] ref CM_VcamPositionState posState,
                 [ReadOnly] ref CM_VcamRotationState rotState, [ReadOnly] ref CM_VcamLensState lens)
             {
-                // GML hack
-                if (index >= raycasts.Length)
-                    return; // WTF!!!!
-
                 float3 offset = rotState.lookAtPoint - posState.GetCorrected();
                 offset = math.mul(math.inverse(rotState.GetCorrected()), offset); // camera-space
                 bool isOnscreen = IsTargetOnscreenOrtho(offset, lens.fov, aspect);

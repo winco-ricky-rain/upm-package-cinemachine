@@ -214,12 +214,12 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamComposerSystem : JobComponentSystem
     {
-        ComponentGroup m_vcamGroup;
-        ComponentGroup m_missingStateGroup;
+        EntityQuery m_vcamGroup;
+        EntityQuery m_missingStateGroup;
 
         protected override void OnCreateManager()
         {
-            m_vcamGroup = GetComponentGroup(
+            m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadWrite<CM_VcamRotationState>(),
                 ComponentType.ReadWrite<CM_VcamComposerState>(),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
@@ -228,7 +228,7 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamComposer>(),
                 ComponentType.ReadOnly<CM_VcamChannel>());
 
-            m_missingStateGroup = GetComponentGroup(
+            m_missingStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamComposer>(),
                 ComponentType.Exclude<CM_VcamComposerState>());
         }
@@ -256,7 +256,7 @@ namespace Cinemachine.ECS
         {
             public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
             public JobHandle Invoke(
-                ComponentGroup filteredGroup, Entity channelEntity,
+                EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 var job = new ComposerJob
@@ -267,7 +267,7 @@ namespace Cinemachine.ECS
                     orthographic = c.settings.IsOrthographic,
                     targetLookup = targetLookup
                 };
-                return job.ScheduleGroup(filteredGroup, inputDeps);
+                return job.Schedule(filteredGroup, inputDeps);
             }
         }
 

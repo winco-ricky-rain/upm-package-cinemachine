@@ -90,12 +90,12 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_VcamSizeFramingSystem : JobComponentSystem
     {
-        ComponentGroup m_vcamGroup;
-        ComponentGroup m_missingStateGroup;
+        EntityQuery m_vcamGroup;
+        EntityQuery m_missingStateGroup;
 
         protected override void OnCreateManager()
         {
-            m_vcamGroup = GetComponentGroup(
+            m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadWrite<CM_VcamSizeFramingState>(),
                 ComponentType.ReadWrite<CM_VcamPositionState>(),
                 ComponentType.ReadWrite<CM_VcamLensState>(),
@@ -104,7 +104,7 @@ namespace Cinemachine.ECS
                 ComponentType.ReadOnly<CM_VcamSizeFraming>(),
                 ComponentType.ReadOnly<CM_VcamChannel>());
 
-            m_missingStateGroup = GetComponentGroup(
+            m_missingStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamSizeFraming>(),
                 ComponentType.Exclude<CM_VcamSizeFramingState>());
         }
@@ -132,7 +132,7 @@ namespace Cinemachine.ECS
         {
             public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
             public JobHandle Invoke(
-                ComponentGroup filteredGroup, Entity channelEntity,
+                EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 if (c.settings.IsOrthographic)
@@ -144,7 +144,7 @@ namespace Cinemachine.ECS
                         aspect = c.settings.aspect,
                         targetLookup = targetLookup
                     };
-                    return orthoJob.ScheduleGroup(filteredGroup, inputDeps);
+                    return orthoJob.Schedule(filteredGroup, inputDeps);
                 }
                 var job = new SizeFramingJob
                 {
@@ -153,7 +153,7 @@ namespace Cinemachine.ECS
                     aspect = c.settings.aspect,
                     targetLookup = targetLookup
                 };
-                return job.ScheduleGroup(filteredGroup, inputDeps);
+                return job.Schedule(filteredGroup, inputDeps);
             }
         }
 

@@ -439,7 +439,7 @@ namespace Cinemachine.ECS
         public interface VcamGroupCallback
         {
             JobHandle Invoke(
-                ComponentGroup filteredGroup, Entity channelEntity,
+                EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps);
         }
 
@@ -448,7 +448,7 @@ namespace Cinemachine.ECS
         /// <param name="cb">the callback to invoke per channel</param>
         /// <param name="inputDeps">job handle to pass to callback</param>
         public JobHandle InvokePerVcamChannel<T>(
-            ComponentGroup group, JobHandle inputDeps, T cb) where T : struct, VcamGroupCallback
+            EntityQuery group, JobHandle inputDeps, T cb) where T : struct, VcamGroupCallback
         {
             if (EntityManager != null)
             {
@@ -474,7 +474,7 @@ namespace Cinemachine.ECS
         /// <param name="cb">the callback to invoke per channel</param>
         /// <param name="inputDeps">job handle to pass to callback</param>
         public JobHandle InvokePerVcamChannel<COMPONENT, CB>(
-            ComponentGroup group, JobHandle inputDeps, COMPONENT c2, CB cb)
+            EntityQuery group, JobHandle inputDeps, COMPONENT c2, CB cb)
                 where COMPONENT : struct, ISharedComponentData
                 where CB : struct, VcamGroupCallback
         {
@@ -528,11 +528,11 @@ namespace Cinemachine.ECS
             }
         }
 
-        ComponentGroup m_vcamGroup;
-        ComponentGroup m_channelsGroup;
-        ComponentGroup m_missingChannelStateGroup;
-        ComponentGroup m_missingBlendStateGroup;
-        ComponentGroup m_danglingBlendStateGroup;
+        EntityQuery m_vcamGroup;
+        EntityQuery m_channelsGroup;
+        EntityQuery m_missingChannelStateGroup;
+        EntityQuery m_missingBlendStateGroup;
+        EntityQuery m_danglingBlendStateGroup;
 
         JobHandle ActiveChannelStateJobs { get; set; }
 
@@ -541,24 +541,24 @@ namespace Cinemachine.ECS
 
         protected override void OnCreateManager()
         {
-            m_channelsGroup = GetComponentGroup(
+            m_channelsGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_Channel>(),
                 ComponentType.ReadWrite<CM_ChannelState>(),
                 ComponentType.ReadWrite<CM_ChannelBlendState>());
 
-            m_vcamGroup = GetComponentGroup(
+            m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_VcamChannel>(),
                 ComponentType.ReadWrite<CM_VcamPriority>());
 
-            m_missingChannelStateGroup = GetComponentGroup(
+            m_missingChannelStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_Channel>(),
                 ComponentType.Exclude<CM_ChannelState>());
 
-            m_missingBlendStateGroup = GetComponentGroup(
+            m_missingBlendStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_Channel>(),
                 ComponentType.Exclude<CM_ChannelBlendState>());
 
-            m_danglingBlendStateGroup = GetComponentGroup(
+            m_danglingBlendStateGroup = GetEntityQuery(
                 ComponentType.Exclude<CM_Channel>(),
                 ComponentType.ReadWrite<CM_ChannelBlendState>());
 
@@ -613,13 +613,13 @@ namespace Cinemachine.ECS
                     { channelSystem = this, EntityManager = EntityManager });
 
             var sortJob = new SortQueueJob();
-            var sortDeps = sortJob.ScheduleGroup(m_channelsGroup, populateDeps);
+            var sortDeps = sortJob.Schedule(m_channelsGroup, populateDeps);
 
             var updateJob = new UpdateChannelJob() { now = Time.time };
-            var updateDeps = updateJob.ScheduleGroup(m_channelsGroup, sortDeps);
+            var updateDeps = updateJob.Schedule(m_channelsGroup, sortDeps);
 
             var fetchJob = new FetchActiveVcamJob();
-            var fetchDeps = fetchJob.ScheduleGroup(m_channelsGroup, updateDeps);
+            var fetchDeps = fetchJob.Schedule(m_channelsGroup, updateDeps);
 
             ActiveChannelStateJobs = fetchDeps;
             return fetchDeps;
@@ -630,7 +630,7 @@ namespace Cinemachine.ECS
             public CM_ChannelSystem channelSystem;
             public EntityManager EntityManager;
             public JobHandle Invoke(
-                ComponentGroup filteredGroup, Entity channelEntity,
+                EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 var blendState = EntityManager.GetComponentData<CM_ChannelBlendState>(channelEntity);
@@ -641,7 +641,7 @@ namespace Cinemachine.ECS
                     { qualities = channelSystem.GetComponentDataFromEntity<CM_VcamShotQuality>(true) };
                 populateJob.AssignDataPtr(ref blendState);
 
-                return populateJob.ScheduleGroup(filteredGroup, inputDeps);
+                return populateJob.Schedule(filteredGroup, inputDeps);
             }
         }
 

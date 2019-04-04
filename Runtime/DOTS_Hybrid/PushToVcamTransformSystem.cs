@@ -14,11 +14,11 @@ namespace Cinemachine.ECS_Hybrid
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class PushToVcamTransformSystem : JobComponentSystem
     {
-        ComponentGroup m_mainGroup;
+        EntityQuery m_mainGroup;
 
         protected override void OnCreateManager()
         {
-            m_mainGroup = GetComponentGroup(
+            m_mainGroup = GetEntityQuery(
                 typeof(Transform),
                 ComponentType.ReadOnly<CM_VcamPositionState>(),
                 ComponentType.ReadOnly<CM_VcamRotationState>(),
@@ -30,7 +30,7 @@ namespace Cinemachine.ECS_Hybrid
             var transforms = m_mainGroup.GetTransformAccessArray();
             var transformStashes = new NativeArray<TransformStash>(transforms.length, Allocator.TempJob);
             var stashJob = new StashTransforms { transformStashes = transformStashes };
-            var stashDeps = stashJob.ScheduleGroup(m_mainGroup, inputDeps);
+            var stashDeps = stashJob.Schedule(m_mainGroup, inputDeps);
 
             var writeJob = new WriteTransforms { transformStashes = transformStashes };
             return writeJob.Schedule(transforms, stashDeps);

@@ -33,9 +33,9 @@ namespace Cinemachine.ECS
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_TargetSystem : JobComponentSystem
     {
-        ComponentGroup m_mainGroup;
-        ComponentGroup m_groupGroup;
-        ComponentGroup m_missingGroupGroup;
+        EntityQuery m_mainGroup;
+        EntityQuery m_groupGroup;
+        EntityQuery m_missingGroupGroup;
 
         public struct TargetInfo
         {
@@ -48,17 +48,17 @@ namespace Cinemachine.ECS
 
         protected override void OnCreateManager()
         {
-            m_mainGroup = GetComponentGroup(
+            m_mainGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_Target>(),
                 ComponentType.ReadOnly<LocalToWorld>(),
                 ComponentType.Exclude<CM_Group>());
 
-            m_groupGroup = GetComponentGroup(
+            m_groupGroup = GetEntityQuery(
                 ComponentType.ReadWrite<CM_Target>(),
                 ComponentType.ReadWrite<CM_Group>(),
                 ComponentType.ReadOnly(typeof(CM_GroupBufferElement)));
 
-            m_missingGroupGroup = GetComponentGroup(
+            m_missingGroupGroup = GetEntityQuery(
                 ComponentType.ReadOnly(typeof(CM_GroupBufferElement)),
                 ComponentType.Exclude<CM_Group>());
 
@@ -91,7 +91,7 @@ namespace Cinemachine.ECS
             {
                 hashMap = m_targetLookup.ToConcurrent()
             };
-            TargetTableWriteHandle = hashJob.ScheduleGroup(m_mainGroup, inputDeps);
+            TargetTableWriteHandle = hashJob.Schedule(m_mainGroup, inputDeps);
 
             if (groupCount > 0)
             {
@@ -102,14 +102,14 @@ namespace Cinemachine.ECS
                     hashMap = m_targetLookup,
                     infoArray = infoArray
                 };
-                TargetTableWriteHandle = groupJob.ScheduleGroup(m_groupGroup, TargetTableWriteHandle);
+                TargetTableWriteHandle = groupJob.Schedule(m_groupGroup, TargetTableWriteHandle);
 
                 var setGroupsJob = new SetGroupInfo
                 {
                     infoArray = infoArray,
                     hashMap = m_targetLookup.ToConcurrent()
                 };
-                TargetTableWriteHandle = setGroupsJob.ScheduleGroup(m_groupGroup, TargetTableWriteHandle);
+                TargetTableWriteHandle = setGroupsJob.Schedule(m_groupGroup, TargetTableWriteHandle);
             }
             return TargetTableWriteHandle;
         }

@@ -49,65 +49,69 @@ namespace Cinemachine.ECS
     }
 
     /// Cache of path distances
-    unsafe struct CM_PathState : ISystemStateComponentData
+    public struct CM_PathState : ISystemStateComponentData
     {
-        float2* p2d2p;   // x = p2d, y = d2p
-        public int Length { get; private set; }
-
-        public float2 p2d2pStep;
-        public bool valid;
-
-        public void Allocate(int size)
+        internal unsafe struct DistanceCache
         {
-            Dispose();
-            if (size > 0)
+            float2* p2d2p;   // x = p2d, y = d2p
+
+            public float2 p2d2pStep;
+            public bool valid;
+            public int Length { get; private set; }
+            public void Allocate(int size)
             {
-                p2d2p = (float2*)UnsafeUtility.Malloc(
-                    sizeof(float2) * size, UnsafeUtility.AlignOf<float2>(), Allocator.Persistent);
+                Dispose();
+                if (size > 0)
+                {
+                    p2d2p = (float2*)UnsafeUtility.Malloc(
+                        sizeof(float2) * size, UnsafeUtility.AlignOf<float2>(), Allocator.Persistent);
+                }
+                Length = size;
             }
-            Length = size;
-        }
 
-        public void Dispose()
-        {
-            if (p2d2p != null)
-                UnsafeUtility.Free(p2d2p, Allocator.Persistent);
-            p2d2p = null;
-            Length = 0;
-        }
+            public void Dispose()
+            {
+                if (p2d2p != null)
+                    UnsafeUtility.Free(p2d2p, Allocator.Persistent);
+                p2d2p = null;
+                Length = 0;
+            }
 
-        public ref float2 p2d2pAt(int i)
-        {
+            public ref float2 p2d2pAt(int i)
+            {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (i < 0 || i >= Length)
-                throw new IndexOutOfRangeException("CM_PathState Array access out of range");
+                if (i < 0 || i >= Length)
+                    throw new IndexOutOfRangeException("CM_PathState Array access out of range");
 #endif
-            return ref p2d2p[i];
+                return ref p2d2p[i];
+            }
         }
+        internal DistanceCache cache;
 
-        public float PathLength { get { return Length < 2 ? 0 : p2d2p[Length-1].x; } }
+        public float PathLength { get { return cache.Length < 2 ? 0 : cache.p2d2pAt(cache.Length-1).x; } }
+        public bool looped;
     }
 
     [ExecuteAlways]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public class CM_PathSystem : JobComponentSystem
     {
-        ComponentGroup m_pathGroup;
-        ComponentGroup m_missingStateGroup;
-        ComponentGroup m_danglingStateGroup;
+        EntityQuery m_pathGroup;
+        EntityQuery m_missingStateGroup;
+        EntityQuery m_danglingStateGroup;
 
         protected override void OnCreateManager()
         {
-            m_pathGroup = GetComponentGroup(
+            m_pathGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_Path>(),
                 ComponentType.ReadWrite<CM_PathState>(),
                 ComponentType.ReadOnly(typeof(CM_PathWaypointElement)));
 
-            m_missingStateGroup = GetComponentGroup(
+            m_missingStateGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_Path>(),
                 ComponentType.Exclude<CM_PathState>());
 
-            m_danglingStateGroup = GetComponentGroup(
+            m_danglingStateGroup = GetEntityQuery(
                 ComponentType.Exclude<CM_Path>(),
                 ComponentType.ReadWrite<CM_PathState>());
         }
@@ -121,7 +125,7 @@ namespace Cinemachine.ECS
                 for (int i = 0; i < a.Length; ++i)
                 {
                     var s = EntityManager.GetComponentData<CM_PathState>(a[i]);
-                    s.Dispose();
+                    s.cache.Dispose();
                 }
                 a.Dispose();
                 EntityManager.DestroyEntity(m_danglingStateGroup);
@@ -139,7 +143,7 @@ namespace Cinemachine.ECS
             {
                 pathBuffers = GetBufferFromEntity<CM_PathWaypointElement>()
             };
-            var pathDeps = pathJob.ScheduleGroup(m_pathGroup, inputDeps);
+            var pathDeps = pathJob.Schedule(m_pathGroup, inputDeps);
             return pathDeps;
         }
 
@@ -161,51 +165,52 @@ namespace Cinemachine.ECS
 
                 int numKeys = (int)math.round(resolution * maxPos);
                 numKeys = math.select(numKeys, 0, numPoints < 2) + 1;
-                if (state.valid && state.Length == numKeys)
+                if (state.cache.valid && state.cache.Length == numKeys)
                     return;
 
                 ComputeSmoothTangents(ref buffer, path.looped);
+                bool looped = state.looped = path.looped;
 
                 // Sample the positions
                 float stepSize = 1f / resolution;
-                state.Allocate(numKeys);
-                state.p2d2pStep = new float2(stepSize, 0);
+                state.cache.Allocate(numKeys);
+                state.cache.p2d2pStep = new float2(stepSize, 0);
 
                 float pathLength = 0;
-                float3 p0 = EvaluatePosition(0, path, buffer);
-                state.p2d2pAt(0).x = 0;
+                float3 p0 = EvaluatePosition(0, looped, buffer);
+                state.cache.p2d2pAt(0).x = 0;
                 float pos = 0;
                 for (int i = 1; i < numKeys; ++i)
                 {
                     pos += stepSize;
-                    float3 p = EvaluatePosition(pos, path, buffer);
+                    float3 p = EvaluatePosition(pos, looped, buffer);
                     float d = math.distance(p0, p);
                     pathLength += d;
                     p0 = p;
-                    state.p2d2pAt(i).x = pathLength;
+                    state.cache.p2d2pAt(i).x = pathLength;
                 }
 
                 // Resample the distances
-                state.p2d2pAt(0).y = 0;
+                state.cache.p2d2pAt(0).y = 0;
                 if (numKeys > 1)
                 {
                     stepSize = pathLength / (numKeys - 1);
-                    state.p2d2pStep.y = stepSize;
+                    state.cache.p2d2pStep.y = stepSize;
                     float distance = 0;
                     int posIndex = 1;
                     for (int i = 1; i < numKeys; ++i)
                     {
                         distance += stepSize;
-                        float d = state.p2d2pAt(posIndex).x;
+                        float d = state.cache.p2d2pAt(posIndex).x;
                         while (d < distance && posIndex < numKeys-1)
-                             d = state.p2d2pAt(++posIndex).x;
-                        float d0 = state.p2d2pAt(posIndex-1).x;
+                             d = state.cache.p2d2pAt(++posIndex).x;
+                        float d0 = state.cache.p2d2pAt(posIndex-1).x;
                         float delta = d - d0;
                         float t = (distance - d0) / delta;
-                        state.p2d2pAt(i).y = state.p2d2pStep.y * (t + posIndex - 1);
+                        state.cache.p2d2pAt(i).y = state.cache.p2d2pStep.y * (t + posIndex - 1);
                     }
                 }
-                state.valid = true;
+                state.cache.valid = true;
             }
 
             void ComputeSmoothTangents(ref DynamicBuffer<CM_PathWaypointElement> waypoints, bool looped)
@@ -213,27 +218,27 @@ namespace Cinemachine.ECS
                 int numPoints = waypoints.Length;
                 if (numPoints > 1)
                 {
-                    NativeArray<float4> K =  new NativeArray<float4>(numPoints, Allocator.Temp);
+                    NativeArray<float4> k =  new NativeArray<float4>(numPoints, Allocator.Temp);
                     NativeArray<float4> p1 = new NativeArray<float4>(numPoints, Allocator.Temp);
                     NativeArray<float4> p2 = new NativeArray<float4>(numPoints, Allocator.Temp);
                     for (int i = 0; i < numPoints; ++i)
-                        K[i] = p1[i] = p2[i] = waypoints[i].positionRoll;
+                        k[i] = p1[i] = p2[i] = waypoints[i].positionRoll;
                     if (looped)
-                        BezierHelpers.ComputeSmoothControlPointsLooped(K, p1, p2);
+                        BezierHelpers.ComputeSmoothControlPointsLooped(k, p1, p2);
                     else
                     {
-                        BezierHelpers.ComputeSmoothControlPoints(K, p1, p2);
-                        p2[numPoints-1] = K[0];
+                        BezierHelpers.ComputeSmoothControlPoints(k, p1, p2);
+                        p2[numPoints-1] = k[0];
                     }
 
                     for (int i = 0; i < numPoints; ++i)
                     {
                         var v = waypoints[i];
-                        v.tangentIn = p2[math.select(i, numPoints, i == 0) - 1] - K[i];
-                        v.tangentOut = p1[i] - K[i];
+                        v.tangentIn = p2[math.select(i, numPoints, i == 0) - 1] - k[i];
+                        v.tangentOut = p1[i] - k[i];
                         waypoints[i] = v;
                     }
-                    K.Dispose();
+                    k.Dispose();
                     p1.Dispose();
                     p2.Dispose();
                 }
@@ -258,12 +263,12 @@ namespace Cinemachine.ECS
         /// <returns>Local-space position of the point along at path at pos</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 EvaluatePosition(
-            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
+            float pos, bool looped, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
         {
             // GML todo: get rid of this check
             if (buffer.Length == 0)
                 return float3.zero;
-            float t = GetBoundingIndices(pos, buffer.Length, path.looped, out int indexA, out int indexB);
+            float t = GetBoundingIndices(pos, buffer.Length, looped, out int indexA, out int indexB);
             var a = buffer[indexA].positionRoll.xyz;
             var b = buffer[indexB].positionRoll.xyz;
             return MathHelpers.Bezier(t,
@@ -276,12 +281,12 @@ namespace Cinemachine.ECS
         /// Length of the vector represents the tangent strength</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 EvaluateTangent(
-            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
+            float pos, bool looped, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
         {
             // GML todo: get rid of this check
             if (buffer.Length < 2)
                 return float3.zero;
-            float t = GetBoundingIndices(pos, buffer.Length, path.looped, out int indexA, out int indexB);
+            float t = GetBoundingIndices(pos, buffer.Length, looped, out int indexA, out int indexB);
             var a = buffer[indexA].positionRoll.xyz;
             var b = buffer[indexB].positionRoll.xyz;
             return MathHelpers.BezierTangent(
@@ -293,13 +298,13 @@ namespace Cinemachine.ECS
         /// <returns>World-space orientation of the path, as defined by tangent, up, and roll.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static quaternion EvaluateOrientation(
-            float pos, [ReadOnly] CM_Path path, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
+            float pos, bool looped, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
         {
-            float3 fwd = EvaluateTangent(pos, path, buffer);
+            float3 fwd = EvaluateTangent(pos, looped, buffer);
             if (fwd.AlmostZero())
                 return quaternion.identity;
 
-            float t = GetBoundingIndices(pos, buffer.Length, path.looped, out int indexA, out int indexB);
+            float t = GetBoundingIndices(pos, buffer.Length, looped, out int indexA, out int indexB);
             float rollA = buffer[indexA].positionRoll.w;
             float rollB = buffer[indexB].positionRoll.w;
             float roll = MathHelpers.Bezier(t,
@@ -322,16 +327,6 @@ namespace Cinemachine.ECS
             return pos - indexA;
         }
 
-        T GetEntityComponentData<T>(Entity e) where T : struct, IComponentData
-        {
-            if (e != Entity.Null && EntityManager != null)
-            {
-                if (EntityManager.HasComponent<T>(e))
-                    return EntityManager.GetComponentData<T>(e);
-            }
-            return new T();
-        }
-
         /// <summary>How to interpret the Path Position</summary>
         public enum PositionUnits
         {
@@ -346,23 +341,113 @@ namespace Cinemachine.ECS
             Normalized
         }
 
+        /// <summary>Standardize the unit, so that it lies between MinUmit and MaxUnit</summary>
+        /// <param name="pos">The value to be standardized</param>
+        /// <param name="units">The unit type</param>
+        /// <returns>The standardized value of pos, between MinUnit and MaxUnit</returns>
+        public float ClampUnit(
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
+            [ReadOnly] ref CM_PathState state,
+            float pos, PositionUnits units)
+        {
+            if (units == PositionUnits.PathUnits)
+            {
+                int count = waypoints.Length;
+                return ClampValue(pos, math.select(count - 1, count, state.looped), state.looped);
+            }
+            if (units == PositionUnits.Normalized)
+                return ClampValue(pos, 1, state.looped);
+
+            float len = state.PathLength;
+            return ClampValue(pos, len, state.looped);
+        }
+
+
         /// <summary>Get the maximum value, for the given unit type</summary>
-        /// <param name="path">The entity with the path</param>
         /// <param name="units">The unit type</param>
         /// <returns>The maximum allowable value for this path</returns>
-        public float MaxUnit(Entity path, PositionUnits units)
+        public float MaxUnit(
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
+            [ReadOnly] ref CM_PathState state,
+            PositionUnits units)
         {
             if (units == PositionUnits.Normalized)
                 return 1;
             if (units == PositionUnits.Distance)
-            {
-                var state = GetEntityComponentData<CM_PathState>(path);
                 return state.PathLength;
+            int count = waypoints.Length;
+            return math.select(0, math.select(count - 1, count, state.looped), count > 1);
+        }
+
+        /// <summary>Get the path position (in native path units) corresponding to the psovided
+        /// value, in the units indicated.
+        /// If the distance cache is not valid, then calling this will
+        /// trigger a potentially costly regeneration of the path distance cache</summary>
+        /// <param name="pos">The value to convert from</param>
+        /// <param name="units">The units in which pos is expressed</param>
+        /// <returns>The length of the path in native units, when sampled at this rate</returns>
+        public float ToNativePathUnits(
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
+            [ReadOnly] ref CM_PathState state,
+            float pos, PositionUnits units)
+        {
+            if (units == PositionUnits.PathUnits)
+                return pos;
+
+            float len = state.PathLength;
+            if (state.cache.Length < 1 || len < MathHelpers.Epsilon)
+                return 0;
+
+            if (units == PositionUnits.Normalized)
+                pos *= state.PathLength;
+
+            // Distance units
+            pos = ClampValue(pos, len, state.looped);
+            float d = pos / state.cache.p2d2pStep.y;
+            int i = (int)math.floor(d);
+            if (i >= state.cache.Length-1)
+                return MaxUnit(ref waypoints, ref state, PositionUnits.PathUnits);
+            float t = d - (float)i;
+            return math.lerp(state.cache.p2d2pAt(i).y, state.cache.p2d2pAt(i+1).y, t);
+        }
+
+        /// <summary>Get the path position (in path units) corresponding to this distance along the path.
+        /// If the distance cache is not valid, then calling this will
+        /// trigger a potentially costly regeneration of the path distance cache</summary>
+        /// <param name="pos">The value to convert from, in native units</param>
+        /// <param name="units">The units to convert toexpressed</param>
+        /// <returns>The length of the path in distance units, when sampled at this rate</returns>
+        public float FromPathNativeUnits(
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
+            [ReadOnly] ref CM_PathState state,
+            float pos, PositionUnits units)
+        {
+            if (units == PositionUnits.PathUnits)
+                return pos;
+
+            float len = state.PathLength;
+            if (state.cache.Length < 1 || len < MathHelpers.Epsilon)
+                return 0;
+
+            pos = ClampUnit(ref waypoints, ref state, pos, PositionUnits.PathUnits);
+            float d = pos / state.cache.p2d2pStep.x;
+            int i = (int)math.floor(d);
+            if (i >= state.cache.Length-1)
+                pos = len;
+            else
+                pos = math.lerp(state.cache.p2d2pAt(i).x, state.cache.p2d2pAt(i+1).x, d - (float)i);
+            return math.select(pos, pos/len, units == PositionUnits.Normalized);
+        }
+
+
+        T GetEntityComponentData<T>(Entity e) where T : struct, IComponentData
+        {
+            if (e != Entity.Null && EntityManager != null)
+            {
+                if (EntityManager.HasComponent<T>(e))
+                    return EntityManager.GetComponentData<T>(e);
             }
-            var pathDef = GetEntityComponentData<CM_Path>(path);
-            var buffer = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
-            int count = buffer.Length;
-            return math.select(0, math.select(count - 1, count, pathDef.looped), count > 1);
+            return new T();
         }
 
         /// <summary>Call this if the path changes in such a way as to affect distances
@@ -372,9 +457,20 @@ namespace Cinemachine.ECS
             if (EntityManager.HasComponent<CM_PathState>(path))
             {
                 var state = GetEntityComponentData<CM_PathState>(path);
-                state.valid = false;
+                state.cache.valid = false;
                 EntityManager.SetComponentData(path, state);
             }
+        }
+
+        /// <summary>Get the maximum value, for the given unit type</summary>
+        /// <param name="path">The entity with the path</param>
+        /// <param name="units">The unit type</param>
+        /// <returns>The maximum allowable value for this path</returns>
+        public float MaxUnit(Entity path, PositionUnits units)
+        {
+            var waypoints = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
+            var state = GetEntityComponentData<CM_PathState>(path);
+            return MaxUnit(ref waypoints, ref state, units);
         }
 
         /// <summary>Standardize the unit, so that it lies between MinUmit and MaxUnit</summary>
@@ -384,19 +480,9 @@ namespace Cinemachine.ECS
         /// <returns>The standardized value of pos, between MinUnit and MaxUnit</returns>
         public float ClampUnit(Entity path, float pos, PositionUnits units)
         {
-            var pathDef = GetEntityComponentData<CM_Path>(path);
-            if (units == PositionUnits.PathUnits)
-            {
-                var buffer = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
-                int count = buffer.Length;
-                return ClampValue(pos, math.select(count - 1, count, pathDef.looped), pathDef.looped);
-            }
-            if (units == PositionUnits.Normalized)
-                return ClampValue(pos, 1, pathDef.looped);
-
+            var waypoints = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
             var state = GetEntityComponentData<CM_PathState>(path);
-            float len = state.PathLength;
-            return ClampValue(pos, len, pathDef.looped);
+            return ClampUnit(ref waypoints, ref state, pos, units);
         }
 
         /// <summary>Get the path position (in native path units) corresponding to the psovided
@@ -409,26 +495,9 @@ namespace Cinemachine.ECS
         /// <returns>The length of the path in native units, when sampled at this rate</returns>
         public float ToNativePathUnits(Entity path, float pos, PositionUnits units)
         {
-            if (units == PositionUnits.PathUnits)
-                return pos;
-
-            var pathDef = GetEntityComponentData<CM_Path>(path);
+            var waypoints = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
             var state = GetEntityComponentData<CM_PathState>(path);
-            float len = state.PathLength;
-            if (pathDef.resolution < 1 || len < MathHelpers.Epsilon)
-                return 0;
-
-            if (units == PositionUnits.Normalized)
-                pos *= state.PathLength;
-
-            // Distance units
-            pos = ClampValue(pos, len, pathDef.looped);
-            float d = pos / state.p2d2pStep.y;
-            int i = (int)math.floor(d);
-            if (i >= state.Length-1)
-                return MaxUnit(path, PositionUnits.PathUnits);
-            float t = d - (float)i;
-            return math.lerp(state.p2d2pAt(i).y, state.p2d2pAt(i+1).y, t);
+            return ToNativePathUnits(ref waypoints, ref state, pos, units);
         }
 
         /// <summary>Get the path position (in path units) corresponding to this distance along the path.
@@ -440,23 +509,9 @@ namespace Cinemachine.ECS
         /// <returns>The length of the path in distance units, when sampled at this rate</returns>
         public float FromPathNativeUnits(Entity path, float pos, PositionUnits units)
         {
-            if (units == PositionUnits.PathUnits)
-                return pos;
-
-            var pathDef = GetEntityComponentData<CM_Path>(path);
+            var waypoints = EntityManager.GetBuffer<CM_PathWaypointElement>(path);
             var state = GetEntityComponentData<CM_PathState>(path);
-            float len = state.PathLength;
-            if (pathDef.resolution < 1 || len < MathHelpers.Epsilon)
-                return 0;
-
-            pos = ClampUnit(path, pos, PositionUnits.PathUnits);
-            float d = pos / state.p2d2pStep.x;
-            int i = (int)math.floor(d);
-            if (i >= state.Length-1)
-                pos = len;
-            else
-                pos = math.lerp(state.p2d2pAt(i).x, state.p2d2pAt(i+1).x, d - (float)i);
-            return math.select(pos, pos/len, units == PositionUnits.Normalized);
+            return FromPathNativeUnits(ref waypoints, ref state, pos, units);
         }
     }
 }
