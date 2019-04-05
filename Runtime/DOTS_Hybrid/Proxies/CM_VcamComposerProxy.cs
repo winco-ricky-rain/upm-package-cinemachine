@@ -6,7 +6,7 @@ namespace Cinemachine.ECS_Hybrid
     [UnityEngine.DisallowMultipleComponent]
     [CM_Pipeline(CinemachineCore.Stage.Aim)]
     [SaveDuringPlay]
-    public class CM_VcamComposerProxy : CM_ComponentProxyBase<CM_VcamComposer>
+    public class CM_VcamComposerProxy : CM_VcamComponentProxyBase<CM_VcamComposer>
     {
         private void OnValidate()
         {

@@ -6,6 +6,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace Cinemachine.ECS
@@ -90,10 +91,12 @@ namespace Cinemachine.ECS
 
         public float PathLength { get { return cache.Length < 2 ? 0 : cache.p2d2pAt(cache.Length-1).x; } }
         public bool looped;
+        public float4x4 localToWorld;
     }
 
     [ExecuteAlways]
     [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateBefore(typeof(CM_TargetSystem))]
     public class CM_PathSystem : JobComponentSystem
     {
         EntityQuery m_pathGroup;
@@ -104,6 +107,7 @@ namespace Cinemachine.ECS
         {
             m_pathGroup = GetEntityQuery(
                 ComponentType.ReadOnly<CM_Path>(),
+                ComponentType.ReadOnly<LocalToWorld>(),
                 ComponentType.ReadWrite<CM_PathState>(),
                 ComponentType.ReadOnly(typeof(CM_PathWaypointElement)));
 
@@ -148,15 +152,18 @@ namespace Cinemachine.ECS
         }
 
         //[BurstCompile] // can't because of allocations
-        struct DistanceCacheJob : IJobForEachWithEntity<CM_Path, CM_PathState>
+        struct DistanceCacheJob : IJobForEachWithEntity<CM_Path, LocalToWorld, CM_PathState>
         {
             [ReadOnly] public BufferFromEntity<CM_PathWaypointElement> pathBuffers;
 
             public void Execute(
                 Entity entity, int index,
                 [ReadOnly] ref CM_Path path,
+                [ReadOnly] ref LocalToWorld l2w,
                 ref CM_PathState state)
             {
+                state.localToWorld = l2w.Value;
+
                 var buffer = pathBuffers[entity];
                 int resolution = math.max(1, path.resolution);
                 int numPoints = buffer.Length;
@@ -177,13 +184,13 @@ namespace Cinemachine.ECS
                 state.cache.p2d2pStep = new float2(stepSize, 0);
 
                 float pathLength = 0;
-                float3 p0 = EvaluatePosition(0, looped, buffer);
+                float3 p0 = EvaluatePosition(0, ref state, ref buffer);
                 state.cache.p2d2pAt(0).x = 0;
                 float pos = 0;
                 for (int i = 1; i < numKeys; ++i)
                 {
                     pos += stepSize;
-                    float3 p = EvaluatePosition(pos, looped, buffer);
+                    float3 p = EvaluatePosition(pos, ref state, ref buffer);
                     float d = math.distance(p0, p);
                     pathLength += d;
                     p0 = p;
@@ -263,16 +270,18 @@ namespace Cinemachine.ECS
         /// <returns>Local-space position of the point along at path at pos</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 EvaluatePosition(
-            float pos, bool looped, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
+            float pos,
+            [ReadOnly] ref CM_PathState state,
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> buffer)
         {
             // GML todo: get rid of this check
             if (buffer.Length == 0)
                 return float3.zero;
-            float t = GetBoundingIndices(pos, buffer.Length, looped, out int indexA, out int indexB);
+            float t = GetBoundingIndices(pos, buffer.Length, state.looped, out int indexA, out int indexB);
             var a = buffer[indexA].positionRoll.xyz;
             var b = buffer[indexB].positionRoll.xyz;
-            return MathHelpers.Bezier(t,
-                a, a + buffer[indexA].tangentOut.xyz, b + buffer[indexB].tangentIn.xyz, b);
+            return math.transform(state.localToWorld, MathHelpers.Bezier(t,
+                a, a + buffer[indexA].tangentOut.xyz, b + buffer[indexB].tangentIn.xyz, b));
         }
 
         /// <summary>Get the tangent of the curve at a point along the path.</summary>
@@ -281,16 +290,19 @@ namespace Cinemachine.ECS
         /// Length of the vector represents the tangent strength</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 EvaluateTangent(
-            float pos, bool looped, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
+            float pos,
+            [ReadOnly] ref CM_PathState state,
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> buffer)
         {
             // GML todo: get rid of this check
             if (buffer.Length < 2)
                 return float3.zero;
-            float t = GetBoundingIndices(pos, buffer.Length, looped, out int indexA, out int indexB);
+            float t = GetBoundingIndices(pos, buffer.Length, state.looped, out int indexA, out int indexB);
             var a = buffer[indexA].positionRoll.xyz;
             var b = buffer[indexB].positionRoll.xyz;
-            return MathHelpers.BezierTangent(
-                t, a, a + buffer[indexA].tangentOut.xyz, b + buffer[indexB].tangentIn.xyz, b);
+            var q = state.localToWorld.GetRotationFromTRS();
+            return math.mul(q, MathHelpers.BezierTangent(
+                t, a, a + buffer[indexA].tangentOut.xyz, b + buffer[indexB].tangentIn.xyz, b));
         }
 
         /// <summary>Get the orientation the curve at a point along the path.</summary>
@@ -298,13 +310,15 @@ namespace Cinemachine.ECS
         /// <returns>World-space orientation of the path, as defined by tangent, up, and roll.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static quaternion EvaluateOrientation(
-            float pos, bool looped, [ReadOnly] DynamicBuffer<CM_PathWaypointElement> buffer)
+            float pos,
+            [ReadOnly] ref CM_PathState state,
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> buffer)
         {
-            float3 fwd = EvaluateTangent(pos, looped, buffer);
+            float3 fwd = EvaluateTangent(pos, ref state, ref buffer);
             if (fwd.AlmostZero())
                 return quaternion.identity;
 
-            float t = GetBoundingIndices(pos, buffer.Length, looped, out int indexA, out int indexB);
+            float t = GetBoundingIndices(pos, buffer.Length, state.looped, out int indexA, out int indexB);
             float rollA = buffer[indexA].positionRoll.w;
             float rollB = buffer[indexB].positionRoll.w;
             float roll = MathHelpers.Bezier(t,
@@ -315,13 +329,71 @@ namespace Cinemachine.ECS
             return math.mul(q, quaternion.AxisAngle(new float3(0, 0, 1), roll));
         }
 
+        /// <summary>Find the closest point on the path to a given worldspace target point.</summary>
+        /// <param name="p">World-space target that we want to approach</param>
+        /// <param name="startSegment">In what segment of the path to start the search.
+        /// A Segment is a section of path between 2 waypoints.</param>
+        /// <param name="searchRadius">How many segments on either side of the startSegment
+        /// to search.  -1 means no limit, i.e. search the entire path</param>
+        /// <param name="stepsPerSegment">We search a segment by dividing it into this many
+        /// straight pieces.  The higher the number, the more accurate the result, but performance
+        /// is proportionally slower for higher numbers</param>
+        /// <returns>The position along the path that is closest to the target point.
+        /// The value is in Path Units, not Distance units.</returns>
+        public static float FindClosestPoint(
+            float3 p, int startSegment, int searchRadius, int stepsPerSegment,
+            [ReadOnly] ref CM_PathState state,
+            [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints)
+        {
+            int count = waypoints.Length;
+            float maxPos = math.select(0, math.select(count - 1, count, state.looped), count > 1);
+            float start = 0;
+            float end = maxPos;
+            p = math.transform(state.localToWorld, p);
+
+            if (searchRadius >= 0)
+            {
+                int r = (int)math.floor(math.min(searchRadius, (end - start) / 2f));
+                start = startSegment - r;
+                end = startSegment + r + 1;
+                start = math.select(math.max(start, 0), start, state.looped);
+                end = math.select(math.max(end, maxPos), end, state.looped);
+            }
+            stepsPerSegment = math.clamp(stepsPerSegment, 1, 100);
+            float stepSize = 1f / stepsPerSegment;
+            float bestPos = startSegment;
+            float bestDistance = float.MaxValue;
+            int iterations = (stepsPerSegment == 1) ? 1 : 3;
+            for (int i = 0; i < iterations; ++i)
+            {
+                float3 v0 = EvaluatePosition(start, ref state, ref waypoints);
+                for (float f = start + stepSize; f <= end; f += stepSize)
+                {
+                    float3 v = EvaluatePosition(f, ref state, ref waypoints);
+                    float t = p.ClosestPointOnSegment(v0, v);
+                    float d = math.lengthsq(p - math.lerp(v0, v, t));
+                    if (d < bestDistance)
+                    {
+                        bestDistance = d;
+                        bestPos = f - (1 - t) * stepSize;
+                    }
+                    v0 = v;
+                }
+                start = bestPos - stepSize;
+                end = bestPos + stepSize;
+                stepSize /= stepsPerSegment;
+            }
+            return bestPos;
+        }
+
         /// <summary>Returns lerp amount between bounds A and B</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static float GetBoundingIndices(
             float pos, int length, bool looped, out int indexA, out int indexB)
         {
-            pos = ClampValue(pos, length, looped);
+            pos = ClampValue(pos, math.select(length - 1, length, looped), looped);
             indexA = (int)math.floor(pos);
+            indexA = math.select(indexA, 0, indexA == length);
             indexA = math.select(indexA, indexA - 1, !looped && indexA > 0 && indexA == length - 1);
             indexB = math.select(indexA + 1, 0, indexA == length - 1);
             return pos - indexA;
@@ -345,7 +417,7 @@ namespace Cinemachine.ECS
         /// <param name="pos">The value to be standardized</param>
         /// <param name="units">The unit type</param>
         /// <returns>The standardized value of pos, between MinUnit and MaxUnit</returns>
-        public float ClampUnit(
+        public static float ClampUnit(
             [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
             [ReadOnly] ref CM_PathState state,
             float pos, PositionUnits units)
@@ -366,7 +438,7 @@ namespace Cinemachine.ECS
         /// <summary>Get the maximum value, for the given unit type</summary>
         /// <param name="units">The unit type</param>
         /// <returns>The maximum allowable value for this path</returns>
-        public float MaxUnit(
+        public static float MaxUnit(
             [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
             [ReadOnly] ref CM_PathState state,
             PositionUnits units)
@@ -386,7 +458,7 @@ namespace Cinemachine.ECS
         /// <param name="pos">The value to convert from</param>
         /// <param name="units">The units in which pos is expressed</param>
         /// <returns>The length of the path in native units, when sampled at this rate</returns>
-        public float ToNativePathUnits(
+        public static float ToNativePathUnits(
             [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
             [ReadOnly] ref CM_PathState state,
             float pos, PositionUnits units)
@@ -417,7 +489,7 @@ namespace Cinemachine.ECS
         /// <param name="pos">The value to convert from, in native units</param>
         /// <param name="units">The units to convert toexpressed</param>
         /// <returns>The length of the path in distance units, when sampled at this rate</returns>
-        public float FromPathNativeUnits(
+        public static float FromPathNativeUnits(
             [ReadOnly] ref DynamicBuffer<CM_PathWaypointElement> waypoints,
             [ReadOnly] ref CM_PathState state,
             float pos, PositionUnits units)

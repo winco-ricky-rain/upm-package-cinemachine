@@ -43,14 +43,17 @@ namespace Cinemachine.ECS_Hybrid
             }
         }
 
-        public CT GetEntityComponentData<CT>() where CT : struct, IComponentData
+        public CT SafeGetEntityComponentData<CT>() where CT : struct, IComponentData
         {
             if (TryGetEntityAndManager(out EntityManager m, out Entity entity))
                 if (m.HasComponent<CT>(entity))
                     return m.GetComponentData<CT>(entity);
             return new CT();
         }
+    }
 
+    public abstract class CM_VcamComponentProxyBase<T> : CM_ComponentProxyBase<T> where T : struct, IComponentData
+    {
         public CM_VcamBase Vcam { get { return GetComponent<CM_VcamBase>(); } }
     }
 }

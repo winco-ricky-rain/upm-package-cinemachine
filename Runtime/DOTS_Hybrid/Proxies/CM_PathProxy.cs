@@ -2,11 +2,14 @@
 using Cinemachine.ECS;
 using Unity.Mathematics;
 using System;
+using Unity.Transforms;
 
 namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
     [SaveDuringPlay]
+    [ExecuteAlways]
+    [RequireComponent(typeof(CM_PathWaypointsProxy))]
     public class CM_PathProxy : CM_ComponentProxyBase<CM_Path>
     {
         /// <summary>This class holds the settings that control how the path
@@ -28,6 +31,19 @@ namespace Cinemachine.ECS_Hybrid
         [Tooltip("The settings that control how the path will appear in the editor scene view.")]
         public Appearance appearance;
 
+        protected virtual void PushValuesToEntityComponents()
+        {
+            var m = ActiveEntityManager;
+            var e = Entity;
+            if (m == null || !m.Exists(e))
+                return;
+
+            if (!m.HasComponent<CopyTransformFromGameObject>(e))
+                m.AddComponentData(e, new CopyTransformFromGameObject());
+            if (!m.HasComponent<LocalToWorld>(e))
+                m.AddComponentData(e, new LocalToWorld { Value = float4x4.identity } );
+        }
+
         private void OnValidate()
         {
             var v = Value;
@@ -48,6 +64,12 @@ namespace Cinemachine.ECS_Hybrid
                 inactivePathColor = Color.gray,
                 width = 0.2f
             };
+        }
+
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            PushValuesToEntityComponents();
         }
     }
 }

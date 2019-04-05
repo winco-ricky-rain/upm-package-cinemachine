@@ -5,7 +5,7 @@ namespace Cinemachine.ECS_Hybrid
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]
-    public class CM_VcamSizeFramingProxy : CM_ComponentProxyBase<CM_VcamSizeFraming>
+    public class CM_VcamSizeFramingProxy : CM_VcamComponentProxyBase<CM_VcamSizeFraming>
     {
         private void OnValidate()
         {

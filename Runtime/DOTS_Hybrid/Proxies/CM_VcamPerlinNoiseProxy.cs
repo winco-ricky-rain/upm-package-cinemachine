@@ -7,7 +7,7 @@ namespace Cinemachine.ECS_Hybrid
     [CM_Pipeline(CinemachineCore.Stage.Noise)]
     [SaveDuringPlay]
     [ExecuteAlways]
-    public class CM_VcamPerlinNoiseProxy : CM_ComponentProxyBase<CM_VcamPerlinNoise>
+    public class CM_VcamPerlinNoiseProxy : CM_VcamComponentProxyBase<CM_VcamPerlinNoise>
     {
         /// <summary>
         /// Serialized property for referencing a NoiseSettings asset

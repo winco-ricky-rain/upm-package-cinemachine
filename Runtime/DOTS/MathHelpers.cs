@@ -30,6 +30,21 @@ namespace Cinemachine.ECS
             return (vector - math.dot(vector, planeNormal) * planeNormal);
         }
 
+        /// <summary>
+        /// Get the closest point on a line segment.
+        /// </summary>
+        /// <param name="p">A point in space</param>
+        /// <param name="s0">Start of line segment</param>
+        /// <param name="s1">End of line segment</param>
+        /// <returns>The interpolation parameter representing the point on the segment,
+        /// with 0==s0, and 1==s1</returns>
+        public static float ClosestPointOnSegment(this float3 p, float3 s0, float3 s1)
+        {
+            float3 s = s1 - s0;
+            float len2 = math.lengthsq(s);
+            return math.select(math.clamp(math.dot(p - s0, s) / len2, 0, 1), 0, len2 < Epsilon);
+        }
+
         /// <summary>Much more stable for small angles than Unity's native implementation.
         /// Directions must be unit length.  Returns radians</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

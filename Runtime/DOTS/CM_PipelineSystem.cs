@@ -257,13 +257,13 @@ namespace Cinemachine.ECS
             channelSystem.InitChannelStates();
             JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, inputDeps,
-                new InitVcamJobLaunch { preBodySystem = this });
+                new InitVcamJobLaunch { system = this });
             return vcamDeps;
         }
 
         struct InitVcamJobLaunch : CM_ChannelSystem.VcamGroupCallback
         {
-            public CM_VcamPreBodySystem preBodySystem;
+            public CM_VcamPreBodySystem system;
             public JobHandle Invoke(
                 EntityQuery filteredGroup, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
@@ -273,7 +273,7 @@ namespace Cinemachine.ECS
                     channelSettings = c.settings,
                     up = math.mul(c.settings.worldOrientation, math.up()),
                     orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic,
-                    positions = preBodySystem.GetComponentDataFromEntity<LocalToWorld>(true)
+                    positions = system.GetComponentDataFromEntity<LocalToWorld>(true)
                 };
                 return initJob.Schedule(filteredGroup, inputDeps);
             }

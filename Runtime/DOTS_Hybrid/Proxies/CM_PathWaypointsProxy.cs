@@ -10,7 +10,7 @@ namespace Cinemachine.ECS_Hybrid
 {
     [DisallowMultipleComponent]
     [SaveDuringPlay]
-    [RequireComponent(typeof(CM_PathProxy))]
+    [AddComponentMenu("")] // Don't display in add component menu
     public class CM_PathWaypointsProxy : DynamicBufferProxy<CM_PathWaypointElement>
     {
         bool TryGetEntityAndManager(out EntityManager entityManager, out Entity entity)
