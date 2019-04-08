@@ -214,7 +214,7 @@ namespace Cinemachine.ECS
                         float d0 = state.cache.p2d2pAt(posIndex-1).x;
                         float delta = d - d0;
                         float t = (distance - d0) / delta;
-                        state.cache.p2d2pAt(i).y = state.cache.p2d2pStep.y * (t + posIndex - 1);
+                        state.cache.p2d2pAt(i).y = state.cache.p2d2pStep.x * (t + posIndex - 1);
                     }
                 }
                 state.cache.valid = true;
@@ -262,6 +262,7 @@ namespace Cinemachine.ECS
         {
             v = math.select(v, v % maxValue, looped && maxValue > MathHelpers.Epsilon);
             v = math.select(v, v + maxValue, looped && v < 0);
+            v = math.select(v, 0, looped && v > maxValue - MathHelpers.Epsilon);
             return math.clamp(v, 0, maxValue);
         }
 
@@ -334,7 +335,7 @@ namespace Cinemachine.ECS
         /// <param name="startSegment">In what segment of the path to start the search.
         /// A Segment is a section of path between 2 waypoints.</param>
         /// <param name="searchRadius">How many segments on either side of the startSegment
-        /// to search.  -1 means no limit, i.e. search the entire path</param>
+        /// to search.  0 means no limit, i.e. search the entire path</param>
         /// <param name="stepsPerSegment">We search a segment by dividing it into this many
         /// straight pieces.  The higher the number, the more accurate the result, but performance
         /// is proportionally slower for higher numbers</param>
@@ -349,22 +350,20 @@ namespace Cinemachine.ECS
             float maxPos = math.select(0, math.select(count - 1, count, state.looped), count > 1);
             float start = 0;
             float end = maxPos;
-            p = math.transform(state.localToWorld, p);
 
-            if (searchRadius >= 0)
+            if (searchRadius > 0 && 2 * searchRadius < maxPos)
             {
-                int r = (int)math.floor(math.min(searchRadius, (end - start) / 2f));
+                int r = (int)math.floor(math.min(searchRadius, end * 0.5));
                 start = startSegment - r;
                 end = startSegment + r + 1;
                 start = math.select(math.max(start, 0), start, state.looped);
                 end = math.select(math.max(end, maxPos), end, state.looped);
             }
-            stepsPerSegment = math.clamp(stepsPerSegment, 1, 100);
+            stepsPerSegment = math.clamp(stepsPerSegment, 2, 100);
             float stepSize = 1f / stepsPerSegment;
             float bestPos = startSegment;
             float bestDistance = float.MaxValue;
-            int iterations = (stepsPerSegment == 1) ? 1 : 3;
-            for (int i = 0; i < iterations; ++i)
+            for (int i = 0; i < 3; ++i)
             {
                 float3 v0 = EvaluatePosition(start, ref state, ref waypoints);
                 for (float f = start + stepSize; f <= end; f += stepSize)
