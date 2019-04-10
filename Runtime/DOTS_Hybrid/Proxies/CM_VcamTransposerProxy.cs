@@ -20,7 +20,7 @@ namespace Cinemachine.ECS_Hybrid
         {
             Value = new CM_VcamTransposer
             {
-                bindingMode = CM_VcamTransposer.BindingMode.LockToTargetWithWorldUp,
+                bindingMode = CM_VcamTransposerSystem.BindingMode.LockToTargetWithWorldUp,
                 followOffset = new float3(0, 0, -10f),
                 damping = new float3(1, 1, 1),
                 angularDamping = 1

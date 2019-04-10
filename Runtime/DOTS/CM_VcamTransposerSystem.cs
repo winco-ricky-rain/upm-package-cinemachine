@@ -12,6 +12,38 @@ namespace Cinemachine.ECS
     [Serializable]
     public struct CM_VcamTransposer : IComponentData
     {
+        /// <summary>The coordinate space to use when interpreting the offset from the target</summary>
+        public CM_VcamTransposerSystem.BindingMode bindingMode;
+
+        /// <summary>The distance which the transposer will attempt to maintain from the transposer subject</summary>
+        public float3 followOffset;
+
+        /// <summary>How aggressively the camera tries to maintain the offset in the 3 axes.
+        /// Small numbers are more responsive, rapidly translating the camera to keep the target's
+        /// offset.  Larger numbers give a more heavy slowly responding camera.
+        /// Using different settings per axis can yield a wide range of camera behaviors</summary>
+        public float3 damping;
+
+        /// <summary>How aggressively the camera tries to track the target's rotation.
+        /// Small numbers are more responsive.  Larger numbers give a more heavy slowly responding camera.</summary>
+        public float angularDamping;
+    }
+
+    [Serializable]
+    public struct CM_VcamTransposerState : IComponentData
+    {
+        /// State information used for damping
+        public float3 previousTargetPosition;
+        public quaternion previousTargetRotation;
+        public float3 previousTargetOffset;
+    }
+
+    [ExecuteAlways]
+    [UpdateAfter(typeof(CM_VcamPreBodySystem))]
+    [UpdateBefore(typeof(CM_VcamPreAimSystem))]
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    public class CM_VcamTransposerSystem : JobComponentSystem
+    {
         /// <summary>
         /// The coordinate space to use when interpreting the offset from the target
         /// </summary>
@@ -36,37 +68,7 @@ namespace Cinemachine.ECS
             /// <summary>Offsets will be calculated relative to the target, using Camera-local axes</summary>
             SimpleFollowWithWorldUp
         }
-        /// <summary>The coordinate space to use when interpreting the offset from the target</summary>
-        public BindingMode bindingMode;
 
-        /// <summary>The distance which the transposer will attempt to maintain from the transposer subject</summary>
-        public float3 followOffset;
-
-        /// <summary>How aggressively the camera tries to maintain the offset in the 3 axes.
-        /// Small numbers are more responsive, rapidly translating the camera to keep the target's
-        /// offset.  Larger numbers give a more heavy slowly responding camera.
-        /// Using different settings per axis can yield a wide range of camera behaviors</summary>
-        public float3 damping;
-
-        /// <summary>How aggressively the camera tries to track the target's rotation.
-        /// Small numbers are more responsive.  Larger numbers give a more heavy slowly responding camera.</summary>
-        public float angularDamping;
-    }
-
-    [Serializable]
-    public struct CM_VcamTransposerState : IComponentData
-    {
-        /// State information used for damping
-        public float3 previousTargetPosition;
-        public quaternion previousTargetRotation;
-    }
-
-    [ExecuteAlways]
-    [UpdateAfter(typeof(CM_VcamPreBodySystem))]
-    [UpdateBefore(typeof(CM_VcamPreAimSystem))]
-    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
-    public class CM_VcamTransposerSystem : JobComponentSystem
-    {
         EntityQuery m_vcamGroup;
         EntityQuery m_missingStateGroup;
 
@@ -113,6 +115,7 @@ namespace Cinemachine.ECS
                 var job = new TrackTargetJob
                 {
                     deltaTime = state.deltaTime,
+                    up = math.mul(c.settings.worldOrientation, math.up()),
                     targetLookup = targetLookup
                 };
                 return job.Schedule(filteredGroup, inputDeps);
@@ -125,6 +128,7 @@ namespace Cinemachine.ECS
             CM_VcamTransposer, CM_VcamFollowTarget>
         {
             public float deltaTime;
+            public float3 up;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
             public void Execute(
@@ -141,7 +145,7 @@ namespace Cinemachine.ECS
                 var targetPos = targetInfo.position;
                 var targetRot = GetRotationForBindingMode(
                         targetInfo.rotation, transposer.bindingMode,
-                        targetPos - posState.raw);
+                        targetPos - posState.raw, up);
 
                 var prevPos = transposerState.previousTargetPosition + targetInfo.warpDelta;
                 targetRot = ApplyRotationDamping(
@@ -153,11 +157,14 @@ namespace Cinemachine.ECS
                     math.select(float3.zero, transposer.damping, dt >= 0),
                     prevPos, targetPos, targetRot);
 
+                var followOffset = math.mul(targetRot, transposer.followOffset);
+                posState.raw = targetPos + followOffset;
+                posState.up = math.mul(targetRot, math.up());
+                posState.dampingBypass = followOffset - transposerState.previousTargetOffset;
+
                 transposerState.previousTargetPosition = targetPos;
                 transposerState.previousTargetRotation = targetRot;
-
-                posState.raw = targetPos + math.mul(targetRot, transposer.followOffset);
-                posState.up = math.mul(targetRot, math.up());
+                transposerState.previousTargetOffset = followOffset;
             }
         }
 
@@ -189,24 +196,25 @@ namespace Cinemachine.ECS
         /// Returns the axes for applying target offset and damping</summary>
         public static quaternion GetRotationForBindingMode(
             quaternion targetRotation,
-            CM_VcamTransposer.BindingMode bindingMode,
-            float3 directionCameraToTarget) // not normalized
+            CM_VcamTransposerSystem.BindingMode bindingMode,
+            float3 directionCameraToTarget, // not normalized
+            float3 up)
         {
             // GML todo: optimize!  Can we get rid of the switch?
             switch (bindingMode)
             {
-                case CM_VcamTransposer.BindingMode.LockToTargetWithWorldUp:
-                    return MathHelpers.Uppify(targetRotation, math.up());
-                case CM_VcamTransposer.BindingMode.LockToTargetNoRoll:
-                    return quaternion.LookRotationSafe(math.forward(targetRotation), math.up());
-                case CM_VcamTransposer.BindingMode.LockToTarget:
+                case CM_VcamTransposerSystem.BindingMode.LockToTargetWithWorldUp:
+                    return MathHelpers.Uppify(targetRotation, up);
+                case CM_VcamTransposerSystem.BindingMode.LockToTargetNoRoll:
+                    return quaternion.LookRotationSafe(math.forward(targetRotation), up);
+                case CM_VcamTransposerSystem.BindingMode.LockToTarget:
                     return targetRotation;
-                case CM_VcamTransposer.BindingMode.SimpleFollowWithWorldUp:
+                case CM_VcamTransposerSystem.BindingMode.SimpleFollowWithWorldUp:
                 {
-                    directionCameraToTarget.y = 0;
+                    directionCameraToTarget = directionCameraToTarget.ProjectOntoPlane(up);
                     float len = math.length(directionCameraToTarget);
                     return math.select(
-                        quaternion.LookRotation(directionCameraToTarget / len, math.up()).value,
+                        quaternion.LookRotation(directionCameraToTarget / len, up).value,
                         targetRotation.value, len < MathHelpers.Epsilon);
                 }
                 default:

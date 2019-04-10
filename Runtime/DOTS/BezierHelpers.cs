@@ -1,14 +1,14 @@
 ﻿using Unity.Mathematics;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace Cinemachine.ECS
 {
     public static class BezierHelpers
     {
-        public static void ComputeSmoothControlPoints(
-            NativeArray<float4> knot, NativeArray<float4> ctrl1, NativeArray<float4> ctrl2)
+        public static unsafe void ComputeSmoothControlPoints(
+            float4* knot, float4* ctrl1, float4* ctrl2, float4* scratch, int numPoints)
         {
-            int numPoints = knot.Length;
             if (numPoints <= 2)
             {
                 if (numPoints == 2)
@@ -22,7 +22,7 @@ namespace Cinemachine.ECS
             }
 
             int n = numPoints - 1;
-            NativeArray<float4> abcr = new NativeArray<float4>(numPoints, Allocator.Temp);
+            float4* abcr = scratch;
             for (int axis = 0; axis < 4; ++axis)
             {
                 // Linear into the first segment
@@ -66,10 +66,9 @@ namespace Cinemachine.ECS
                 c[axis] = 0.5f * (knot[n][axis] + ctrl1[n - 1][axis]);
                 ctrl2[n - 1] = c;
             }
-            abcr.Dispose();
         }
 
-        public static void ComputeSmoothControlPointsLooped(
+        public static unsafe void ComputeSmoothControlPointsLooped(
             NativeArray<float4> knot, NativeArray<float4> ctrl1, NativeArray<float4> ctrl2)
         {
             int numPoints = knot.Length;
@@ -85,6 +84,7 @@ namespace Cinemachine.ECS
             NativeArray<float4> knotLooped  = new NativeArray<float4>(arraySize, Allocator.Temp);
             NativeArray<float4> ctrl1Looped = new NativeArray<float4>(arraySize, Allocator.Temp);
             NativeArray<float4> ctrl2Looped = new NativeArray<float4>(arraySize, Allocator.Temp);
+            NativeArray<float4> scratch = new NativeArray<float4>(arraySize, Allocator.Temp);
             for (int i = 0; i < margin; ++i)
             {
                 knotLooped[i] = knot[numPoints-(margin-i)];
@@ -92,7 +92,11 @@ namespace Cinemachine.ECS
             }
             for (int i = 0; i < numPoints; ++i)
                 knotLooped[i + margin] = knot[i];
-            ComputeSmoothControlPoints(knotLooped, ctrl1Looped, ctrl2Looped);
+            ComputeSmoothControlPoints(
+                (float4*)knotLooped.GetUnsafePtr(),
+                (float4*)ctrl1Looped.GetUnsafePtr(),
+                (float4*)ctrl2Looped.GetUnsafePtr(),
+                (float4*)scratch.GetUnsafePtr(), knotLooped.Length);
             for (int i = 0; i < numPoints; ++i)
             {
                 ctrl1[i] = ctrl1Looped[i + margin];
@@ -101,6 +105,7 @@ namespace Cinemachine.ECS
             knotLooped.Dispose();
             ctrl1Looped.Dispose();
             ctrl2Looped.Dispose();
+            scratch.Dispose();
         }
     }
 }

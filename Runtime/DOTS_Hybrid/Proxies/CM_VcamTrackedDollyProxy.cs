@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Cinemachine.ECS_Hybrid
 {
-    [UnityEngine.DisallowMultipleComponent]
+    [DisallowMultipleComponent]
     [CM_Pipeline(CinemachineCore.Stage.Body)]
     [SaveDuringPlay]
     [ExecuteAlways]

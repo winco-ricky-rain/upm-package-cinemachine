@@ -13,12 +13,12 @@ namespace Cinemachine.ECS_Hybrid
         /// <summary>Object for the camera children wants to move with (the body target)</summary>
         [Tooltip("Object for the camera children wants to move with (the body target).")]
         [NoSaveDuringPlay]
-        public Transform m_FollowTarget = null;
+        public Transform followTarget = null;
 
         /// <summary>Object for the camera children to look at (the aim target)</summary>
         [Tooltip("Object for the camera children to look at (the aim target).")]
         [NoSaveDuringPlay]
-        public Transform m_LookAtTarget = null;
+        public Transform lookAtTarget = null;
 
         /// <summary>Specifies the LensSettings of this Virtual Camera.
         /// These settings will be transferred to the Unity camera when the vcam is live.</summary>
@@ -26,7 +26,7 @@ namespace Cinemachine.ECS_Hybrid
             + "the Unity Camera's lens settings, and will be used to drive the Unity camera when "
             + "the vcam is active.")]
         [LensSettingsProperty]
-        public LensSettings m_Lens = LensSettings.Default;
+        public LensSettings lens = LensSettings.Default;
 
         /// <summary>API for the editor, to make the dragging of position handles behave better.</summary>
         public bool UserIsDragging { get; set; }
@@ -46,26 +46,25 @@ namespace Cinemachine.ECS_Hybrid
 
             if (!m.HasComponent<CM_VcamLens>(Entity))
                 m.AddComponentData(Entity, CM_VcamLens.Default);
+            m.SetComponentData(Entity, new CM_VcamLens
+            {
+                fov = lens.Orthographic ? lens.OrthographicSize : lens.FieldOfView,
+                nearClip = lens.NearClipPlane,
+                farClip = lens.FarClipPlane,
+                dutch = lens.Dutch,
+                lensShift = lens.LensShift
+            });
 
             // GML todo: GC allocs? - cache this stuff
-            var e = EnsureTargetCompliance(m_FollowTarget);
+            var e = EnsureTargetCompliance(followTarget);
             if (!m.HasComponent<CM_VcamFollowTarget>(Entity))
                 m.AddComponentData(Entity, new CM_VcamFollowTarget{ target = e });
             m.SetComponentData(Entity, new CM_VcamFollowTarget{ target = e });
 
-            e = EnsureTargetCompliance(m_LookAtTarget);
+            e = EnsureTargetCompliance(lookAtTarget);
             if (!m.HasComponent<CM_VcamLookAtTarget>(Entity))
                 m.AddComponentData(Entity, new CM_VcamLookAtTarget{ target = e });
             m.SetComponentData(Entity, new CM_VcamLookAtTarget{ target = e });
-
-            m.SetComponentData(Entity, new CM_VcamLens
-            {
-                fov = m_Lens.Orthographic ? m_Lens.OrthographicSize : m_Lens.FieldOfView,
-                nearClip = m_Lens.NearClipPlane,
-                farClip = m_Lens.FarClipPlane,
-                dutch = m_Lens.Dutch,
-                lensShift = m_Lens.LensShift
-            });
         }
     }
 }

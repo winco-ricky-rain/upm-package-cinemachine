@@ -230,7 +230,7 @@ namespace Cinemachine.ECS
             }
         }
 
-        static void ComputeSmoothTangents(
+        static unsafe void ComputeSmoothTangents(
             ref DynamicBuffer<CM_PathWaypointElement> waypoints, bool looped)
         {
             int numPoints = waypoints.Length;
@@ -239,13 +239,18 @@ namespace Cinemachine.ECS
                 NativeArray<float4> k =  new NativeArray<float4>(numPoints, Allocator.Temp);
                 NativeArray<float4> p1 = new NativeArray<float4>(numPoints, Allocator.Temp);
                 NativeArray<float4> p2 = new NativeArray<float4>(numPoints, Allocator.Temp);
+                NativeArray<float4> scratch = new NativeArray<float4>(numPoints, Allocator.Temp);
                 for (int i = 0; i < numPoints; ++i)
                     k[i] = p1[i] = p2[i] = waypoints[i].positionRoll;
                 if (looped)
                     BezierHelpers.ComputeSmoothControlPointsLooped(k, p1, p2);
                 else
                 {
-                    BezierHelpers.ComputeSmoothControlPoints(k, p1, p2);
+                    BezierHelpers.ComputeSmoothControlPoints(
+                        (float4*)k.GetUnsafePtr(),
+                        (float4*)p1.GetUnsafePtr(),
+                        (float4*)p2.GetUnsafePtr(),
+                        (float4*)scratch.GetUnsafePtr(), k.Length);
                     p2[numPoints-1] = k[0];
                 }
 
@@ -259,6 +264,7 @@ namespace Cinemachine.ECS
                 k.Dispose();
                 p1.Dispose();
                 p2.Dispose();
+                scratch.Dispose();
             }
         }
 
