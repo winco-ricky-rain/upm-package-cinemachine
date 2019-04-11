@@ -28,7 +28,22 @@ namespace Cinemachine.ECS_Hybrid
                 middle = new CM_VcamOrbital.Orbit { height = 2, radius = 8 },
                 bottom = new CM_VcamOrbital.Orbit { height = 0, radius = 5 },
                 splineCurvature = 0.5f,
-                orbitPosition = new float3(0, 0, 1)
+                horizontalAxis = new CM_InputAxis
+                {
+                    range = new float2(-180, 180),
+                    wrap = true,
+                    recentering = new CM_InputAxis.Recentering { wait = 1, time = 2 }
+                },
+                verticalAxis = new CM_InputAxis
+                {
+                    range = new float2(-1, 1),
+                    recentering = new CM_InputAxis.Recentering { wait = 1, time = 2 }
+                },
+                radialAxis = new CM_InputAxis
+                {
+                    range = new float2(1, 10),
+                    recentering = new CM_InputAxis.Recentering { wait = 1, time = 2 }
+                },
             };
         }
     }

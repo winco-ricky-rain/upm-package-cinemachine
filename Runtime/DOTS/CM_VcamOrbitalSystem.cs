@@ -5,7 +5,6 @@ using Unity.Mathematics;
 using Unity.Burst;
 using UnityEngine;
 using System;
-using Unity.Collections.LowLevel.Unsafe;
 
 namespace Cinemachine.ECS
 {
@@ -36,8 +35,13 @@ namespace Cinemachine.ECS
             public float radius;
         }
 
+        [CM_OrbitProperty]
         public Orbit top;
+
+        [CM_OrbitProperty]
         public Orbit middle;
+
+        [CM_OrbitProperty]
         public Orbit bottom;
 
         /// <summary></summary>
@@ -46,8 +50,22 @@ namespace Cinemachine.ECS
         [Range(0f, 1f)]
         public float splineCurvature;
 
-        /// <summary>The distance which the orbital will attempt to maintain from the orbital subject</summary>
-        public float3 orbitPosition;
+        /// <summary>The Horizontal axis.  -180..180.  0 is the center.
+        /// Rotates the camera horizontally around the target</summary>
+        [Tooltip("The Horizontal axis.  Value is -180..180.  0 is the center.  "
+            + "Rotates the camera horizontally around the target")]
+        [CM_InputAxisProperty]
+        public CM_InputAxis horizontalAxis;
+
+        /// <summary>The Vertical axis.  Value is -1..1.</summary>
+        [Tooltip("The Vertical axis.  Value is -1..1.  0.5 is the middle rig.")]
+        [CM_InputAxisProperty]
+        public CM_InputAxis verticalAxis;
+
+        /// <summary>The Radial axis.  Scales the orbits.  Value is the base radius of the orbits</summary>
+        [Tooltip("The Radial axis.  Scales the orbits.  Value is the base radius of the orbits")]
+        [CM_InputAxisProperty]
+        public CM_InputAxis radialAxis;
     }
 
     [Serializable]
@@ -161,6 +179,7 @@ namespace Cinemachine.ECS
                 var job = new TrackTargetJob
                 {
                     deltaTime = state.deltaTime,
+                    timeNow = Time.time,
                     up = math.mul(c.settings.worldOrientation, math.up()),
                     targetLookup = targetLookup
                 };
@@ -174,6 +193,7 @@ namespace Cinemachine.ECS
             CM_VcamOrbital, CM_VcamFollowTarget>
         {
             public float deltaTime;
+            public float timeNow;
             public float3 up;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
 
@@ -203,10 +223,15 @@ namespace Cinemachine.ECS
                     math.select(float3.zero, orbital.damping, dt >= 0),
                     prevPos, targetPos, targetRot);
 
+                orbital.horizontalAxis.DoRecentering(deltaTime, timeNow);
+                orbital.verticalAxis.DoRecentering(deltaTime, timeNow);
+                orbital.radialAxis.DoRecentering(deltaTime, timeNow);
+
                 orbitalState.UpdateCachedSpline(ref orbital);
-                float3 followOffset = orbitalState.SplineValueAt(orbital.orbitPosition.y);
-                followOffset *= orbital.orbitPosition.z;
-                quaternion q = quaternion.Euler(0, math.radians(orbital.orbitPosition.x), 0);
+
+                float3 followOffset = orbitalState.SplineValueAt(orbital.verticalAxis.GetClampedValue());
+                followOffset *= orbital.radialAxis.GetClampedValue();
+                quaternion q = quaternion.Euler(0, math.radians(orbital.horizontalAxis.GetClampedValue()), 0);
                 followOffset = math.mul(q, followOffset);
                 followOffset = math.mul(targetRot, followOffset);
 
@@ -217,6 +242,9 @@ namespace Cinemachine.ECS
                 orbitalState.previousTargetPosition = targetPos;
                 orbitalState.previousTargetRotation = targetRot;
                 orbitalState.previousTargetOffset = followOffset;
+
+                if (orbital.bindingMode == CM_VcamTransposerSystem.BindingMode.SimpleFollowWithWorldUp)
+                    orbital.horizontalAxis.value = 0;
             }
         }
     }

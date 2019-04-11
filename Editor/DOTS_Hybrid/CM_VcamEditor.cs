@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Cinemachine.Utility;
 using Cinemachine.ECS_Hybrid;
 using System.Reflection;
+using Cinemachine.ECS;
 
 namespace Cinemachine.Editor.ECS_Hybrid
 {
