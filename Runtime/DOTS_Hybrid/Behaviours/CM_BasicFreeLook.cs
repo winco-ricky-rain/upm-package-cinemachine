@@ -13,34 +13,34 @@ namespace Cinemachine.ECS_Hybrid
     [AddComponentMenu("Cinemachine/CM_BasicFreeLook")]
     public class CM_BasicFreeLook : CM_Vcam
     {
-        public CM_InputAxisDriver horizontalAxis;
-        public CM_InputAxisDriver verticalAxis;
-        public CM_InputAxisDriver radialAxis;
+        public CM_InputAxisDriver horizontalInput;
+        public CM_InputAxisDriver verticalInput;
+        public CM_InputAxisDriver radialInput;
 
         void Reset()
         {
-            horizontalAxis = new CM_InputAxisDriver
+            horizontalInput = new CM_InputAxisDriver
             {
                 maxSpeed = 300,
                 accelTime = 0.1f,
                 decelTime = 0.1f,
-                inputName = "Mouse X",
+                name = "Mouse X",
                 invertInput = true
             };
-            verticalAxis = new CM_InputAxisDriver
+            verticalInput = new CM_InputAxisDriver
             {
                 maxSpeed = 4,
                 accelTime = 0.1f,
                 decelTime = 0.1f,
-                inputName = "Mouse Y",
+                name = "Mouse Y",
                 invertInput = true
             };
-            radialAxis = new CM_InputAxisDriver
+            radialInput = new CM_InputAxisDriver
             {
                 maxSpeed = 40,
                 accelTime = 0.1f,
                 decelTime = 0.1f,
-                inputName = "Mouse ScrollWheel",
+                name = "Mouse ScrollWheel",
             };
         }
 
@@ -55,9 +55,9 @@ namespace Cinemachine.ECS_Hybrid
                 CM_VcamOrbital orbital = m.GetComponentData<CM_VcamOrbital>(e);
 
                 // Update our axes
-                horizontalAxis.Update(Time.deltaTime, ref orbital.horizontalAxis);
-                verticalAxis.Update(Time.deltaTime, ref orbital.verticalAxis);
-                radialAxis.Update(Time.deltaTime, ref orbital.radialAxis);
+                horizontalInput.Update(Time.deltaTime, ref orbital.horizontalAxis);
+                verticalInput.Update(Time.deltaTime, ref orbital.verticalAxis);
+                radialInput.Update(Time.deltaTime, ref orbital.radialAxis);
 
                 m.SetComponentData(e, orbital);
             }

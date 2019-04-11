@@ -19,30 +19,35 @@ namespace Cinemachine.ECS
 
         /// <summary>The amount of time in seconds it takes to accelerate to
         /// MaxSpeed with the supplied Axis at its maximum value</summary>
-        [Tooltip("The amount of time in seconds it takes to accelerate to MaxSpeed with the supplied Axis at its maximum value")]
+        [Tooltip("The amount of time in seconds it takes to accelerate to MaxSpeed with the "
+            + "supplied Axis at its maximum value")]
         public float accelTime;
 
         /// <summary>The amount of time in seconds it takes to decelerate
         /// the axis to zero if the supplied axis is in a neutral position</summary>
-        [Tooltip("The amount of time in seconds it takes to decelerate the axis to zero if the supplied axis is in a neutral position")]
+        [Tooltip("The amount of time in seconds it takes to decelerate the axis to zero if "
+            + "the supplied axis is in a neutral position")]
         public float decelTime;
 
         /// <summary>The name of this axis as specified in Unity Input manager.
         /// Setting to an empty string will disable the automatic updating of this axis</summary>
-        [Tooltip("The name of this axis as specified in Unity Input manager. Setting to an empty string will disable the automatic updating of this axis")]
-        public string inputName;
+        [Tooltip("The name of this axis as specified in Unity Input manager. "
+            + "Setting to an empty string will disable the automatic updating of this axis")]
+        public string name;
 
         /// <summary>The value of the input axis.  A value of 0 means no input
         /// You can drive this directly from a
         /// custom input system, or you can set the Axis Name and have the value
         /// driven by the internal Input Manager</summary>
         [NoSaveDuringPlay]
-        [Tooltip("The value of the input axis.  A value of 0 means no input.  You can drive this directly from a custom input system, or you can set the Axis Name and have the value driven by the internal Input Manager")]
+        [Tooltip("The value of the input axis.  A value of 0 means no input.  You can drive "
+            + "this directly from a custom input system, or you can set the Axis Name and "
+            + "have the value driven by the internal Input Manager")]
         public float inputValue;
 
-        /// <summary>If checked, then the raw value of the input axis will be inverted
+        /// <summary>If set, then the raw value of the input axis will be inverted
         /// before it is used.</summary>
-        [Tooltip("If checked, then the raw value of the input axis will be inverted before it is used")]
+        [Tooltip("If set, then the raw value of the input axis will be inverted before it is used")]
         public bool invertInput;
 
         // Internal state
@@ -71,11 +76,11 @@ namespace Cinemachine.ECS
         /// <b>false</b> otherwise</returns>
         public bool Update(float deltaTime, ref CM_InputAxis axis)
         {
-            if (!string.IsNullOrEmpty(inputName))
+            if (!string.IsNullOrEmpty(name))
             {
                 try
                 {
-                    inputValue = CinemachineCore.GetInputAxis(inputName);
+                    inputValue = CinemachineCore.GetInputAxis(name);
                 }
                 catch (ArgumentException)
                 {

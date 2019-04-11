@@ -11,11 +11,11 @@ namespace Cinemachine.Editor.ECS
         const int hSpace = 2;
         public override void OnGUI(Rect rect, SerializedProperty property, GUIContent label)
         {
-            var toLabel =  new GUIContent("to");
+            var toLabel =  new GUIContent("...");
             float toLabelSize =  GUI.skin.label.CalcSize(toLabel).x + hSpace;
 
             float indentOffset = EditorGUI.indentLevel * 15f;
-            float w = rect.width - (EditorGUI.indentLevel * indentOffset) - EditorGUIUtility.labelWidth;
+            float w = rect.width - indentOffset - EditorGUIUtility.labelWidth;
             w = (w - toLabelSize - hSpace) / 2;
             if (w > 0)
             {

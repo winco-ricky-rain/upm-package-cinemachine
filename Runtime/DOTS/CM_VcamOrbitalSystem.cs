@@ -35,13 +35,8 @@ namespace Cinemachine.ECS
             public float radius;
         }
 
-        [CM_OrbitProperty]
         public Orbit top;
-
-        [CM_OrbitProperty]
         public Orbit middle;
-
-        [CM_OrbitProperty]
         public Orbit bottom;
 
         /// <summary></summary>
@@ -54,17 +49,14 @@ namespace Cinemachine.ECS
         /// Rotates the camera horizontally around the target</summary>
         [Tooltip("The Horizontal axis.  Value is -180..180.  0 is the center.  "
             + "Rotates the camera horizontally around the target")]
-        [CM_InputAxisProperty]
         public CM_InputAxis horizontalAxis;
 
         /// <summary>The Vertical axis.  Value is -1..1.</summary>
         [Tooltip("The Vertical axis.  Value is -1..1.  0.5 is the middle rig.")]
-        [CM_InputAxisProperty]
         public CM_InputAxis verticalAxis;
 
         /// <summary>The Radial axis.  Scales the orbits.  Value is the base radius of the orbits</summary>
         [Tooltip("The Radial axis.  Scales the orbits.  Value is the base radius of the orbits")]
-        [CM_InputAxisProperty]
         public CM_InputAxis radialAxis;
     }
 

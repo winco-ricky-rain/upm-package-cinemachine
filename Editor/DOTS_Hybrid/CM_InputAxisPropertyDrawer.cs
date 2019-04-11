@@ -1,13 +1,12 @@
 using UnityEngine;
 using UnityEditor;
 using System.Reflection;
-using System;
 using Cinemachine.ECS;
 using Unity.Mathematics;
 
 namespace Cinemachine.Editor.ECS
 {
-    [CustomPropertyDrawer(typeof(CM_InputAxisPropertyAttribute))]
+    [CustomPropertyDrawer(typeof(CM_InputAxis))]
     internal sealed class CM_InputAxisPropertyDrawer : PropertyDrawer
     {
         const int vSpace = 2;
@@ -21,8 +20,8 @@ namespace Cinemachine.Editor.ECS
 
             int oldIndent = EditorGUI.indentLevel;
             float oldLabelWidth = EditorGUIUtility.labelWidth;
-            float indentOffset = EditorGUI.indentLevel * 15f;
-            float w = (oldIndent * indentOffset) + oldLabelWidth;
+            float indentOffset = oldIndent * 15f;
+            float w = indentOffset + oldLabelWidth;
             mExpanded = EditorGUI.Foldout(new Rect(rect.x, rect.y, w, rect.height), mExpanded, label, true);
 
             // Draw the value on the same line as the foldout
@@ -59,7 +58,7 @@ namespace Cinemachine.Editor.ECS
                         centerProp,
                         recentering.FindPropertyRelative(() => def.recentering.wait),
                         recentering.FindPropertyRelative(() => def.recentering.time)},
-                    new [] { new GUIContent(""), new GUIContent("Go to"), null, null } );
+                    new [] { new GUIContent(""), new GUIContent("To"), null, null } );
 
                 var xProp = rangeProp.FindPropertyRelative("x");
                 var yProp = rangeProp.FindPropertyRelative("y");

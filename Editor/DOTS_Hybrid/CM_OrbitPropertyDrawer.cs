@@ -1,11 +1,10 @@
 using UnityEngine;
 using UnityEditor;
 using Cinemachine.ECS;
-using Unity.Mathematics;
 
 namespace Cinemachine.Editor.ECS
 {
-    [CustomPropertyDrawer(typeof(CM_OrbitPropertyAttribute))]
+    [CustomPropertyDrawer(typeof(CM_VcamOrbital.Orbit))]
     internal sealed class CM_OrbitPropertyDrawer : PropertyDrawer
     {
         public override void OnGUI(Rect rect, SerializedProperty property, GUIContent label)

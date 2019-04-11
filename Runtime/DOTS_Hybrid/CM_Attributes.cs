@@ -10,6 +10,4 @@ namespace Cinemachine.ECS
     }
 
     public sealed class CM_RangePropertyAttribute : PropertyAttribute {}
-    public sealed class CM_InputAxisPropertyAttribute : PropertyAttribute {}
-    public sealed class CM_OrbitPropertyAttribute : PropertyAttribute {}
 }

@@ -13,6 +13,7 @@ namespace Cinemachine.ECS
     [Serializable]
     public struct CM_VcamComposer : IComponentData
     {
+/*
         /// <summary>This setting will instruct the composer to adjust its target offset
         /// based on the motion of the target.  The composer will look at a point
         /// where it estimates the target will be this many seconds into the future.
@@ -32,7 +33,7 @@ namespace Cinemachine.ECS
         /// <summary>If set, movement along the Y axis will be ignored for
         /// lookahead calculations</summary>
         public bool lookaheadIgnoreY; // GML todo: flags
-
+*/
         /// <summary>Force target to center of screen when this camera activates.
         /// If false, will clamp target to the edges of the dead zone</summary>
         public bool centerOnActivate; // GML todo: flags
