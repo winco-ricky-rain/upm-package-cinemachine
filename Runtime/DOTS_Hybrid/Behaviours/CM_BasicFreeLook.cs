@@ -42,6 +42,13 @@ namespace Cinemachine.ECS_Hybrid
             };
         }
 
+        private void OnValidate()
+        {
+            horizontalInput.Validate();
+            verticalInput.Validate();
+            radialInput.Validate();
+        }
+
         protected override void Update()
         {
             base.Update();

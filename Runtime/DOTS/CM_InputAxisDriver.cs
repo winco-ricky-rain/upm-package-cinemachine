@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using Unity.Mathematics;
-using System.Runtime.CompilerServices;
 
 namespace Cinemachine.ECS
 {
@@ -51,7 +50,6 @@ namespace Cinemachine.ECS
         /// <summary>Call from OnValidate: Make sure the fields are sensible</summary>
         public void Validate()
         {
-            multiplier = math.max(0, multiplier);
             accelTime = math.max(0, accelTime);
             decelTime = math.max(0, decelTime);
         }
