@@ -64,22 +64,29 @@ namespace Cinemachine.ECS
 
         /// <summary>Clamp the value to range, taking wrap into account</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float GetClampedValue()
+        public float ClampValue(float v)
         {
             float r = range.y - range.x;
-            float v = (value - range.x) % r;
-            v += math.select(0, r, v < 0);
-            v += range.x;
-            v = math.select(value, v, wrap && r > MathHelpers.Epsilon);
-            return math.clamp(v, range.x, range.y);
+            var v1 = (v - range.x) % r;
+            v1 += math.select(0, r, v1 < 0);
+            v1 += range.x;
+            v1 = math.select(v, v1, wrap && r > MathHelpers.Epsilon);
+            return math.clamp(v1, range.x, range.y);
+        }
+
+        /// <summary>Clamp the value to range, taking wrap into account</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float GetClampedValue()
+        {
+            return ClampValue(value);
         }
 
         /// <summary>Clamp and scale the value to range 0...1, taking wrap into account</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float GetNormalizedValue()
         {
-            float r = range.y - range.x;
             float v = GetClampedValue();
+            float r = range.y - range.x;
             return (v - range.x) / math.select(1, r, r > MathHelpers.Epsilon);
         }
 

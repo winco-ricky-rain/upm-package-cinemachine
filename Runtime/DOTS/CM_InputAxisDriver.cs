@@ -12,10 +12,10 @@ namespace Cinemachine.ECS
     [Serializable]
     public struct CM_InputAxisDriver
     {
-        /// <summary>How fast the axis value can travel.  Increasing this number
-        /// makes the behaviour more responsive to joystick input</summary>
-        [Tooltip("The maximum speed of this axis in units/second")]
-        public float maxSpeed;
+        /// <summary>Multiply the input by this amount prior to processing.
+        /// Controls the input power</summary>
+        [Tooltip("Multiply the input by this amount prior to processing.  Controls the input power.")]
+        public float multiplier;
 
         /// <summary>The amount of time in seconds it takes to accelerate to
         /// MaxSpeed with the supplied Axis at its maximum value</summary>
@@ -45,18 +45,13 @@ namespace Cinemachine.ECS
             + "have the value driven by the internal Input Manager")]
         public float inputValue;
 
-        /// <summary>If set, then the raw value of the input axis will be inverted
-        /// before it is used.</summary>
-        [Tooltip("If set, then the raw value of the input axis will be inverted before it is used")]
-        public bool invertInput;
-
         // Internal state
         private float mCurrentSpeed;
 
         /// <summary>Call from OnValidate: Make sure the fields are sensible</summary>
         public void Validate()
         {
-            maxSpeed = math.max(0, maxSpeed);
+            multiplier = math.max(0, multiplier);
             accelTime = math.max(0, accelTime);
             decelTime = math.max(0, decelTime);
         }
@@ -78,89 +73,37 @@ namespace Cinemachine.ECS
         {
             if (!string.IsNullOrEmpty(name))
             {
-                try
-                {
-                    inputValue = CinemachineCore.GetInputAxis(name);
-                }
-                catch (ArgumentException)
-                {
-                    //Debug.LogError(e.ToString());
-                }
+                try { inputValue = CinemachineCore.GetInputAxis(name); }
+                catch (ArgumentException) {}
+                //catch (ArgumentException e) { Debug.LogError(e.ToString()); }
             }
 
-            float input = inputValue;
-            if (invertInput)
-                input *= -1f;
-
-            if (maxSpeed > MathHelpers.Epsilon)
+            float input = inputValue * multiplier;
+            if (deltaTime < MathHelpers.Epsilon)
+                mCurrentSpeed = 0;
+            else
             {
-                float targetSpeed = input * maxSpeed;
-                if (math.abs(targetSpeed) < MathHelpers.Epsilon
-                    || (math.sign(mCurrentSpeed) == math.sign(targetSpeed)
-                        && math.abs(targetSpeed) <  math.abs(mCurrentSpeed)))
+                float speed = input / deltaTime;
+                float dampTime = math.select(
+                    accelTime, decelTime, math.abs(speed) < math.abs(mCurrentSpeed));
+                speed = mCurrentSpeed + MathHelpers.Damp(speed - mCurrentSpeed, dampTime, deltaTime);
+                mCurrentSpeed = speed;
+
+                // Decelerate to the end points of the range if not wrapping
+                float range = axis.range.y - axis.range.x;
+                if (!axis.wrap && decelTime > MathHelpers.Epsilon && range > MathHelpers.Epsilon)
                 {
-                    // Need to decelerate
-                    float a = math.abs(targetSpeed - mCurrentSpeed) / math.max(MathHelpers.Epsilon, decelTime);
-                    float delta = math.min(a * deltaTime, math.abs(mCurrentSpeed));
-                    mCurrentSpeed -= math.sign(mCurrentSpeed) * delta;
+                    float v0 = axis.GetClampedValue();
+                    float v = axis.ClampValue(v0 + speed * deltaTime);
+                    float d = math.select(v - axis.range.x, axis.range.y - v, speed > 0);
+                    if (d < (0.1f * range) && math.abs(speed) > MathHelpers.Epsilon)
+                        speed = MathHelpers.Damp(v - v0, decelTime, deltaTime) / deltaTime;
                 }
-                else
-                {
-                    // Accelerate to the target speed
-                    float a = math.abs(targetSpeed - mCurrentSpeed) / math.max(MathHelpers.Epsilon, accelTime);
-                    mCurrentSpeed += math.sign(targetSpeed) * a * deltaTime;
-                    if (math.sign(mCurrentSpeed) == math.sign(targetSpeed)
-                        && math.abs(mCurrentSpeed) > math.abs(targetSpeed))
-                    {
-                        mCurrentSpeed = targetSpeed;
-                    }
-                }
+                input = speed * deltaTime;
             }
 
-            // Clamp our max speeds so we don't go crazy
-            float maxSpeedClamped = GetMaxSpeed(ref axis);
-            mCurrentSpeed = math.clamp(mCurrentSpeed, -maxSpeedClamped, maxSpeedClamped);
-
-            axis.value += mCurrentSpeed * deltaTime;
-            bool isOutOfRange = (axis.value > axis.range.y) || (axis.value < axis.range.x);
-            if (isOutOfRange)
-            {
-                if (axis.wrap)
-                {
-                    if (axis.value > axis.range.y)
-                        axis.value = axis.range.x + (axis.value - axis.range.y);
-                    else
-                        axis.value = axis.range.y + (axis.value - axis.range.x);
-                }
-                else
-                {
-                    axis.value = math.clamp(axis.value, axis.range.x, axis.range.y);
-                    mCurrentSpeed = 0f;
-                }
-            }
-            return math.abs(input) > MathHelpers.Epsilon;
-        }
-
-        // MaxSpeed may be limited as we approach the range ends, in order
-        // to prevent a hard bump
-        private float GetMaxSpeed(ref CM_InputAxis axis)
-        {
-            float range = axis.range.y - axis.range.x;
-            if (!axis.wrap && range > 0)
-            {
-                float threshold = range / 10f;
-                if (mCurrentSpeed > 0 && (axis.range.y - axis.value) < threshold)
-                {
-                    float t = (axis.range.y - axis.value) / threshold;
-                    return math.lerp(0, maxSpeed, t);
-                }
-                else if (mCurrentSpeed < 0 && (axis.value - axis.range.x) < threshold)
-                {
-                    float t = (axis.value - axis.range.x) / threshold;
-                    return math.lerp(0, maxSpeed, t);
-                }
-            }
-            return maxSpeed;
+            axis.value = axis.ClampValue(axis.value + input);
+            return math.abs(inputValue) > MathHelpers.Epsilon;
         }
     }
 }

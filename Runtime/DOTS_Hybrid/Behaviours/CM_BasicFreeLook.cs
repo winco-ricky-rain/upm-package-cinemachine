@@ -21,25 +21,23 @@ namespace Cinemachine.ECS_Hybrid
         {
             horizontalInput = new CM_InputAxisDriver
             {
-                maxSpeed = 300,
-                accelTime = 0.1f,
-                decelTime = 0.1f,
+                multiplier = -0.4f,
+                accelTime = 0.2f,
+                decelTime = 0.2f,
                 name = "Mouse X",
-                invertInput = true
             };
             verticalInput = new CM_InputAxisDriver
             {
-                maxSpeed = 4,
-                accelTime = 0.1f,
-                decelTime = 0.1f,
+                multiplier = 1,
+                accelTime = 0.2f,
+                decelTime = 0.2f,
                 name = "Mouse Y",
-                invertInput = true
             };
             radialInput = new CM_InputAxisDriver
             {
-                maxSpeed = 40,
-                accelTime = 0.1f,
-                decelTime = 0.1f,
+                multiplier = 0.25f,
+                accelTime = 0.2f,
+                decelTime = 0.2f,
                 name = "Mouse ScrollWheel",
             };
         }

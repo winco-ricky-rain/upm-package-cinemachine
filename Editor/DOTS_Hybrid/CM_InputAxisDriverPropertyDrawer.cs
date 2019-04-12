@@ -57,7 +57,7 @@ namespace Cinemachine.Editor.ECS
                 ++EditorGUI.indentLevel;
 
                 rect.y += height + vSpace;
-                EditorGUI.PropertyField(rect, property.FindPropertyRelative(() => def.maxSpeed));
+                EditorGUI.PropertyField(rect, property.FindPropertyRelative(() => def.multiplier));
 
                 rect.y += height + vSpace;
                 EditorGUI.PropertyField(rect, property.FindPropertyRelative(() => def.accelTime));
@@ -66,10 +66,7 @@ namespace Cinemachine.Editor.ECS
                 EditorGUI.PropertyField(rect, property.FindPropertyRelative(() => def.decelTime));
 
                 rect.y += height + vSpace;
-                InspectorUtility.MultiPropertyOnLine(rect, null,
-                    new [] { property.FindPropertyRelative(() => def.inputValue),
-                            property.FindPropertyRelative(() => def.invertInput) },
-                    new [] { GUIContent.none, new GUIContent("Invert") });
+                EditorGUI.PropertyField(rect, property.FindPropertyRelative(() => def.inputValue));
 
                 --EditorGUI.indentLevel;
             }

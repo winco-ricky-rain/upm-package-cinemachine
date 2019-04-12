@@ -221,7 +221,8 @@ namespace Cinemachine.ECS
 
                 orbitalState.UpdateCachedSpline(ref orbital);
 
-                float3 followOffset = orbitalState.SplineValueAt(orbital.verticalAxis.GetClampedValue());
+                float3 followOffset
+                    = orbitalState.SplineValueAt(orbital.verticalAxis.GetNormalizedValue() * 2 - 1);
                 followOffset *= orbital.radialAxis.GetClampedValue();
                 quaternion q = quaternion.Euler(0, math.radians(orbital.horizontalAxis.GetClampedValue()), 0);
                 followOffset = math.mul(q, followOffset);

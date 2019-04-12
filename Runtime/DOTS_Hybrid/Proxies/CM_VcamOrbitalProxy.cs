@@ -36,7 +36,7 @@ namespace Cinemachine.ECS_Hybrid
                 },
                 verticalAxis = new CM_InputAxis
                 {
-                    range = new float2(-1, 1),
+                    range = new float2(-100, 100),
                     recentering = new CM_InputAxis.Recentering { wait = 1, time = 2 }
                 },
                 radialAxis = new CM_InputAxis
