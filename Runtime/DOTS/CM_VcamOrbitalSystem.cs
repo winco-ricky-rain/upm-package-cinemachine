@@ -98,14 +98,15 @@ namespace Cinemachine.ECS
                     kk[1] = new float4(0, bottom.height, -bottom.radius, 0);
                     kk[2] = new float4(0, middle.height, -middle.radius, 0);
                     kk[3] = new float4(0, top.height, -top.radius, 0);
-                    kk[0] = math.lerp(knots[0], float4.zero, tension);
-                    kk[4] = math.lerp(knots[3], float4.zero, tension);
+                    kk[0] = math.lerp(kk[1], float4.zero, tension);
+                    kk[4] = math.lerp(kk[3], float4.zero, tension);
                     BezierHelpers.ComputeSmoothControlPoints(
                         (float4*)k, (float4*)c1, (float4*)c2, (float4*)s, 5);
                 }
             }
         }
 
+        // t ranges from -1 to 1
         public float3 SplineValueAt(float t)
         {
             int n = math.select(2, 1, t < 0) * 4;
@@ -217,14 +218,12 @@ namespace Cinemachine.ECS
                     math.select(float3.zero, orbital.damping, dt >= 0),
                     prevPos, targetPos, targetRot);
 
-                float heading = orbital.horizontalAxis.GetClampedValue();
-                if (isSimpleFollow)
-                    orbital.horizontalAxis.value = 0;
-                else
-                    orbital.horizontalAxis.DoRecentering(deltaTime, timeNow);
-
-                orbital.verticalAxis.DoRecentering(deltaTime, timeNow);
                 orbital.radialAxis.DoRecentering(deltaTime, timeNow);
+                orbital.verticalAxis.DoRecentering(deltaTime, timeNow);
+
+                float heading = orbital.horizontalAxis.GetClampedValue();
+                orbital.horizontalAxis.DoRecentering(deltaTime, timeNow);
+                orbital.horizontalAxis.value = math.select(orbital.horizontalAxis.value, 0, isSimpleFollow);
 
                 orbitalState.UpdateCachedSpline(ref orbital);
 

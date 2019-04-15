@@ -28,7 +28,6 @@ namespace Cinemachine.Editor.ECS_Hybrid
             DrawRemainingPropertiesInInspector();
         }
 
-
         internal static void DrawPathGizmo(
             CM_PathState pathState, DynamicBuffer<CM_PathWaypointElement> waypoints,
             Color pathColor, float width, int resolution)

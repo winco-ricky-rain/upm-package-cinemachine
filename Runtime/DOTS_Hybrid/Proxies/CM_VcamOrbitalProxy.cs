@@ -27,7 +27,7 @@ namespace Cinemachine.ECS_Hybrid
                 top = new CM_VcamOrbital.Orbit { height = 10, radius = 4 },
                 middle = new CM_VcamOrbital.Orbit { height = 2, radius = 8 },
                 bottom = new CM_VcamOrbital.Orbit { height = 0, radius = 5 },
-                splineCurvature = 0.5f,
+                splineCurvature = 0,
                 horizontalAxis = new CM_InputAxis
                 {
                     range = new float2(-180, 180),
