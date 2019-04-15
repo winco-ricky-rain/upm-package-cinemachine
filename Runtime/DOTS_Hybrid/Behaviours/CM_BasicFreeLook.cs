@@ -60,10 +60,15 @@ namespace Cinemachine.ECS_Hybrid
                 CM_VcamOrbital orbital = m.GetComponentData<CM_VcamOrbital>(e);
 
                 // Update our axes
-                horizontalInput.Update(Time.deltaTime, ref orbital.horizontalAxis);
-                verticalInput.Update(Time.deltaTime, ref orbital.verticalAxis);
-                radialInput.Update(Time.deltaTime, ref orbital.radialAxis);
-
+                bool changed = horizontalInput.Update(Time.deltaTime, ref orbital.horizontalAxis);
+                changed |= verticalInput.Update(Time.deltaTime, ref orbital.verticalAxis);
+                changed |= radialInput.Update(Time.deltaTime, ref orbital.radialAxis);
+                if (changed)
+                {
+                    orbital.horizontalAxis.CancelRecentering();
+                    orbital.verticalAxis.CancelRecentering();
+                    orbital.radialAxis.CancelRecentering();
+                }
                 m.SetComponentData(e, orbital);
             }
         }

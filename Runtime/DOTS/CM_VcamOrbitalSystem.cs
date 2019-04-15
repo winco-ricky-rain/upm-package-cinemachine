@@ -109,8 +109,7 @@ namespace Cinemachine.ECS
         public float3 SplineValueAt(float t)
         {
             int n = math.select(2, 1, t < 0) * 4;
-            t = math.select(t, t + 1, t < 0);
-            float3 pos = MathHelpers.Bezier(t,
+            float3 pos = MathHelpers.Bezier(math.select(t, t + 1, t < 0),
                 new float3(knots[n], knots[n + 1], knots[n + 2]),
                 new float3(ctrl1[n], ctrl1[n + 1], ctrl1[n + 2]),
                 new float3(ctrl2[n], ctrl2[n + 1], ctrl2[n + 2]),
@@ -133,7 +132,7 @@ namespace Cinemachine.ECS
             m_vcamGroup = GetEntityQuery(
                 ComponentType.ReadWrite<CM_VcamPositionState>(),
                 ComponentType.ReadWrite<CM_VcamOrbitalState>(),
-                ComponentType.ReadOnly<CM_VcamOrbital>(),
+                ComponentType.ReadWrite<CM_VcamOrbital>(),
                 ComponentType.ReadOnly<CM_VcamFollowTarget>(),
                 ComponentType.ReadOnly<CM_VcamChannel>());
 
@@ -192,7 +191,7 @@ namespace Cinemachine.ECS
             public void Execute(
                 ref CM_VcamPositionState posState,
                 ref CM_VcamOrbitalState orbitalState,
-                [ReadOnly] ref CM_VcamOrbital orbital,
+                ref CM_VcamOrbital orbital,
                 [ReadOnly] ref CM_VcamFollowTarget follow)
             {
                 if (!targetLookup.TryGetValue(follow.target, out CM_TargetSystem.TargetInfo targetInfo))
@@ -201,21 +200,29 @@ namespace Cinemachine.ECS
                 float dt = math.select(-1, deltaTime, posState.previousFrameDataIsValid);
 
                 var targetPos = targetInfo.position;
+                var directionToTarget = math.select(
+                    targetPos - posState.raw, -orbitalState.previousTargetOffset,
+                    dt >= 0 && posState.previousFrameDataIsValid);
                 var targetRot = CM_VcamTransposerSystem.GetRotationForBindingMode(
-                        targetInfo.rotation, orbital.bindingMode,
-                        targetPos - posState.raw, up);
+                        targetInfo.rotation, orbital.bindingMode, directionToTarget, up);
 
+                bool isSimpleFollow = orbital.bindingMode == CM_VcamTransposerSystem.BindingMode.SimpleFollowWithWorldUp;
                 var prevPos = orbitalState.previousTargetPosition + targetInfo.warpDelta;
                 targetRot = CM_VcamTransposerSystem.ApplyRotationDamping(
                     dt, 0,
-                    math.select(0, orbital.angularDamping, dt >= 0),
+                    math.select(0, orbital.angularDamping, dt >= 0 && !isSimpleFollow),
                     orbitalState.previousTargetRotation, targetRot);
                 targetPos = CM_VcamTransposerSystem.ApplyPositionDamping(
                     dt, 0,
                     math.select(float3.zero, orbital.damping, dt >= 0),
                     prevPos, targetPos, targetRot);
 
-                orbital.horizontalAxis.DoRecentering(deltaTime, timeNow);
+                float heading = orbital.horizontalAxis.GetClampedValue();
+                if (isSimpleFollow)
+                    orbital.horizontalAxis.value = 0;
+                else
+                    orbital.horizontalAxis.DoRecentering(deltaTime, timeNow);
+
                 orbital.verticalAxis.DoRecentering(deltaTime, timeNow);
                 orbital.radialAxis.DoRecentering(deltaTime, timeNow);
 
@@ -224,7 +231,7 @@ namespace Cinemachine.ECS
                 float3 followOffset
                     = orbitalState.SplineValueAt(orbital.verticalAxis.GetNormalizedValue() * 2 - 1);
                 followOffset *= orbital.radialAxis.GetClampedValue();
-                quaternion q = quaternion.Euler(0, math.radians(orbital.horizontalAxis.GetClampedValue()), 0);
+                quaternion q = quaternion.Euler(0, math.radians(heading), 0);
                 followOffset = math.mul(q, followOffset);
                 followOffset = math.mul(targetRot, followOffset);
 
@@ -235,9 +242,6 @@ namespace Cinemachine.ECS
                 orbitalState.previousTargetPosition = targetPos;
                 orbitalState.previousTargetRotation = targetRot;
                 orbitalState.previousTargetOffset = followOffset;
-
-                if (orbital.bindingMode == CM_VcamTransposerSystem.BindingMode.SimpleFollowWithWorldUp)
-                    orbital.horizontalAxis.value = 0;
             }
         }
     }
