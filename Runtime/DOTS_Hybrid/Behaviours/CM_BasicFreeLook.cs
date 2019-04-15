@@ -17,7 +17,7 @@ namespace Cinemachine.ECS_Hybrid
         public CM_InputAxisDriver verticalInput;
         public CM_InputAxisDriver radialInput;
 
-        void Reset()
+        protected virtual void Reset()
         {
             horizontalInput = new CM_InputAxisDriver
             {
@@ -42,7 +42,7 @@ namespace Cinemachine.ECS_Hybrid
             };
         }
 
-        private void OnValidate()
+        protected virtual void OnValidate()
         {
             horizontalInput.Validate();
             verticalInput.Validate();

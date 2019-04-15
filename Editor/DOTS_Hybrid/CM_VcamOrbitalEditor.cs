@@ -1,8 +1,6 @@
 ﻿using UnityEngine;
 using UnityEditor;
-using Cinemachine.Utility;
 using Cinemachine.ECS_Hybrid;
-using static Cinemachine.ECS.MathHelpers;
 using Cinemachine.ECS;
 using Unity.Mathematics;
 using Unity.Entities;

@@ -15,6 +15,19 @@ namespace Cinemachine.Editor
                 "CM vcam", true, typeof(CM_VcamComposerProxy), typeof(CM_VcamTransposerProxy));
         }
 
+        [MenuItem("Cinemachine/Create FreeLook", false, 1)]
+        private static void CM_CreateFreeLook()
+        {
+            CM_CreateBrainOnCameraIfAbsent();
+            GameObject go = InspectorUtility.CreateGameObject(
+                    GenerateUniqueObjectName(typeof(CM_BasicFreeLook), "CM FreeLook"),
+                    typeof(CM_BasicFreeLook), typeof(CM_VcamComposerProxy), typeof(CM_VcamOrbitalProxy));
+            if (SceneView.lastActiveSceneView != null)
+                go.transform.position = SceneView.lastActiveSceneView.pivot;
+            Undo.RegisterCreatedObjectUndo(go, "create FreeLook camera");
+            Selection.activeGameObject = go;
+        }
+
         [MenuItem("Cinemachine/Create ClearShot Vcam", false, 1)]
         private static void CM_CreateClearShotVcam()
         {
