@@ -13,7 +13,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
     /// Handles drawing the header and the basic properties.
     /// </summary>
     [CustomEditor(typeof(CM_VcamBase), true)]
-    public class CM_VcamBaseEditor : BaseEditor<CM_VcamBase>
+    public class CM_VcamBaseEditor<T> : BaseEditor<T>  where T : CM_VcamBase
     {
         protected int TopLevelChannel { get; private set; }
 
@@ -117,8 +117,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
 #else
         static readonly string kGizmoFileName = "Cinemachine/cm_logo_lg.png";
 #endif
-        [DrawGizmo(GizmoType.Selected, typeof(CM_VcamBase))]
-        private static void DrawVcamGizmos(CM_VcamBase vcam, GizmoType drawType)
+        protected static void DrawStandardVcamGizmos(T vcam, GizmoType drawType)
         {
             var color = vcam.IsLive
                 ? CinemachineSettings.CinemachineCoreSettings.ActiveGizmoColour
@@ -126,13 +125,6 @@ namespace Cinemachine.Editor.ECS_Hybrid
             var state = vcam.State;
             DrawCameraFrustumGizmo(state, color);
             Gizmos.DrawIcon(state.FinalPosition, kGizmoFileName, true);
-        }
-
-        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected, typeof(CM_Brain))]
-        private static void DrawBrainGizmos(CM_Brain brain, GizmoType drawType)
-        {
-            if (brain.m_ShowCameraFrustum)
-                DrawCameraFrustumGizmo(brain.CurrentCameraState, Color.white); // GML why is this color hardcoded?
         }
 
         internal static void DrawCameraFrustumGizmo(CameraState state, Color color)

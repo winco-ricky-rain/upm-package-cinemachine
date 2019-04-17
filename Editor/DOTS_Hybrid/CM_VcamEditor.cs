@@ -14,7 +14,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
     /// Handles drawing the header and the basic properties.
     /// </summary>
     [CustomEditor(typeof(CM_Vcam), true)]
-    public class CM_VcamEditor : CM_VcamBaseEditor
+    public class CM_VcamEditor : CM_VcamBaseEditor<CM_Vcam>
     {
         ComponentManagerDropdown mBodyDropdown = new ComponentManagerDropdown();
         ComponentManagerDropdown mAimDropdown = new ComponentManagerDropdown();
@@ -50,131 +50,144 @@ namespace Cinemachine.Editor.ECS_Hybrid
             mAimDropdown.DrawDropdownWidgetInInspector();
             mNoiseDropdown.DrawDropdownWidgetInInspector();
         }
-    }
 
-    class ComponentManagerDropdown
-    {
-        static Type[] sAllTypes;  // First entry is null
-        static string[] sAllNames;
-
-        Type[] myTypes;  // First entry is null
-        string[] myNames;
-
-        GameObject mTarget;
-        GUIContent mLabel = GUIContent.none;
-        string mEmptyLabel;
-        CinemachineCore.Stage mStageFilter;
-
-        public void Initialize(
-            GUIContent label, string emptyLabel,
-            GameObject target,
-            CinemachineCore.Stage stageFilter)
+        [DrawGizmo(GizmoType.Selected, typeof(CM_Vcam))]
+        static void DrawVcamGizmos(CM_Vcam vcam, GizmoType drawType)
         {
-            mLabel = label;
-            mEmptyLabel = emptyLabel;
-            mTarget = target;
-            mStageFilter = stageFilter;
-            myTypes = null;
-            myNames = null;
+            DrawStandardVcamGizmos(vcam, drawType);
         }
 
-        public void DrawDropdownWidgetInInspector()
+        [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected, typeof(CM_Brain))]
+        private static void DrawBrainGizmos(CM_Brain brain, GizmoType drawType)
         {
-            RefreshLists();
-            RefreshCurrent();
-            Rect rect = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight);
-            rect = EditorGUI.PrefixLabel(rect, mLabel);
+            if (brain.m_ShowCameraFrustum)
+                DrawCameraFrustumGizmo(brain.CurrentCameraState, Color.white); // GML why is this color hardcoded?
+        }
 
-            int selection = EditorGUI.Popup(rect, mCurrent, myNames);
-            if (selection != mCurrent)
+        public class ComponentManagerDropdown
+        {
+            static Type[] sAllTypes;  // First entry is null
+            static string[] sAllNames;
+
+            Type[] myTypes;  // First entry is null
+            string[] myNames;
+
+            GameObject mTarget;
+            GUIContent mLabel = GUIContent.none;
+            string mEmptyLabel;
+            CinemachineCore.Stage mStageFilter;
+
+            public void Initialize(
+                GUIContent label, string emptyLabel,
+                GameObject target,
+                CinemachineCore.Stage stageFilter)
             {
-                Type type = myTypes[selection];
-                if (type != null)
-                    Undo.AddComponent(mTarget.gameObject, type);
-                if (mCurrent != 0)
+                mLabel = label;
+                mEmptyLabel = emptyLabel;
+                mTarget = target;
+                mStageFilter = stageFilter;
+                myTypes = null;
+                myNames = null;
+            }
+
+            public void DrawDropdownWidgetInInspector()
+            {
+                RefreshLists();
+                RefreshCurrent();
+                Rect rect = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight);
+                rect = EditorGUI.PrefixLabel(rect, mLabel);
+
+                int selection = EditorGUI.Popup(rect, mCurrent, myNames);
+                if (selection != mCurrent)
                 {
-                    var old = mTarget.GetComponent(myTypes[mCurrent]);
-                    if (old != null)
+                    Type type = myTypes[selection];
+                    if (type != null)
+                        Undo.AddComponent(mTarget.gameObject, type);
+                    if (mCurrent != 0)
                     {
-                        Undo.DestroyObjectImmediate(old);
-                        GUIUtility.ExitGUI();
+                        var old = mTarget.GetComponent(myTypes[mCurrent]);
+                        if (old != null)
+                        {
+                            Undo.DestroyObjectImmediate(old);
+                            GUIUtility.ExitGUI();
+                        }
                     }
+                    mCurrent = selection;
                 }
-                mCurrent = selection;
-            }
-        }
-
-        void RefreshLists()
-        {
-            if (sAllTypes == null)
-            {
-                // Populate the master list
-                List<Type> types = new List<Type>();
-                List<string> names = new List<string>();
-                types.Add(null);
-                names.Add(string.Empty);
-                var allClasses
-                    = ReflectionHelpers.GetTypesInAllDependentAssemblies(
-                            (Type t) => t.GetCustomAttribute<CM_PipelineAttribute>() != null);
-                foreach (Type t in allClasses)
-                {
-                    types.Add(t);
-                    names.Add(NicifyClassName(t.Name));
-                }
-                sAllTypes = types.ToArray();
-                sAllNames = names.ToArray();
             }
 
-            if (myTypes == null)
+            void RefreshLists()
             {
-                List<Type> types = new List<Type>();
-                List<string> names = new List<string>();
-                types.Add(null);
-                names.Add(mEmptyLabel);
-                for (int i = 1; i < sAllTypes.Length; ++i)
+                if (sAllTypes == null)
                 {
-                    var attr = sAllTypes[i].GetCustomAttribute<CM_PipelineAttribute>();
+                    // Populate the master list
+                    List<Type> types = new List<Type>();
+                    List<string> names = new List<string>();
+                    types.Add(null);
+                    names.Add(string.Empty);
+                    var allClasses
+                        = ReflectionHelpers.GetTypesInAllDependentAssemblies(
+                                (Type t) => t.GetCustomAttribute<CM_PipelineAttribute>() != null);
+                    foreach (Type t in allClasses)
+                    {
+                        types.Add(t);
+                        names.Add(NicifyClassName(t.Name));
+                    }
+                    sAllTypes = types.ToArray();
+                    sAllNames = names.ToArray();
+                }
+
+                if (myTypes == null)
+                {
+                    List<Type> types = new List<Type>();
+                    List<string> names = new List<string>();
+                    types.Add(null);
+                    names.Add(mEmptyLabel);
+                    for (int i = 1; i < sAllTypes.Length; ++i)
+                    {
+                        var attr = sAllTypes[i].GetCustomAttribute<CM_PipelineAttribute>();
+                        if (attr != null && attr.Stage == mStageFilter)
+                        {
+                            types.Add(sAllTypes[i]);
+                            names.Add(sAllNames[i]);
+                        }
+                    }
+                    myTypes = types.ToArray();
+                    myNames = names.ToArray();
+                }
+            }
+
+            List<MonoBehaviour> mBahaviourList = new List<MonoBehaviour>();
+            int mCurrent = 0;
+            void RefreshCurrent()
+            {
+                mCurrent = 0;
+                mTarget.GetComponents(mBahaviourList);
+                for (int i = 0; i < mBahaviourList.Count; ++i)
+                {
+                    var attr = mBahaviourList[i].GetType().GetCustomAttribute<CM_PipelineAttribute>();
                     if (attr != null && attr.Stage == mStageFilter)
                     {
-                        types.Add(sAllTypes[i]);
-                        names.Add(sAllNames[i]);
-                    }
-                }
-                myTypes = types.ToArray();
-                myNames = names.ToArray();
-            }
-        }
-
-        List<MonoBehaviour> mBahaviourList = new List<MonoBehaviour>();
-        int mCurrent = 0;
-        void RefreshCurrent()
-        {
-            mCurrent = 0;
-            mTarget.GetComponents(mBahaviourList);
-            for (int i = 0; i < mBahaviourList.Count; ++i)
-            {
-                var attr = mBahaviourList[i].GetType().GetCustomAttribute<CM_PipelineAttribute>();
-                if (attr != null && attr.Stage == mStageFilter)
-                {
-                    for (int j = 1; j < myTypes.Length; ++j)
-                    {
-                        if (mBahaviourList[i].GetType() == myTypes[j])
+                        for (int j = 1; j < myTypes.Length; ++j)
                         {
-                            mCurrent = j;
-                            return;
+                            if (mBahaviourList[i].GetType() == myTypes[j])
+                            {
+                                mCurrent = j;
+                                return;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        static string NicifyClassName(string name)
-        {
-            if (name.StartsWith("CM_Vcam"))
-                name = name.Substring(7); // Trim the prefix
-            if (name.EndsWith("Proxy"))
-                name = name.Substring(0, name.Length-5); // Trim the suffix
-            return ObjectNames.NicifyVariableName(name);
+            static string NicifyClassName(string name)
+            {
+                if (name.StartsWith("CM_Vcam"))
+                    name = name.Substring(7); // Trim the prefix
+                if (name.EndsWith("Proxy"))
+                    name = name.Substring(0, name.Length-5); // Trim the suffix
+                return ObjectNames.NicifyVariableName(name);
+            }
         }
     }
 }
