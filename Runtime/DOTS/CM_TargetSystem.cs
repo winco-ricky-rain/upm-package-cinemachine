@@ -14,7 +14,6 @@ namespace Cinemachine.ECS
     {
         public float3 offset;
         public float radius;
-        public float3 warpDelta; // GML todo: make use of this
     }
 
     [Serializable]
@@ -42,7 +41,6 @@ namespace Cinemachine.ECS
             public float3 position;
             public float radius;
             public quaternion rotation;
-            public float3 warpDelta;
         }
         NativeHashMap<Entity, TargetInfo> m_targetLookup;
 
@@ -130,9 +128,7 @@ namespace Cinemachine.ECS
                     rotation = rot,
                     position = pos.Value.GetTranslationFromTRS() + math.mul(rot, t.offset),
                     radius = t.radius,
-                    warpDelta = t.warpDelta
                 });
-                t.warpDelta = float3.zero;
             }
         }
 

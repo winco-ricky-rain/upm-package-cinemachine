@@ -208,7 +208,7 @@ namespace Cinemachine.ECS
                         targetInfo.rotation, orbital.bindingMode, directionToTarget, up);
 
                 bool isSimpleFollow = orbital.bindingMode == CM_VcamTransposerSystem.BindingMode.SimpleFollowWithWorldUp;
-                var prevPos = orbitalState.previousTargetPosition + targetInfo.warpDelta;
+                var prevPos = orbitalState.previousTargetPosition;
                 targetRot = CM_VcamTransposerSystem.ApplyRotationDamping(
                     dt, 0,
                     math.select(0, orbital.angularDamping, dt >= 0 && !isSimpleFollow),

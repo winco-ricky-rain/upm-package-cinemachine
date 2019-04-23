@@ -147,7 +147,7 @@ namespace Cinemachine.ECS
                         targetInfo.rotation, transposer.bindingMode,
                         targetPos - posState.raw, up);
 
-                var prevPos = transposerState.previousTargetPosition + targetInfo.warpDelta;
+                var prevPos = transposerState.previousTargetPosition;
                 targetRot = ApplyRotationDamping(
                     dt, 0,
                     math.select(0, transposer.angularDamping, dt >= 0),
