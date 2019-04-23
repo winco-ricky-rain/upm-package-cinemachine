@@ -11,8 +11,10 @@ namespace Cinemachine.ECS_Hybrid
     [RequireComponent(typeof(CM_ChannelProxy))]
     public class CM_ClearShot : CM_VcamBase
     {
-        /// <summary>When enabled, the current camera and blend will be indicated in the game window, for debugging</summary>
-        [Tooltip("When enabled, the current child camera and blend will be indicated in the game window, for debugging")]
+        /// <summary>When enabled, the current camera and blend will be indicated
+        /// in the game window, for debugging</summary>
+        [Tooltip("When enabled, the current child camera and blend will be indicated in "
+         + "the game window, for debugging")]
         [NoSaveDuringPlay]
         public bool showDebugText = false;
 

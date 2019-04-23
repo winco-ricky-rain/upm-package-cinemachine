@@ -12,7 +12,7 @@ namespace Cinemachine.Editor.ECS_Hybrid
     /// Base class for virtual camera editors.
     /// Handles drawing the header and the basic properties.
     /// </summary>
-    [CustomEditor(typeof(CM_VcamBase), true)]
+    [CustomEditor(typeof(CM_VcamBase), false)]
     public class CM_VcamBaseEditor<T> : BaseEditor<T>  where T : CM_VcamBase
     {
         protected int TopLevelChannel { get; private set; }
