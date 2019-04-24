@@ -145,9 +145,8 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing orbital state components
-            if (m_missingStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingStateGroup,
-                    ComponentType.ReadWrite<CM_VcamOrbitalState>());
+            EntityManager.AddComponent(m_missingStateGroup,
+                ComponentType.ReadWrite<CM_VcamOrbitalState>());
 
             var targetSystem = World.GetOrCreateSystem<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);

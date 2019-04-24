@@ -576,12 +576,10 @@ namespace Cinemachine.ECS
         void CreateMissingStateComponents()
         {
             // Add any missing state components
-            if (m_missingChannelStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingChannelStateGroup,
-                    ComponentType.ReadWrite<CM_ChannelState>());
-            if (m_missingBlendStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingBlendStateGroup,
-                    ComponentType.ReadWrite<CM_ChannelBlendState>());
+            EntityManager.AddComponent(m_missingChannelStateGroup,
+                ComponentType.ReadWrite<CM_ChannelState>());
+            EntityManager.AddComponent(m_missingBlendStateGroup,
+                ComponentType.ReadWrite<CM_ChannelBlendState>());
         }
 
         void DestroyDanglingStateComponents()

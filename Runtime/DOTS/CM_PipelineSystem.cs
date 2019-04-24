@@ -243,15 +243,12 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing state components
-            if (m_missingPosStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingPosStateGroup,
-                        ComponentType.ReadWrite<CM_VcamPositionState>());
-            if (m_missingRotStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingRotStateGroup,
-                        ComponentType.ReadWrite<CM_VcamRotationState>());
-            if (m_missingLensStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingLensStateGroup,
-                    ComponentType.ReadWrite<CM_VcamLensState>());
+            EntityManager.AddComponent(m_missingPosStateGroup,
+                    ComponentType.ReadWrite<CM_VcamPositionState>());
+            EntityManager.AddComponent(m_missingRotStateGroup,
+                    ComponentType.ReadWrite<CM_VcamRotationState>());
+            EntityManager.AddComponent(m_missingLensStateGroup,
+                ComponentType.ReadWrite<CM_VcamLensState>());
 
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             channelSystem.InitChannelStates();

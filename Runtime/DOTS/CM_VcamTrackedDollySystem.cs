@@ -150,12 +150,10 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing transposer state components
-            if (m_missingStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingStateGroup,
-                    ComponentType.ReadWrite<CM_VcamTrackedDollyState>());
-            if (m_missingTargetGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingTargetGroup,
-                    ComponentType.ReadWrite<CM_VcamFollowTarget>());
+            EntityManager.AddComponent(m_missingStateGroup,
+                ComponentType.ReadWrite<CM_VcamTrackedDollyState>());
+            EntityManager.AddComponent(m_missingTargetGroup,
+                ComponentType.ReadWrite<CM_VcamFollowTarget>());
 
             var targetSystem = World.GetOrCreateSystem<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);

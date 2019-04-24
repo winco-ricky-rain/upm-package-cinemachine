@@ -28,7 +28,6 @@ namespace Cinemachine.ECS
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            //Debug.Log("Unfiltered length = " + m_vcamGroup.CalculateLength());
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             JobHandle jobDeps = channelSystem.InvokePerVcamChannel(
                 m_vcamGroup, inputDeps, new QualityJobLaunch() );
@@ -42,7 +41,6 @@ namespace Cinemachine.ECS
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 var objectCount = filteredGroup.CalculateLength();
-                //Debug.Log("Filtered length = " + objectCount);
 
                 // These will be deallocated by the final job
                 var raycastCommands = new NativeArray<RaycastCommand>(objectCount, Allocator.TempJob);

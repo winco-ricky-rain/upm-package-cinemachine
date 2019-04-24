@@ -112,9 +112,8 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing composer state components
-            if (m_missingStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingStateGroup,
-                    ComponentType.ReadWrite<CM_VcamSizeFramingState>());
+            EntityManager.AddComponent(m_missingStateGroup,
+                ComponentType.ReadWrite<CM_VcamSizeFramingState>());
 
             var targetSystem = World.GetOrCreateSystem<CM_TargetSystem>();
             var targetLookup = targetSystem.GetTargetLookupForJobs(ref inputDeps);

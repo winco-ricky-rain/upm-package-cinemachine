@@ -218,6 +218,7 @@ namespace Cinemachine.ECS_Hybrid
                 }
             }
 
+
             if (events.cameraUpdatedEvent != null)
                 events.cameraUpdatedEvent.Invoke(this);
         }

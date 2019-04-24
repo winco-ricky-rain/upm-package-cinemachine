@@ -88,9 +88,8 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing state components
-            if (m_missingStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingStateGroup,
-                    ComponentType.ReadWrite<CM_VcamPerlinNoiseState>());
+            EntityManager.AddComponent(m_missingStateGroup,
+                ComponentType.ReadWrite<CM_VcamPerlinNoiseState>());
 
             if (uniqueTypes == null)
                 uniqueTypes = new List<CM_VcamPerlinNoiseDefinition>();

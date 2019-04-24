@@ -72,9 +72,8 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing group components
-            if (m_missingGroupGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingGroupGroup,
-                    ComponentType.ReadWrite<CM_Group>());
+            EntityManager.AddComponent(m_missingGroupGroup,
+                ComponentType.ReadWrite<CM_Group>());
 
             // Make sure all readers have finished with the table
             TargetTableReadJobHandle.Complete();

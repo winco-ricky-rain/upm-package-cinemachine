@@ -139,9 +139,8 @@ namespace Cinemachine.ECS
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             // Add any missing group components
-            if (m_missingStateGroup.CalculateLength() > 0)
-                EntityManager.AddComponent(m_missingStateGroup,
-                    ComponentType.ReadWrite<CM_PathState>());
+            EntityManager.AddComponent(m_missingStateGroup,
+                ComponentType.ReadWrite<CM_PathState>());
 
             var pathJob = new DistanceCacheJob()
             {
