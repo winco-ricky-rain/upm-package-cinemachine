@@ -158,6 +158,8 @@ namespace Cinemachine.ECS
                     prevPos, targetPos, targetRot);
 
                 var followOffset = math.mul(targetRot, transposer.followOffset);
+                followOffset.x = math.select(
+                    followOffset.x, 0, transposer.bindingMode == BindingMode.SimpleFollowWithWorldUp);
                 posState.raw = targetPos + followOffset;
                 posState.up = math.mul(targetRot, math.up());
                 posState.dampingBypass = followOffset - transposerState.previousTargetOffset;
@@ -196,20 +198,20 @@ namespace Cinemachine.ECS
         /// Returns the axes for applying target offset and damping</summary>
         public static quaternion GetRotationForBindingMode(
             quaternion targetRotation,
-            CM_VcamTransposerSystem.BindingMode bindingMode,
+            BindingMode bindingMode,
             float3 directionCameraToTarget, // not normalized
             float3 up)
         {
             // GML todo: optimize!  Can we get rid of the switch?
             switch (bindingMode)
             {
-                case CM_VcamTransposerSystem.BindingMode.LockToTargetWithWorldUp:
+                case BindingMode.LockToTargetWithWorldUp:
                     return MathHelpers.Uppify(targetRotation, up);
-                case CM_VcamTransposerSystem.BindingMode.LockToTargetNoRoll:
+                case BindingMode.LockToTargetNoRoll:
                     return quaternion.LookRotationSafe(math.forward(targetRotation), up);
-                case CM_VcamTransposerSystem.BindingMode.LockToTarget:
+                case BindingMode.LockToTarget:
                     return targetRotation;
-                case CM_VcamTransposerSystem.BindingMode.SimpleFollowWithWorldUp:
+                case BindingMode.SimpleFollowWithWorldUp:
                 {
                     directionCameraToTarget = directionCameraToTarget.ProjectOntoPlane(up);
                     float len = math.length(directionCameraToTarget);
