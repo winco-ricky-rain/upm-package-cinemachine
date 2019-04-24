@@ -351,14 +351,14 @@ namespace Cinemachine.ECS_Hybrid
                     def = brain.customBlends.GetBlendForVirtualCameras(fromCam, toCam, def);
 
                 // Invoke the cusom blend callback
-                if (CM_Brain.OnCreateBlend != null)
-                    def = CM_Brain.OnCreateBlend(brain.gameObject,
+                if (OnCreateBlend != null)
+                    def = OnCreateBlend(brain.gameObject,
                         CM_EntityVcam.GetEntityVcam(fromCam),
                         CM_EntityVcam.GetEntityVcam(toCam), def);
 
                 return new CM_BlendDefinition
                 {
-                    curve = def.BlendCurve,
+                    curve = def.BlendCurve.ToECS(),
                     duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
                 };
             }

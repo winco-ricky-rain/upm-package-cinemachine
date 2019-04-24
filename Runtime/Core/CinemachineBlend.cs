@@ -1,12 +1,38 @@
 using Cinemachine.Utility;
 using System;
 using UnityEngine;
-using Cinemachine.ECS;
-using Unity.Mathematics;
 using Unity.Entities;
 
 namespace Cinemachine
 {
+    /// <summary>
+    /// Copied from CM3
+    /// Property applied to BlendCurve.  Used for custom drawing in the inspector.
+    /// </summary>
+    public sealed class BlendCurvePropertyAttribute : PropertyAttribute {}
+
+    [Serializable]
+    public struct BlendCurve
+    {
+        [Range(0, 1)]
+        public float A;
+
+        [Range(0, 1)]
+        public float B;
+
+        [Range(-1, 1)]
+        public float bias;
+
+        public float Evaluate(float t)
+        {
+            t = MathHelpers.Bias(t, (1f - bias) * 0.5f);
+            return MathHelpers.Bezier(t, 0, A, 1 - B, 1);
+        }
+
+        public static BlendCurve Default { get { return new BlendCurve{ A = 0, B = 0, bias = 0 }; } }
+        public static BlendCurve Linear { get { return new BlendCurve{ A = 0.3333f, B = 0.3333f, bias = 0 }; } }
+    }
+
     /// <summary>
     /// Describes a blend between 2 Cinemachine Virtual Cameras, and holds the
     /// current state of the blend.
@@ -32,7 +58,7 @@ namespace Cinemachine
         /// 0 means camA, 1 means camB.</summary>
         public float BlendWeight
         {
-            get { return math.select(BlendCurve.Evaluate(TimeInBlend / Duration), 1, IsComplete); }
+            get { return IsComplete ? 1 : BlendCurve.Evaluate(TimeInBlend / Duration); }
         }
 
         /// <summary>Validity test for the blend.  True if either camera is defined.</summary>

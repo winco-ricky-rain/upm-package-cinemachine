@@ -109,7 +109,6 @@ namespace Cinemachine.ECS
     // Internal use only
     struct CM_VcamComposerState : IComponentData
     {
-        public float3 cameraPos;
         public float3 cameraPosPrevFrame;
         public float3 lookAtPrevFrame;
         public float2 screenOffsetPrevFrame;

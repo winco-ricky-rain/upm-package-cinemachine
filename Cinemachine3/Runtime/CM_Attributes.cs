@@ -1,5 +1,4 @@
-﻿
-using UnityEngine;
+﻿using UnityEngine; // For PropertyAttribute
 
 namespace Cinemachine.ECS
 {

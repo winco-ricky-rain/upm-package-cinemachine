@@ -1,23 +1,16 @@
 {
     "name": "Cinemachine",
     "references": [
-        "Unity.Entities",
-        "Unity.Collections",
-        "Unity.Jobs",
-        "Unity.Mathematics",
-        "Unity.Entities.Hybrid",
-        "Unity.Transforms",
-        "Unity.Burst",
-        "Unity.Transforms.Hybrid",
         "GUID:f06555f75b070af458a003d92f9efb00",
         "GUID:d60799ab2a985554ea1a39cd38695018",
         "GUID:df380645f10b7bc4b97d4f5eb6303d95",
-        "GUID:457756d89b35d2941b3e7b37b4ece6f1"
+        "GUID:457756d89b35d2941b3e7b37b4ece6f1",
+        "GUID:734d92eba21c94caba915361bd5ac177"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": true,
+    "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

@@ -1,7 +1,5 @@
 using UnityEngine;
 using System;
-using Unity.Entities;
-using Cinemachine.ECS;
 
 namespace Cinemachine
 {
@@ -103,17 +101,6 @@ namespace Cinemachine
         {
             var fromName = fromCam == null ? string.Empty : fromCam.Name;
             var toName = toCam == null ? string.Empty : toCam.Name;
-            return GetBlendForVirtualCameras(fromName, toName, defaultBlend);
-        }
-
-        public CinemachineBlendDefinition GetBlendForVirtualCameras(
-            Entity fromCam, Entity toCam,
-            CinemachineBlendDefinition defaultBlend)
-        {
-            var f = CM_EntityVcam.GetEntityVcam(fromCam);
-            var t = CM_EntityVcam.GetEntityVcam(toCam);
-            var fromName = f == null ? string.Empty : f.Name;
-            var toName = t == null ? string.Empty : t.Name;
             return GetBlendForVirtualCameras(fromName, toName, defaultBlend);
         }
     }

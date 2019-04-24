@@ -1,0 +1,25 @@
+{
+    "name": "Unity.Cinemachine3.Authoring.Editor",
+    "references": [
+        "GUID:2e059434482893747aaf084cd29c7259",
+        "GUID:a6f754c37036d6c4ab2fb0390b8b95be",
+        "GUID:734d92eba21c94caba915361bd5ac177",
+        "GUID:8819f35a0fc84499b990e90a4ca1911f",
+        "GUID:d8b63aba1907145bea998dd612889d6b",
+        "GUID:f06555f75b070af458a003d92f9efb00",
+        "GUID:02f771204943f4a40949438e873e3eff",
+        "GUID:4307f53044263cf4b835bd812fc161a4",
+        "GUID:ba8c092d026123a418fb4bfb797a7bd8"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [
+        "macOSStandalone"
+    ],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}

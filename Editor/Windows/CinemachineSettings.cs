@@ -5,7 +5,7 @@ using System;
 namespace Cinemachine.Editor
 {
     [InitializeOnLoad]
-    internal sealed class CinemachineSettings
+    public class CinemachineSettings
     {
         public static class CinemachineCoreSettings
         {
@@ -408,10 +408,11 @@ namespace Cinemachine.Editor
                 return;
             }
 
-            if (instance.GetComponent<CinemachineBrain>() != null
-                || instance.GetComponent<Cinemachine.ECS_Hybrid.CM_Brain>() != null)
+            if (instance.GetComponent<CinemachineBrain>() != null)
             {
-                Rect texRect = new Rect(selectionRect.xMax - selectionRect.height, selectionRect.yMin, selectionRect.height, selectionRect.height);
+                Rect texRect = new Rect(
+                    selectionRect.xMax - selectionRect.height, selectionRect.yMin,
+                    selectionRect.height, selectionRect.height);
                 GUI.DrawTexture(texRect, CinemachineLogoTexture, ScaleMode.ScaleAndCrop);
             }
         }

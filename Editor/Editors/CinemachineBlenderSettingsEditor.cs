@@ -53,9 +53,10 @@ namespace Cinemachine.Editor
                 // Get all top-level (i.e. non-slave) virtual cameras
                 candidates.AddRange(Resources.FindObjectsOfTypeAll(
                         typeof(CinemachineVirtualCameraBase)) as ICinemachineCamera[]);
+/* GML todo
                 candidates.AddRange(Resources.FindObjectsOfTypeAll(
                         typeof(Cinemachine.ECS_Hybrid.CM_VcamBase)) as ICinemachineCamera[]);
-
+*/
                 for (int i = 0; i < candidates.Count; ++i)
                     if (candidates[i].ParentCamera != null)
                         candidates[i] = null;

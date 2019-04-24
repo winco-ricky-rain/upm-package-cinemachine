@@ -166,7 +166,7 @@ namespace Cinemachine.ECS_Hybrid
 
                 return new CM_BlendDefinition
                 {
-                    curve = def.BlendCurve,
+                    curve = def.BlendCurve.ToECS(),
                     duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
                 };
             }

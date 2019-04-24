@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Text;
-using Cinemachine.ECS;
 
 namespace Cinemachine.Utility
 {
@@ -103,36 +102,6 @@ namespace Cinemachine.Utility
             {
                 sb.Append("[");
                 sb.Append(blend.CamA.Name);
-                sb.Append("]");
-            }
-            string text = sb.ToString();
-            CinemachineDebug.ReturnToPool(sb);
-            return text;
-        }
-
-        /// <summary>Text description of a blend, for debugging</summary>
-        public static string Description(this CM_BlendState blend)
-        {
-            var sb = CinemachineDebug.SBFromPool();
-            var cam = CM_EntityVcam.GetEntityVcam(blend.cam);
-            if (cam == null || !cam.IsValid)
-                sb.Append("(none)");
-            else
-            {
-                sb.Append("[");
-                sb.Append(cam.Name);
-                sb.Append("]");
-            }
-            sb.Append(" ");
-            sb.Append((int)(blend.weight * 100f));
-            sb.Append("% from ");
-            var outgoingCam = CM_EntityVcam.GetEntityVcam(blend.outgoingCam);
-            if (outgoingCam == null || !outgoingCam.IsValid)
-                sb.Append("(none)");
-            else
-            {
-                sb.Append("[");
-                sb.Append(outgoingCam.Name);
                 sb.Append("]");
             }
             string text = sb.ToString();

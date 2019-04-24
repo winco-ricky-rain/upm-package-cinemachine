@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using UnityEngine.Serialization;
-using Unity.Mathematics;
 
 namespace Cinemachine
 {
@@ -42,10 +41,9 @@ namespace Cinemachine
             public float GetValueAt(float time, float timeOffset)
             {
                 float t = (Frequency * time) + timeOffset;
-                return math.select(
-                    noise.cnoise(new float2(t, 0) - 0.5f) * Amplitude,
-                    math.cos(t * 2f * (float)math.PI) * Amplitude * 0.5f,
-                    Constant);
+                if (Constant)
+                    return  Mathf.Cos(t * 2 * Mathf.PI) * Amplitude * 0.5f;
+                return (Mathf.PerlinNoise(t, 0f) - 0.5f) * Amplitude;
             }
         }
 
