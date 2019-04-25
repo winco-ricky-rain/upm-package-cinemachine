@@ -289,7 +289,8 @@ namespace Cinemachine.Editor
             // Get all ICinemachineComponents
             var allTypes
                 = ReflectionHelpers.GetTypesInAllDependentAssemblies(
-                        (Type t) => typeof(CinemachineComponentBase).IsAssignableFrom(t) && !t.IsAbstract);
+                        (Type t) => typeof(CinemachineComponentBase).IsAssignableFrom(t)
+                            && !t.IsAbstract);
 
             // Create a temp game object so we can instance behaviours
             GameObject go = new GameObject("Cinemachine Temp Object");

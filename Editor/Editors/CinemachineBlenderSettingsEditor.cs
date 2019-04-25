@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
 using System.Collections.Generic;
+using System;
+using Cinemachine.Utility;
 
 namespace Cinemachine.Editor
 {
@@ -16,7 +18,7 @@ namespace Cinemachine.Editor
         /// virtual cameras in the scene.
         /// </summary>
         public GetAllVirtualCamerasDelegate GetAllVirtualCameras;
-        public delegate CinemachineVirtualCameraBase[] GetAllVirtualCamerasDelegate();
+        public delegate ICinemachineCamera[] GetAllVirtualCamerasDelegate();
 
         protected override List<string> GetExcludedPropertiesInInspector()
         {
@@ -51,12 +53,14 @@ namespace Cinemachine.Editor
             else
             {
                 // Get all top-level (i.e. non-slave) virtual cameras
-                candidates.AddRange(Resources.FindObjectsOfTypeAll(
-                        typeof(CinemachineVirtualCameraBase)) as ICinemachineCamera[]);
-/* GML todo
-                candidates.AddRange(Resources.FindObjectsOfTypeAll(
-                        typeof(Cinemachine.ECS_Hybrid.CM_VcamBase)) as ICinemachineCamera[]);
-*/
+                var allTypes
+                    = ReflectionHelpers.GetTypesInAllDependentAssemblies(
+                            (Type t) => typeof(ICinemachineCamera).IsAssignableFrom(t)
+                                && typeof(MonoBehaviour).IsAssignableFrom(t)
+                                && !t.IsAbstract);
+                foreach (Type t in allTypes)
+                    candidates.AddRange(
+                        Resources.FindObjectsOfTypeAll(t) as ICinemachineCamera[]);
                 for (int i = 0; i < candidates.Count; ++i)
                     if (candidates[i].ParentCamera != null)
                         candidates[i] = null;
