@@ -1,10 +1,8 @@
 using UnityEngine;
 using UnityEditor;
 using System;
-using System.IO;
-using Unity.Cinemachine3.Authoring;
 
-namespace Unity.Cinemachine33.Authoring.Editor
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     internal static class MainMenu
     {

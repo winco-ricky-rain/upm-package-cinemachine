@@ -2,6 +2,7 @@
 using Unity.Mathematics;
 using Unity.Cinemachine3;
 using Cinemachine.Utility;
+using System.Runtime.CompilerServices;
 
 namespace Cinemachine
 {
@@ -52,7 +53,8 @@ namespace Cinemachine
         }
 
         /// <summary>Get the signal value at a given time, offset by a given amount</summary>
-        public static float GetValueAt(
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float GetValueAtECS(
             this NoiseSettings.NoiseParams n, float time, float timeOffset)
         {
             float t = (n.Frequency * time) + timeOffset;
@@ -62,6 +64,7 @@ namespace Cinemachine
                 n.Constant);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Unity.Cinemachine3.BlendCurve ToECS(this Cinemachine.BlendCurve c)
         {
             return new Unity.Cinemachine3.BlendCurve { A = c.A, B = c.B, bias = c.bias };

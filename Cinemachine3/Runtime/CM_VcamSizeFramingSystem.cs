@@ -6,7 +6,6 @@ using Unity.Burst;
 using System;
 using UnityEngine;
 using System.Runtime.CompilerServices;
-using Cinemachine;
 
 namespace Unity.Cinemachine3
 {
@@ -18,10 +17,10 @@ namespace Unity.Cinemachine3
         /// <summary>How much of the screen to fill with the bounding box of the targets.</summary>
         [Tooltip("The bounding box of the targets should occupy this amount of the screen space.  "
             + "1 means fill the whole screen.  0.5 means fill half the screen, etc.")]
+        [CM_Float2AsRangeProperty]
         public float2 screenFit;
 
         /// <summary>What screen dimensions to consider when framing</summary>
-        [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
         public enum FramingMode
         {
             /// <summary>Consider only the horizontal dimension.  Vertical framing is ignored.</summary>
@@ -63,18 +62,22 @@ namespace Unity.Cinemachine3
 
         /// <summary>The maximum distance that this behaviour is allowed to move the camera>
         [Tooltip("The maximum distance that this behaviour is allowed to move the camera.")]
+        [CM_Float2AsRangeProperty]
         public float2 dollyRange;
 
         /// <summary>Set this to limit how close to the target the camera can get</summary>
         [Tooltip("Set this to limit how close to the target the camera can get.")]
+        [CM_Float2AsRangeProperty]
         public float2 targetDistance;
 
         /// <summary>If adjusting FOV, will not set the FOV outside of this range</summary>
         [Tooltip("If adjusting FOV, will not set the FOV outside of this range.")]
+        [CM_Float2AsRangeProperty]
         public float2 fovRange;
 
         /// <summary>If adjusting Orthographic Size, will not set it outside of this range</summary>
         [Tooltip("If adjusting Orthographic Size, will not set it outside of this range.")]
+        [CM_Float2AsRangeProperty]
         public float2 orthoSizeRange;
     }
 

@@ -27,15 +27,15 @@ namespace Unity.Cinemachine3.Authoring.Editor
             mBodyDropdown.Initialize(
                 new GUIContent("Body", "Procedural algorithm for positioning the camera"),
                 "Do Nothing",
-                Target.gameObject, CinemachineCore.Stage.Body);
+                Target.gameObject, PipelineStage.Body);
             mAimDropdown.Initialize(
                 new GUIContent("Aim", "Procedural algorithm for orienting camera"),
                 "Do Nothing",
-                Target.gameObject, CinemachineCore.Stage.Aim);
+                Target.gameObject, PipelineStage.Aim);
             mNoiseDropdown.Initialize(
                 new GUIContent("Noise", "Procedural algorithm for adding position or rotation noise"),
                 "None",
-                Target.gameObject, CinemachineCore.Stage.Noise);
+                Target.gameObject, PipelineStage.Noise);
         }
 
         public override void OnInspectorGUI()
@@ -74,12 +74,12 @@ namespace Unity.Cinemachine3.Authoring.Editor
             GameObject mTarget;
             GUIContent mLabel = GUIContent.none;
             string mEmptyLabel;
-            CinemachineCore.Stage mStageFilter;
+            PipelineStage mStageFilter;
 
             public void Initialize(
                 GUIContent label, string emptyLabel,
                 GameObject target,
-                CinemachineCore.Stage stageFilter)
+                PipelineStage stageFilter)
             {
                 mLabel = label;
                 mEmptyLabel = emptyLabel;

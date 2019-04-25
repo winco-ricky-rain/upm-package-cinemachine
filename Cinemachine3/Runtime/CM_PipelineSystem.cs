@@ -10,6 +10,27 @@ using System.Runtime.CompilerServices;
 
 namespace Unity.Cinemachine3
 {
+    /// <summary>
+    /// Stages in the Cinemachine Component pipeline, used for
+    /// UI organization>.  This enum defines the pipeline order.
+    /// </summary>
+    public enum PipelineStage
+    {
+        /// <summary>Second stage: position the camera in space</summary>
+        Body,
+
+        /// <summary>Third stage: orient the camera to point at the target</summary>
+        Aim,
+
+        /// <summary>Final pipeline stage: apply noise (this is done separately, in the
+        /// Correction channel of the CameraState)</summary>
+        Noise,
+
+        /// <summary>Not a pipeline stage.  This is invoked on all virtual camera
+        /// types, after the pipeline is complete</summary>
+        Finalize
+    };
+
     [Serializable]
     public struct CM_VcamChannel : ISharedComponentData
     {

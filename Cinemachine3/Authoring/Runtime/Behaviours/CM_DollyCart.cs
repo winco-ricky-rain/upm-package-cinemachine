@@ -1,5 +1,4 @@
 using UnityEngine;
-using Unity.Cinemachine3;
 using Unity.Entities;
 
 namespace Unity.Cinemachine3.Authoring

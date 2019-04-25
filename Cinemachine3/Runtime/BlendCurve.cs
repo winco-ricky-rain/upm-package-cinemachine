@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using UnityEngine; // For PropertyAttributes
+using UnityEngine;
 
 namespace Unity.Cinemachine3
 {

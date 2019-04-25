@@ -6,14 +6,13 @@ using Unity.Burst;
 using System;
 using UnityEngine;
 using System.Runtime.CompilerServices;
-using Unity.Transforms;
 
 namespace Unity.Cinemachine3
 {
     [Serializable]
     public struct CM_VcamComposer : IComponentData
     {
-/*
+/* GML todo
         /// <summary>This setting will instruct the composer to adjust its target offset
         /// based on the motion of the target.  The composer will look at a point
         /// where it estimates the target will be this many seconds into the future.

@@ -20,5 +20,11 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": []
+    "versionDefines": [
+        {
+            "name": "com.unity.timeline",
+            "expression": "0.0.0-builtin",
+            "define": "CINEMACHINE_TIMELINE"
+        }
+    ]
 }

@@ -5,10 +5,9 @@ using UnityEngine;
 using Cinemachine.Editor;
 using System.Collections.Generic;
 using UnityEditor.Timeline;
-using Unity.Cinemachine3.Authoring;
 
-//namespace Cinemachine.Timeline
-//{
+namespace Unity.Cinemachine3.Authoring.Editor
+{
     [CustomEditor(typeof(CM_TimelineShot))]
     internal sealed class CM_TimelineShotEditor : BaseEditor<CM_TimelineShot>
     {
@@ -55,7 +54,7 @@ using Unity.Cinemachine3.Authoring;
                 rect.x += rect.width; rect.width = createSize.x;
                 if (GUI.Button(rect, createLabel))
                 {
-                    vcam = CinemachineMenu.CM_CreateVcam();
+                    vcam = MainMenu.CM_CreateVcam();
                     vcamProperty.exposedReferenceValue = vcam;
                 }
                 serializedObject.ApplyModifiedProperties();
@@ -144,5 +143,5 @@ using Unity.Cinemachine3.Authoring;
             }
         }
     }
-//}
+}
 #endif

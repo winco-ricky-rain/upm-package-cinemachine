@@ -159,9 +159,9 @@ namespace Unity.Cinemachine3
             float3 NoiseAt(NoiseSettings.TransformNoiseParams n, float time, float offset)
             {
                 return new float3(
-                    n.X.GetValueAt(time, offset),
-                    n.Y.GetValueAt(time, offset),
-                    n.Z.GetValueAt(time, offset));
+                    n.X.GetValueAtECS(time, offset),
+                    n.Y.GetValueAtECS(time, offset),
+                    n.Z.GetValueAtECS(time, offset));
             }
         }
     }

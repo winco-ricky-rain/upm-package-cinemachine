@@ -5,7 +5,7 @@ using Unity.Cinemachine.Common;
 namespace Unity.Cinemachine3.Authoring
 {
     [DisallowMultipleComponent]
-    [CM_Pipeline(CinemachineCore.Stage.Noise)]
+    [CM_Pipeline(PipelineStage.Noise)]
     [SaveDuringPlay]
     [ExecuteAlways]
     public class CM_VcamPerlinNoiseProxy : CM_VcamComponentProxyBase<CM_VcamPerlinNoise>

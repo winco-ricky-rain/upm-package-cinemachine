@@ -7,7 +7,7 @@ using Unity.Cinemachine.Common;
 namespace Unity.Cinemachine3.Authoring
 {
     [DisallowMultipleComponent]
-    [CM_Pipeline(CinemachineCore.Stage.Body)]
+    [CM_Pipeline(PipelineStage.Body)]
     [SaveDuringPlay]
     [ExecuteAlways]
     public class CM_VcamTrackedDollyProxy : CM_VcamComponentProxyBase<CM_VcamTrackedDolly>
