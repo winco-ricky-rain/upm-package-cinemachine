@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using Cinemachine.Utility;
-using Unity.Cinemachine3;
 using Unity.Entities;
 using Cinemachine;
 using Cinemachine.Editor;
+using Cinemachine.Utility;
 using Unity.Cinemachine.Common.Editor;
 
 namespace Unity.Cinemachine3.Authoring.Editor
@@ -114,11 +113,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
                     MessageType.Info);
         }
 
-#if UNITY_2019_1_OR_NEWER
         static readonly string kGizmoFileName = "Packages/com.unity.cinemachine/Gizmos/cm_logo.png";
-#else
-        static readonly string kGizmoFileName = "Cinemachine/cm_logo_lg.png";
-#endif
         protected static void DrawStandardVcamGizmos(T vcam, GizmoType drawType)
         {
             var color = vcam.IsLive

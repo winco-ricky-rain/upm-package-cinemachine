@@ -3,6 +3,11 @@
 namespace Unity.Cinemachine.Common
 {
     /// <summary>
+    /// A dummy class for dependency checking.  GML todo: replace with something else
+    /// </summary>
+    public sealed class AssemblyDependencyClass {};
+
+    /// <summary>
     /// Invoke play-mode-save for a class.  This class's fields will be scanned
     /// upon exiting play mode, and its property values will be applied to the scene object.
     /// This is a stopgap measure that will become obsolete once Unity implements

@@ -3,7 +3,6 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Burst;
 using UnityEngine.Jobs;
-using Unity.Cinemachine3;
 using UnityEngine;
 using Unity.Mathematics;
 

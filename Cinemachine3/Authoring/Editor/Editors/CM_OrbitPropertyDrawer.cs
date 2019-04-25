@@ -1,8 +1,8 @@
 using UnityEngine;
 using UnityEditor;
-using Unity.Cinemachine3;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomPropertyDrawer(typeof(CM_VcamOrbital.Orbit))]
     internal sealed class CM_OrbitPropertyDrawer : PropertyDrawer

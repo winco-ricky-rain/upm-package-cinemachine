@@ -1,5 +1,4 @@
 ﻿using UnityEditor;
-using Unity.Cinemachine3.Authoring;
 
 namespace Unity.Cinemachine3.Authoring.Editor
 {

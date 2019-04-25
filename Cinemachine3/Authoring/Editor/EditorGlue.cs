@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 
-namespace Unity.Cinemachine33.Authoring.Editor
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [InitializeOnLoad]
     internal sealed class EditorGlue

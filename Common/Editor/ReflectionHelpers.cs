@@ -75,7 +75,7 @@ namespace Unity.Cinemachine.Common.Editor
         {
             List<Type> foundTypes = new List<Type>(100);
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            string definedIn = typeof(ReflectionHelpers).Assembly.GetName().Name;
+            string definedIn = typeof(AssemblyDependencyClass).Assembly.GetName().Name;
             foreach (Assembly assembly in assemblies)
             {
                 // Note that we have to call GetName().Name.  Just GetName() will not work.

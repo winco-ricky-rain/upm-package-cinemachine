@@ -1,9 +1,8 @@
 using UnityEngine;
 using UnityEditor;
-using Unity.Cinemachine3;
 using Unity.Mathematics;
 
-namespace Cinemachine.Editor.ECS
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomPropertyDrawer(typeof(CM_Float2AsRangePropertyAttribute))]
     internal sealed class CM_Float2AsRangePropertyDrawer : PropertyDrawer

@@ -4,8 +4,10 @@ using System.Reflection;
 using Unity.Cinemachine3;
 using Unity.Mathematics;
 using System;
+using Cinemachine.Editor;
+using Cinemachine;
 
-namespace Cinemachine.Editor.ECS
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomPropertyDrawer(typeof(CM_InputAxisDriver))]
     internal sealed class CM_InputAxisDriverPropertyDrawer : PropertyDrawer
