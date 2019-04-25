@@ -5,10 +5,11 @@ using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using Unity.Cinemachine3.Authoring;
+using Unity.Cinemachine3;
 
 //namespace Unity.Cinemachine3.Authoring
 //{
-    [Serializable]
+[Serializable]
     [TrackClipType(typeof(CM_TimelineShot))]
     [TrackBindingType(typeof(CM_Brain), TrackBindingFlags.None)]
     [TrackColor(0.53f, 0.0f, 0.08f)]
@@ -23,7 +24,7 @@ using Unity.Cinemachine3.Authoring;
                 CM_TimelineShot shot = (CM_TimelineShot)c.asset;
                 CM_VcamBase vcam = shot.VirtualCamera.Resolve(graph.GetResolver());
                 if (vcam != null)
-                    c.displayName = vcam.Name;
+                    c.displayName = VirtualCamera.FromEntity(vcam.Entity).Name;
             }
 
             var mixer = ScriptPlayable<CM_TimelineMixer>.Create(graph);

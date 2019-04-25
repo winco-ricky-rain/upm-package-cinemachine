@@ -11,7 +11,7 @@ namespace Unity.Cinemachine3
 {
     public interface IGetBlendDefinition
     {
-        CM_BlendDefinition GetBlend(Entity fromCam, Entity toCam);
+        CM_BlendDefinition GetBlend(VirtualCamera fromCam, VirtualCamera toCam);
     }
 
     public struct CM_BlendDefinition
@@ -123,14 +123,14 @@ namespace Unity.Cinemachine3
             {
                 if (stack[i].cam != Entity.Null)
                 {
-                    state = CM_EntityVcam.StateFromEntity(stack[i].cam);
+                    state = VirtualCamera.FromEntity(stack[i].cam).State;
                     break;
                 }
             }
             for (--i; i >= 0; --i)
             {
                 state = CameraState.Lerp(
-                    state, CM_EntityVcam.StateFromEntity(stack[i].cam), stack[i].BlendWeight());
+                    state, VirtualCamera.FromEntity(stack[i].cam).State, stack[i].BlendWeight());
             }
             return state;
         }
@@ -208,13 +208,13 @@ namespace Unity.Cinemachine3
         }
 
         /// <summary>Get the current active virtual camera.</summary>
-        public Entity ActiveVirtualCamera
+        public VirtualCamera ActiveVirtualCamera
         {
             get
             {
                 if (mCurrentBlend.NumActiveFrames == 0)
-                    return Entity.Null;
-                return mCurrentBlend.ElementAt(mActiveVcamIndex).cam;
+                    return VirtualCamera.Null;
+                return VirtualCamera.FromEntity(mCurrentBlend.ElementAt(mActiveVcamIndex).cam);
             }
         }
 
@@ -260,17 +260,17 @@ namespace Unity.Cinemachine3
             }
         }
 
-        public bool IsLive(Entity vcam)
+        public bool IsLive(VirtualCamera vcam)
         {
-            return mCurrentBlend.Uses(vcam);
+            return mCurrentBlend.Uses(vcam.Entity);
         }
 
-        public void GetLiveVcams(List<Entity> vcams)
+        public void GetLiveVcams(List<VirtualCamera> vcams)
         {
             int count = mCurrentBlend.NumActiveFrames;
             for (int i = 0; i < count; ++i)
                 if (!mCurrentBlend.ElementAt(i).IsUndefined())
-                    vcams.Add(mCurrentBlend.ElementAt(i).cam);
+                    vcams.Add(VirtualCamera.FromEntity(mCurrentBlend.ElementAt(i).cam));
         }
 
         // Call this from the main thread, before Update() gets called.
@@ -288,7 +288,9 @@ namespace Unity.Cinemachine3
                 var blend = mNativeFrame.ElementAt(i);
                 if (blend.IsUndefined())
                 {
-                    var def = cb.GetBlend(mNativeFrame.ElementAt(i+1).cam, blend.cam);
+                    var def = cb.GetBlend(VirtualCamera.FromEntity(
+                        mNativeFrame.ElementAt(i+1).cam),
+                        VirtualCamera.FromEntity(blend.cam));
                     blend.blendCurve = def.curve;
                     blend.duration = def.duration;
                     mNativeFrame.ElementAt(i) = blend;
@@ -298,17 +300,17 @@ namespace Unity.Cinemachine3
             }
         }
 
-        public Entity GetNewlyActivatedVcam()
+        public VirtualCamera GetNewlyActivatedVcam()
         {
             if (mNativeFrame.NumActiveFrames > 0 && mNativeFrame.ElementAt(0).IsUndefined())
-                return mNativeFrame.ElementAt(0).cam;
-            return Entity.Null;
+                return VirtualCamera.FromEntity(mNativeFrame.ElementAt(0).cam);
+            return VirtualCamera.Null;
         }
 
         // Can be called from job
-        public void Update(float deltaTime, Entity activeCamera)
+        public void Update(float deltaTime, VirtualCamera activeCamera)
         {
-            UpdateNativeFrame(deltaTime, activeCamera);
+            UpdateNativeFrame(deltaTime, activeCamera.Entity);
             ComputeCurrentBlend();
         }
 
@@ -330,7 +332,7 @@ namespace Unity.Cinemachine3
         /// <returns>The oiverride ID.  Don't forget to call ReleaseBlendableOverride
         /// after all overriding is finished, to free the OverideStack resources.</returns>
         public int SetBlendableOverride(
-            int overrideId, Entity camA, Entity camB, float weightB)
+            int overrideId, VirtualCamera camA, VirtualCamera camB, float weightB)
         {
             if (overrideId < 0)
                 overrideId = ++mLastFrameId;
@@ -339,8 +341,8 @@ namespace Unity.Cinemachine3
             frameStack[index] = new Frame()
             {
                 id = overrideId,
-                camA = camA,
-                camB = camB,
+                camA = camA.Entity,
+                camB = camB.Entity,
                 weightB = weightB
             };
 

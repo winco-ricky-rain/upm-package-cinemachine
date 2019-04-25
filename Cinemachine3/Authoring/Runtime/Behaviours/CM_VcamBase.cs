@@ -9,7 +9,7 @@ namespace Unity.Cinemachine3.Authoring
 {
     [RequireComponent(typeof(GameObjectEntity))]
     [SaveDuringPlay]
-    public abstract class CM_VcamBase : MonoBehaviour, ICinemachineCamera
+    public abstract class CM_VcamBase : MonoBehaviour
     {
         /// <summary>The priority will determine which camera becomes active based on the
         /// state of other cameras and this camera.  Higher numbers have greater priority.
@@ -23,44 +23,27 @@ namespace Unity.Cinemachine3.Authoring
         /// other virtual cameras </summary>
         public CinemachineVirtualCameraBase.TransitionParams transitions; // GML fixme
 
-        public ICinemachineCamera ParentCamera { get { return null; } }
-        public bool IsLiveChild(ICinemachineCamera vcam) { return false; }
-        public void UpdateCameraState(Vector3 worldUp, float deltaTime) {}
-
         public bool IsLive
         {
             get
             {
                 var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
-                return m == null ? false : m.IsLive(this);
+                return m == null ? false : m.IsLive(VirtualCamera.FromEntity(Entity));
             }
         }
 
-        public Entity AsEntity { get { return Entity; }}
-
         public virtual bool IsValid { get { return !(this == null); } }
-
-        /// <summary>Get the name of the Virtual Camera</summary>
-        public virtual string Name { get { return name; } }
 
         /// <summary>The CameraState object holds all of the information
         /// necessary to position the Unity camera.  It is the output of this class.</summary>
         public virtual CameraState State
         {
-            get { return (CM_EntityVcam.StateFromEntity(Entity)); }
+            get { return VirtualCamera.FromEntity(Entity).State; }
         }
-
-        /// <summary>Gets a brief debug description of this virtual camera, for
-        /// use when displayiong debug info</summary>
-        public virtual string Description { get { return string.Empty; }}
-
-        public void OnTargetObjectWarped(Transform target, Vector3 positionDelta) {}
-        public void OnTransitionFromCamera(ICinemachineCamera fromCam, Vector3 worldUp, float deltaTime) {}
-        public void InternalUpdateCameraState(Vector3 worldUp, float deltaTime) {}
 
         protected GameObjectEntity m_gameObjectEntityComponent;
 
-        protected Entity Entity
+        public Entity Entity
         {
             get
             {
@@ -69,14 +52,11 @@ namespace Unity.Cinemachine3.Authoring
             }
         }
 
-        protected EntityManager ActiveEntityManager
-        {
-            get { return World.Active?.EntityManager; }
-        }
+        public VirtualCamera VirtualCamera { get { return VirtualCamera.FromEntity(Entity); } }
 
         public T GetEntityComponentData<T>() where T : struct, IComponentData
         {
-            var m = ActiveEntityManager;
+            var m = World.Active?.EntityManager;
             if (m != null)
                 if (m.HasComponent<T>(Entity))
                     return m.GetComponentData<T>(Entity);
@@ -110,7 +90,7 @@ namespace Unity.Cinemachine3.Authoring
         public int FindTopLevelChannel()
         {
             var channel = ParentChannel;
-            var m = ActiveEntityManager;
+            var m = World.Active?.EntityManager;
             var channelSystem = World.Active?.GetExistingSystem<CM_ChannelSystem>();
             if (m != null && channelSystem != null)
             {
@@ -130,7 +110,7 @@ namespace Unity.Cinemachine3.Authoring
             if (target == null)
                 return Entity.Null;
 
-            var m = ActiveEntityManager;
+            var m = World.Active?.EntityManager;
             if (m == null)
                 return Entity.Null;
 
@@ -154,7 +134,7 @@ namespace Unity.Cinemachine3.Authoring
 
         protected virtual void PushValuesToEntityComponents()
         {
-            var m = ActiveEntityManager;
+            var m = World.Active?.EntityManager;
             if (m == null || !m.Exists(Entity))
                 return;
 
@@ -177,18 +157,18 @@ namespace Unity.Cinemachine3.Authoring
                 priority = priority
                 // GML todo: vcamSequence
             });
+
+            // GML todo: set the name
         }
 
         protected virtual void OnEnable()
         {
             m_gameObjectEntityComponent = GetComponent<GameObjectEntity>();
-            CM_EntityVcam.RegisterEntityVcam(this);
             PushValuesToEntityComponents();
         }
 
         protected virtual void OnDisable()
         {
-            CM_EntityVcam.UnregisterEntityVcam(this);
         }
 
         // GML: Needed in editor only, probably, only if something is dirtied

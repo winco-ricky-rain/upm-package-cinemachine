@@ -15,8 +15,8 @@ namespace Cinemachine
         public static string Description(this CM_BlendState blend)
         {
             var sb = CinemachineDebug.SBFromPool();
-            var cam = CM_EntityVcam.GetEntityVcam(blend.cam);
-            if (cam == null || !cam.IsValid)
+            var cam = VirtualCamera.FromEntity(blend.cam);
+            if (cam.IsNull)
                 sb.Append("(none)");
             else
             {
@@ -27,8 +27,8 @@ namespace Cinemachine
             sb.Append(" ");
             sb.Append((int)(blend.weight * 100f));
             sb.Append("% from ");
-            var outgoingCam = CM_EntityVcam.GetEntityVcam(blend.outgoingCam);
-            if (outgoingCam == null || !outgoingCam.IsValid)
+            var outgoingCam = VirtualCamera.FromEntity(blend.outgoingCam);
+            if (outgoingCam.IsNull)
                 sb.Append("(none)");
             else
             {
@@ -39,18 +39,6 @@ namespace Cinemachine
             string text = sb.ToString();
             CinemachineDebug.ReturnToPool(sb);
             return text;
-        }
-
-        public static CinemachineBlendDefinition GetBlendForVirtualCameras(
-            this CinemachineBlenderSettings def,
-            Entity fromCam, Entity toCam,
-            CinemachineBlendDefinition defaultBlend)
-        {
-            var f = CM_EntityVcam.GetEntityVcam(fromCam);
-            var t = CM_EntityVcam.GetEntityVcam(toCam);
-            var fromName = f == null ? string.Empty : f.Name;
-            var toName = t == null ? string.Empty : t.Name;
-            return def.GetBlendForVirtualCameras(fromName, toName, defaultBlend);
         }
 
         /// <summary>Get the signal value at a given time, offset by a given amount</summary>

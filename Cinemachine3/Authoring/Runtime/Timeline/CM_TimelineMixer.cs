@@ -39,7 +39,7 @@ using Cinemachine;
 
         struct ClipInfo
         {
-            public ICinemachineCamera vcam;
+            public VirtualCamera vcam;
             public float weight;
             public double localTime;
             public double duration;
@@ -77,7 +77,7 @@ using Cinemachine;
                     && weight > 0)
                 {
                     clipA = clipB;
-                    clipB.vcam = shot.VirtualCamera;
+                    clipB.vcam = VirtualCamera.FromEntity(shot.VirtualCamera.Entity);
                     clipB.weight = weight;
                     clipB.localTime = clip.GetTime();
                     clipB.duration = clip.GetDuration();
@@ -99,8 +99,8 @@ using Cinemachine;
             }
 
             // Override the Cinemachine brain with our results
-            ICinemachineCamera camA = incomingIsB ? clipA.vcam : clipB.vcam;
-            ICinemachineCamera camB = incomingIsB ? clipB.vcam : clipA.vcam;
+            VirtualCamera camA = incomingIsB ? clipA.vcam : clipB.vcam;
+            VirtualCamera camB = incomingIsB ? clipB.vcam : clipA.vcam;
             float camWeightB = incomingIsB ? clipB.weight : 1 - clipB.weight;
             mBrainOverrideId = channelSystem.SetCameraOverride(
                 mBrain.Channel.channel,

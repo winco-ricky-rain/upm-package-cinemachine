@@ -50,7 +50,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
             mNoiseDropdown.DrawDropdownWidgetInInspector();
 
             var defaults = new CM_FreeLookRigBlendableSettings();
-            defaults.PullFrom(Target.AsEntity);
+            defaults.PullFrom(Target.Entity);
             DrawRigEditor(topRigProp, defaults);
             DrawRigEditor(bottomRigProp, defaults);
         }

@@ -62,7 +62,7 @@ namespace Unity.Cinemachine3.Authoring
         /// <summary>Called when the current live vcam changes.  If a blend is involved,
         /// then this will be called on the first frame of the blend</summary>
         [Serializable] public class ActivationEvent
-            : UnityEvent<ICinemachineCamera, ICinemachineCamera, bool> {}
+            : UnityEvent<VirtualCamera, VirtualCamera, bool> {}
 
         /// <summary>Event with a CM_Brain parameter</summary>
         [Serializable] public class BrainEvent : UnityEvent<CM_Brain> {}
@@ -98,14 +98,12 @@ namespace Unity.Cinemachine3.Authoring
         /// <returns>Color used to indicate that a camera is in Solo mode.</returns>
         public static Color GetSoloGUIColor() { return Color.Lerp(Color.red, Color.yellow, 0.8f); }
 
-        public Entity SoloCamera
+        public VirtualCamera SoloCamera
         {
             get
             {
                 var m = ActiveChannelSystem;
-                if (m != null)
-                    return m.GetSoloCamera(Channel.channel);
-                return Entity.Null;
+                return (m == null) ? VirtualCamera.Null : m.GetSoloCamera(Channel.channel);
             }
             set
             {
@@ -118,11 +116,12 @@ namespace Unity.Cinemachine3.Authoring
         /// <summary>
         /// Get the current active virtual camera.
         /// </summary>
-        public ICinemachineCamera ActiveVirtualCamera
+        public VirtualCamera ActiveVirtualCamera
         {
             get
             {
-                return ActiveChannelSystem?.GetActiveVirtualCamera(Channel.channel);
+                var m = ActiveChannelSystem;
+                return m == null ? VirtualCamera.Null : m.GetActiveVirtualCamera(Channel.channel);
             }
         }
 
@@ -133,10 +132,8 @@ namespace Unity.Cinemachine3.Authoring
         {
             get
             {
-                var channelSystem = ActiveChannelSystem;
-                if (channelSystem != null)
-                    return channelSystem.IsBlending(Channel.channel);
-                return false;
+                var m = ActiveChannelSystem;
+                return (m == null) ? false : m.IsBlending(Channel.channel);
             }
         }
 
@@ -190,7 +187,7 @@ namespace Unity.Cinemachine3.Authoring
         /// Hook for custom blend - called whenever a blend is created, allowing client
         /// to override the blend definition
         public delegate CinemachineBlendDefinition CreateBlendDelegate(
-            GameObject context, ICinemachineCamera fromCam, ICinemachineCamera toCam,
+            GameObject context, VirtualCamera fromCam, VirtualCamera toCam,
             CinemachineBlendDefinition defaultBlend);
         public static CreateBlendDelegate OnCreateBlend;
 
@@ -237,7 +234,7 @@ namespace Unity.Cinemachine3.Authoring
                 sb.Append("CM ");
                 sb.Append(gameObject.name);
                 sb.Append(": ");
-                if (SoloCamera != Entity.Null)
+                if (!SoloCamera.IsNull)
                 {
                     sb.Append("SOLO ");
                     GUI.color = GetSoloGUIColor();
@@ -247,8 +244,8 @@ namespace Unity.Cinemachine3.Authoring
                     sb.Append(ActiveBlend.Description());
                 else
                 {
-                    ICinemachineCamera vcam = ActiveVirtualCamera;
-                    if (vcam == null)
+                    VirtualCamera vcam = ActiveVirtualCamera;
+                    if (vcam.IsNull)
                         sb.Append("(none)");
                     else
                     {
@@ -345,17 +342,16 @@ namespace Unity.Cinemachine3.Authoring
         struct FetchBlendDefinition : IGetBlendDefinition
         {
             public CM_Brain brain;
-            public CM_BlendDefinition GetBlend(Entity fromCam, Entity toCam)
+            public CM_BlendDefinition GetBlend(VirtualCamera fromCam, VirtualCamera toCam)
             {
                 var def = brain.Channel.defaultBlend;
                 if (brain.customBlends != null)
-                    def = brain.customBlends.GetBlendForVirtualCameras(fromCam, toCam, def);
+                    def = brain.customBlends.GetBlendForVirtualCameras(
+                        fromCam.Name, toCam.Name, def);
 
                 // Invoke the cusom blend callback
                 if (OnCreateBlend != null)
-                    def = OnCreateBlend(brain.gameObject,
-                        CM_EntityVcam.GetEntityVcam(fromCam),
-                        CM_EntityVcam.GetEntityVcam(toCam), def);
+                    def = OnCreateBlend(brain.gameObject, fromCam, toCam, def);
 
                 return new CM_BlendDefinition
                 {
@@ -365,8 +361,8 @@ namespace Unity.Cinemachine3.Authoring
             }
         }
 
-        List<Entity> liveVcamsPreviousFrame = new List<Entity>();
-        List<Entity> scratchList = new List<Entity>();
+        List<VirtualCamera> liveVcamsPreviousFrame = new List<VirtualCamera>();
+        List<VirtualCamera> scratchList = new List<VirtualCamera>();
 
         void ProcessActiveVcam()
         {
@@ -385,32 +381,31 @@ namespace Unity.Cinemachine3.Authoring
                 scratchList.Clear();
                 channelSystem.GetLiveVcams(Channel.channel, scratchList, true); // deep
                 var previous = liveVcamsPreviousFrame.Count > 0
-                    ? CM_EntityVcam.GetEntityVcam(liveVcamsPreviousFrame[0]) : null;
+                    ? liveVcamsPreviousFrame[0] : VirtualCamera.Null;
                 bool isBlending = channelSystem.IsBlending(c.channel);
                 for (int i = scratchList.Count - 1; i >= 0; --i)
                 {
-                    var e = scratchList[i];
+                    var vcam = scratchList[i];
+                    if (vcam.IsNull)
+                        continue; // should never happen!
 
                     // Mark it live
+                    var e = vcam.Entity;
                     if (entityManager.HasComponent<CM_VcamPositionState>(e))
                     {
                         var s = entityManager.GetComponentData<CM_VcamPositionState>(e);
                         s.isLive = true;
                         entityManager.SetComponentData(e, s);
                     }
-                    if (!liveVcamsPreviousFrame.Contains(e))
+                    if (!liveVcamsPreviousFrame.Contains(vcam))
                     {
-                        var vcam = CM_EntityVcam.GetEntityVcam(e);
-                        if (vcam != null)
-                        {
-                            // Notify incoming camera of transition.
-                            // GML this is not really useful... think of something better
-                            vcam.OnTransitionFromCamera(previous, worldUp, deltaTime);
+                        // Notify incoming camera of transition.
+                        // GML this is not really useful... think of something better
+                        // vcam.OnTransitionFromCamera(previous, worldUp, deltaTime);
 
-                            // Send transition notification to observers
-                            if (events.vcamActivatedEvent != null)
-                                events.vcamActivatedEvent.Invoke(vcam, previous, isBlending);
-                        }
+                        // Send transition notification to observers
+                        if (events.vcamActivatedEvent != null)
+                            events.vcamActivatedEvent.Invoke(vcam, previous, isBlending);
                     }
                 }
                 var temp = liveVcamsPreviousFrame;

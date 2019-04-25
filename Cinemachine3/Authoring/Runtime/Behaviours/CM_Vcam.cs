@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.Transforms;
 using Cinemachine;
 using Unity.Cinemachine.Common;
+using Unity.Entities;
 
 namespace Unity.Cinemachine3.Authoring
 {
@@ -35,7 +36,7 @@ namespace Unity.Cinemachine3.Authoring
         {
             base.PushValuesToEntityComponents();
 
-            var m = ActiveEntityManager;
+            var m = World.Active?.EntityManager;
             if (m == null || !m.Exists(Entity))
                 return;
 

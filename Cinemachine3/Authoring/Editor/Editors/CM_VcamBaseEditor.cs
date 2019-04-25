@@ -26,9 +26,9 @@ namespace Unity.Cinemachine3.Authoring.Editor
         protected virtual void OnDisable()
         {
             var brain = Target == null ? null : CM_Brain.FindBrain(TopLevelChannel);
-            if (brain != null && brain.SoloCamera == Target.AsEntity)
+            if (brain != null && brain.SoloCamera == Target.VirtualCamera)
             {
-                brain.SoloCamera = Entity.Null;
+                brain.SoloCamera = VirtualCamera.Null;
                 // GML is this the right thing to do?
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
@@ -69,7 +69,8 @@ namespace Unity.Cinemachine3.Authoring.Editor
 
             var brain = CM_Brain.FindBrain(TopLevelChannel);
             Color color = GUI.color;
-            bool isSolo = brain != null && brain.SoloCamera == Target.AsEntity && Target.AsEntity != Entity.Null;
+            bool isSolo = brain != null && brain.SoloCamera == Target.VirtualCamera
+                && !Target.VirtualCamera.IsNull;
             if (isSolo)
                 GUI.color = CM_Brain.GetSoloGUIColor();
 
@@ -82,7 +83,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
             if (GUI.Button(rect, "Solo", "Button"))
             {
                 isSolo = !isSolo;
-                brain.SoloCamera = isSolo ? Target.AsEntity : Entity.Null;
+                brain.SoloCamera = isSolo ? Target.VirtualCamera : VirtualCamera.Null;
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
             GUI.enabled = true;

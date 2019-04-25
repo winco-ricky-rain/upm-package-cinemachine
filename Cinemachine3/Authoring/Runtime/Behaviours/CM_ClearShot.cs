@@ -24,28 +24,6 @@ namespace Unity.Cinemachine3.Authoring
         /// </summary>
         public CinemachineBlenderSettings customBlends;
 
-        /// <summary>Gets a brief debug description of this virtual camera,
-        /// for use when displayiong debug info</summary>
-        public override string Description
-        {
-            get
-            {
-                // Show the active camera and blend
-                var blend = ActiveBlend;
-                if (blend.outgoingCam != Entity.Null)
-                    return blend.Description();
-
-                ICinemachineCamera vcam = ActiveVirtualCamera;
-                if (vcam == null)
-                    return "(none)";
-                var sb = CinemachineDebug.SBFromPool();
-                sb.Append("["); sb.Append(vcam.Name); sb.Append("]");
-                string text = sb.ToString();
-                CinemachineDebug.ReturnToPool(sb);
-                return text;
-            }
-        }
-
         static CM_ChannelSystem ActiveChannelSystem
         {
             get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
@@ -55,7 +33,7 @@ namespace Unity.Cinemachine3.Authoring
         {
             get
             {
-                var m = ActiveEntityManager;
+                var m = World.Active?.EntityManager;
                 if (m != null && m.HasComponent<CM_ChannelState>(Entity))
                     return m.GetComponentData<CM_ChannelState>(Entity);
                 return new CM_ChannelState();
@@ -66,14 +44,14 @@ namespace Unity.Cinemachine3.Authoring
         {
             get
             {
-                var m = ActiveEntityManager;
+                var m = World.Active?.EntityManager;
                 if (m != null)
                     return m.GetComponentData<CM_Channel>(Entity);
                 return CM_Channel.Default;
             }
             set
             {
-                var m = ActiveEntityManager;
+                var m = World.Active?.EntityManager;
                 if (m != null && m.HasComponent<CM_Channel>(Entity))
                     m.SetComponentData(Entity, value);
             }
@@ -82,9 +60,13 @@ namespace Unity.Cinemachine3.Authoring
         /// <summary>
         /// Get the current active virtual camera.
         /// </summary>
-        public ICinemachineCamera ActiveVirtualCamera
+        public VirtualCamera ActiveVirtualCamera
         {
-            get { return ActiveChannelSystem?.GetActiveVirtualCamera(Channel.channel); }
+            get
+            {
+                var m = ActiveChannelSystem;
+                return m == null ? VirtualCamera.Null : m.GetActiveVirtualCamera(Channel.channel);
+            }
         }
 
         /// <summary>
@@ -115,15 +97,6 @@ namespace Unity.Cinemachine3.Authoring
             }
         }
 
-        protected override void PushValuesToEntityComponents()
-        {
-            base.PushValuesToEntityComponents();
-
-            var m = ActiveEntityManager;
-            if (m == null || !m.Exists(Entity))
-                return;
-        }
-
         ///  Will only be called if Unity Editor - never in build
         private void OnGuiHandler()
         {
@@ -132,7 +105,8 @@ namespace Unity.Cinemachine3.Authoring
             else
             {
                 var sb = CinemachineDebug.SBFromPool();
-                sb.Append(Name); sb.Append(": "); sb.Append(Description);
+                var vcam = VirtualCamera.FromEntity(Entity);
+                sb.Append(vcam.Name); sb.Append(": "); sb.Append(vcam.Description);
                 string text = sb.ToString();
                 Rect r = CinemachineDebug.GetScreenPos(this, text, GUI.skin.box);
                 GUI.Label(r, text, GUI.skin.box);
@@ -153,17 +127,15 @@ namespace Unity.Cinemachine3.Authoring
         struct FetchBlendDefinition : IGetBlendDefinition
         {
             public CM_ClearShot clearShot;
-            public CM_BlendDefinition GetBlend(Entity fromCam, Entity toCam)
+            public CM_BlendDefinition GetBlend(VirtualCamera fromCam, VirtualCamera toCam)
             {
                 var def = clearShot.Channel.defaultBlend;
                 if (clearShot.customBlends != null)
-                    def = clearShot.customBlends.GetBlendForVirtualCameras(fromCam, toCam, def);
+                    def = clearShot.customBlends.GetBlendForVirtualCameras(fromCam.Name, toCam.Name, def);
 
                 // Invoke the cusom blend callback
                 if (CM_Brain.OnCreateBlend != null)
-                    def = CM_Brain.OnCreateBlend(clearShot.gameObject,
-                        CM_EntityVcam.GetEntityVcam(fromCam),
-                        CM_EntityVcam.GetEntityVcam(toCam), def);
+                    def = CM_Brain.OnCreateBlend(clearShot.gameObject, fromCam, toCam, def);
 
                 return new CM_BlendDefinition
                 {

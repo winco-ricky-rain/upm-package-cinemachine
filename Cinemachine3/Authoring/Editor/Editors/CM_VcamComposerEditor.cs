@@ -115,7 +115,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
             bool isLive = vcam.IsLive;
 
             // Screen guides
-            var state = CM_EntityVcam.StateFromEntity(entity);
+            var state = VirtualCamera.FromEntity(entity).State;
             mScreenGuideEditor.OnGUI_DrawGuides(isLive, brain.OutputCamera, state.Lens, true);
 
             // Draw an on-screen gizmo for the target
