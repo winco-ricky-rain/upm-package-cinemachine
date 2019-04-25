@@ -2,7 +2,7 @@ using System;
 using System.Linq.Expressions;
 using UnityEditor;
 
-namespace Cinemachine.Editor
+namespace Unity.Cinemachine.Common.Editor
 {
     /// <summary>
     /// Helpers for the editor
@@ -40,7 +40,8 @@ namespace Cinemachine.Editor
         /// MyClass myclass = null;
         /// mySerializedObject.FindProperty( () => myClass.m_MyField);
         /// </example>
-        public static SerializedProperty FindProperty(this SerializedObject obj, Expression<Func<object>> exp)
+        public static SerializedProperty FindProperty(
+            this SerializedObject obj, Expression<Func<object>> exp)
         {
             return obj.FindProperty(PropertyName(exp));
         }
@@ -54,7 +55,8 @@ namespace Cinemachine.Editor
         /// MyClass myclass = null;
         /// mySerializedProperty.FindPropertyRelative( () => myClass.m_MyField);
         /// </example>
-        public static SerializedProperty FindPropertyRelative(this SerializedProperty obj, Expression<Func<object>> exp)
+        public static SerializedProperty FindPropertyRelative(
+            this SerializedProperty obj, Expression<Func<object>> exp)
         {
             return obj.FindPropertyRelative(PropertyName(exp));
         }

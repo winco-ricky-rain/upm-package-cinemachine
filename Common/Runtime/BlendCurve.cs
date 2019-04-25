@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace Unity.Cinemachine3
+namespace Unity.Cinemachine.Common
 {
     [Serializable]
     public struct BlendCurve

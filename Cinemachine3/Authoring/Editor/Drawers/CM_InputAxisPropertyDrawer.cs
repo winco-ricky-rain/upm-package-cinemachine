@@ -3,6 +3,7 @@ using UnityEditor;
 using System.Reflection;
 using Unity.Mathematics;
 using Cinemachine.Editor;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Unity.Cinemachine3.Authoring.Editor
 {

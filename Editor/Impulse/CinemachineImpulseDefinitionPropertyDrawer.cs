@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -8,7 +9,7 @@ namespace Cinemachine.Editor
     internal sealed class CinemachineImpulseDefinitionPropertyDrawer : PropertyDrawer
     {
         const int vSpace = 2;
-        
+
         float HeaderHeight { get { return EditorGUIUtility.singleLineHeight * 1.5f; } }
         float DrawHeader(Rect rect, string text)
         {

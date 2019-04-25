@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEditorInternal;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -95,7 +96,7 @@ namespace Cinemachine.Editor
             EditorGUI.PropertyField(r, element.FindPropertyRelative(() => def.roll), rollLabel);
             EditorGUIUtility.labelWidth = oldWidth;
 
-            r.x += r.width + hSpace; r.height += 1; r.width = r.height; 
+            r.x += r.width + hSpace; r.height += 1; r.width = r.height;
             GUIContent setButtonContent = EditorGUIUtility.IconContent("d_RectTransform Icon");
             setButtonContent.tooltip = "Set to scene-view camera position";
             if (GUI.Button(r, setButtonContent, GUI.skin.label) && SceneView.lastActiveSceneView != null)
@@ -225,7 +226,7 @@ namespace Cinemachine.Editor
              | GizmoType.InSelectionHierarchy | GizmoType.Pickable, typeof(CinemachineSmoothPath))]
         static void DrawGizmos(CinemachineSmoothPath path, GizmoType selectionType)
         {
-            CinemachinePathEditor.DrawPathGizmo(path, 
+            CinemachinePathEditor.DrawPathGizmo(path,
                 (Selection.activeGameObject == path.gameObject)
                 ? path.m_Appearance.pathColor : path.m_Appearance.inactivePathColor);
         }

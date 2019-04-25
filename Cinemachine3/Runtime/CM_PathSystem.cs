@@ -8,6 +8,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3
 {

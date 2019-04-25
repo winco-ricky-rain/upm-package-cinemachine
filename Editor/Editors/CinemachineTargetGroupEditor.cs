@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -74,12 +75,12 @@ namespace Cinemachine.Editor
                     EditorGUI.PropertyField(rect, elemProp.FindPropertyRelative(() => def.target), GUIContent.none);
 
                     float oldWidth = EditorGUIUtility.labelWidth;
-                    EditorGUIUtility.labelWidth = EditorGUIUtility.singleLineHeight; 
+                    EditorGUIUtility.labelWidth = EditorGUIUtility.singleLineHeight;
                     pos.x += rect.width; rect.width = floatFieldWidth + hBigSpace; rect.position = pos;
                     EditorGUI.PropertyField(rect, elemProp.FindPropertyRelative(() => def.weight), new GUIContent(" "));
                     pos.x += rect.width; rect.position = pos;
                     EditorGUI.PropertyField(rect, elemProp.FindPropertyRelative(() => def.radius), new GUIContent(" "));
-                    EditorGUIUtility.labelWidth = oldWidth; 
+                    EditorGUIUtility.labelWidth = oldWidth;
                 };
 
             mTargetList.onAddCallback = (UnityEditorInternal.ReorderableList l) =>

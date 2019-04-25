@@ -6,6 +6,7 @@ using Unity.Burst;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using System;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3
 {

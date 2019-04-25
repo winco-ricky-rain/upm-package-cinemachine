@@ -1,7 +1,7 @@
 using Unity.Mathematics;
 using System.Runtime.CompilerServices;
 
-namespace Unity.Cinemachine3
+namespace Unity.Cinemachine.Common
 {
     public static class MathHelpers
     {

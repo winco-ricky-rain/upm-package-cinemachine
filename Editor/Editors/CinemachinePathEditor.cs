@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using UnityEditorInternal;
 using Cinemachine.Utility;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -388,7 +389,7 @@ namespace Cinemachine.Editor
              | GizmoType.InSelectionHierarchy | GizmoType.Pickable, typeof(CinemachinePath))]
         static void DrawGizmos(CinemachinePath path, GizmoType selectionType)
         {
-            DrawPathGizmo(path, 
+            DrawPathGizmo(path,
                 (Selection.activeGameObject == path.gameObject)
                 ? path.m_Appearance.pathColor : path.m_Appearance.inactivePathColor);
         }

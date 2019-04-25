@@ -359,7 +359,7 @@ namespace Unity.Cinemachine3.Authoring
 
                 return new CM_BlendDefinition
                 {
-                    curve = def.BlendCurve.ToECS(),
+                    curve = def.BlendCurve,
                     duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
                 };
             }

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -9,7 +10,7 @@ namespace Cinemachine.Editor
         const int vSpace = 2;
         static bool mExpanded = true;
 
-        CinemachineImpulseManager.EnvelopeDefinition myClass 
+        CinemachineImpulseManager.EnvelopeDefinition myClass
             = new CinemachineImpulseManager.EnvelopeDefinition(); // to access name strings
 
         public override void OnGUI(Rect rect, SerializedProperty property, GUIContent label)
@@ -79,11 +80,11 @@ namespace Cinemachine.Editor
             }
 
             float oldWidth = EditorGUIUtility.labelWidth;
-            EditorGUIUtility.labelWidth = textDimensions.x; 
+            EditorGUIUtility.labelWidth = textDimensions.x;
             rect.x += rect.width; rect.width = floatFieldWidth + EditorGUIUtility.labelWidth;
             EditorGUI.PropertyField(rect, timeProp, timeText);
             timeProp.floatValue = Mathf.Max(timeProp.floatValue, 0);
-            EditorGUIUtility.labelWidth = oldWidth; 
+            EditorGUIUtility.labelWidth = oldWidth;
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)

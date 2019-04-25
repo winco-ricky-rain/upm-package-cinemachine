@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEditorInternal;
 using System.Collections.Generic;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -26,17 +27,17 @@ namespace Cinemachine.Editor
 
         private ReorderableList[] mPosChannels;
         private ReorderableList[] mRotChannels;
-        private static GUIContent[] mPoslabels = new GUIContent[] 
-        { 
-            new GUIContent("Position X"), 
-            new GUIContent("Position Y"), 
-            new GUIContent("Position Z") 
+        private static GUIContent[] mPoslabels = new GUIContent[]
+        {
+            new GUIContent("Position X"),
+            new GUIContent("Position Y"),
+            new GUIContent("Position Z")
         };
-        private static GUIContent[] mRotlabels = new GUIContent[] 
-        { 
-            new GUIContent("Rotation X"), 
-            new GUIContent("Rotation Y"), 
-            new GUIContent("Rotation Z") 
+        private static GUIContent[] mRotlabels = new GUIContent[]
+        {
+            new GUIContent("Rotation X"),
+            new GUIContent("Rotation Y"),
+            new GUIContent("Rotation Z")
         };
         private static bool[] mPosExpanded = new bool[3];
         private static bool[] mRotExpanded = new bool[3];
@@ -153,16 +154,16 @@ namespace Cinemachine.Editor
                     maxVal = Mathf.Max(maxVal, Mathf.Abs(signal[i].Y.Amplitude * signalScale));
                     maxVal = Mathf.Max(maxVal, Mathf.Abs(signal[i].Z.Amplitude * signalScale));
                 }
-                mSampleNoise.Clear(); 
+                mSampleNoise.Clear();
                 for (int i = 0; i < numSamples; ++i)
                 {
                     float t = (float)i / (numSamples - 1) * mPreviewTime + noiseOffset;
                     Vector3 p = NoiseSettings.GetCombinedFilterResults(signal, t, Vector3.zero);
                     mSampleNoise.Add(p);
                 }
-                mSampleCurveX.Clear(); 
-                mSampleCurveY.Clear(); 
-                mSampleCurveZ.Clear(); 
+                mSampleCurveX.Clear();
+                mSampleCurveY.Clear();
+                mSampleCurveZ.Clear();
                 float halfHeight = areaSize.y / 2;
                 float yOffset = halfHeight;
                 for (int i = 0; i < numSamples; ++i)
@@ -182,20 +183,20 @@ namespace Cinemachine.Editor
                 Handles.matrix = Handles.matrix * Matrix4x4.Translate(r.position);
                 if ((channelMask & 1) != 0)
                 {
-                    Handles.color = new Color(1, 0.5f, 0, 0.8f); 
+                    Handles.color = new Color(1, 0.5f, 0, 0.8f);
                     Handles.DrawPolyLine(mSampleCurveX.ToArray());
                 }
                 if ((channelMask & 2) != 0)
                 {
-                    Handles.color = new Color(0, 1, 0, 0.8f); 
+                    Handles.color = new Color(0, 1, 0, 0.8f);
                     Handles.DrawPolyLine(mSampleCurveY.ToArray());
                 }
                 if ((channelMask & 4) != 0)
                 {
-                    Handles.color = new Color(0, 0.5f, 1, 0.8f); 
+                    Handles.color = new Color(0, 0.5f, 1, 0.8f);
                     Handles.DrawPolyLine(mSampleCurveZ.ToArray());
                 }
-                Handles.color = Color.black; 
+                Handles.color = Color.black;
                 Handles.DrawLine(new Vector3(1, 0, 0), new Vector3(r.width, 0, 0));
                 Handles.DrawLine(new Vector3(0, r.height, 0), new Vector3(r.width, r.height, 0));
                 Handles.matrix = oldMatrix;
@@ -257,7 +258,7 @@ namespace Cinemachine.Editor
                 {
                     // Can't just delete because the component arrays are connected
                     SerializedProperty p = l.serializedProperty.GetArrayElementAtIndex(l.index);
-                    bool IsClear 
+                    bool IsClear
                         =  (list.mChannel == 0 || IsClearComponent(p.FindPropertyRelative(() => tpDef.X)))
                         && (list.mChannel == 1 || IsClearComponent(p.FindPropertyRelative(() => tpDef.Y)))
                         && (list.mChannel == 2 || IsClearComponent(p.FindPropertyRelative(() => tpDef.Z)));
@@ -281,8 +282,8 @@ namespace Cinemachine.Editor
             public GUIContent mTitle;
 
             public ChannelList(
-                SerializedObject serializedObject, 
-                SerializedProperty elements, 
+                SerializedObject serializedObject,
+                SerializedProperty elements,
                 int channel, GUIContent title)
             : base(serializedObject, elements, true, true, true, true)
             {
@@ -290,7 +291,7 @@ namespace Cinemachine.Editor
                 mTitle = title;
             }
         };
-        
+
         private GUIContent steadyLabel;
         private GUIContent freqLabel;
         private float freqLabelWidth;

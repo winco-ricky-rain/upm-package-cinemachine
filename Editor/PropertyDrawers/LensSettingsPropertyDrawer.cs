@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using Cinemachine.Utility;
 using System;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -19,7 +20,7 @@ namespace Cinemachine.Editor
             float height = EditorGUIUtility.singleLineHeight;
             rect.height = height;
             property.isExpanded = EditorGUI.Foldout(
-                new Rect(rect.x, rect.y, EditorGUIUtility.labelWidth, rect.height), 
+                new Rect(rect.x, rect.y, EditorGUIUtility.labelWidth, rect.height),
                 property.isExpanded, label, true);
             if (property.isExpanded)
             {

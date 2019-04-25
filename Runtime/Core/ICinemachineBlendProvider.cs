@@ -1,4 +1,4 @@
-using Unity.Entities;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {

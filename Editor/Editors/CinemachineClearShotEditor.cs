@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {

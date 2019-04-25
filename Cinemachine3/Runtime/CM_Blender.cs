@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Collections.LowLevel.Unsafe;
 using System.Collections.Generic;
 using Cinemachine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3
 {

@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using Unity.Cinemachine3;
 using Cinemachine.Utility;
 using System.Runtime.CompilerServices;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {
@@ -62,12 +63,6 @@ namespace Cinemachine
                 noise.cnoise(new float2(t, 0) - 0.5f) * n.Amplitude,
                 math.cos(t * 2f * (float)math.PI) * n.Amplitude * 0.5f,
                 n.Constant);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Unity.Cinemachine3.BlendCurve ToECS(this Cinemachine.BlendCurve c)
-        {
-            return new Unity.Cinemachine3.BlendCurve { A = c.A, B = c.B, bias = c.bias };
         }
     }
 }

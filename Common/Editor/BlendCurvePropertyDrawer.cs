@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 
-namespace Cinemachine.Editor
+namespace Unity.Cinemachine.Common.Editor
 {
     [CustomPropertyDrawer(typeof(BlendCurvePropertyAttribute))]
     internal sealed class BlendCurvePropertyDrawer : PropertyDrawer

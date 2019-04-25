@@ -7,6 +7,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using System;
 using System.Runtime.CompilerServices;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3
 {

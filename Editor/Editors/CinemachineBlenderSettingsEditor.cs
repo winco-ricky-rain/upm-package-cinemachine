@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditorInternal;
 using System.Collections.Generic;
 using System;
+using Unity.Cinemachine.Common;
 using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor

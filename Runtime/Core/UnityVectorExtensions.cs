@@ -238,20 +238,4 @@ namespace Cinemachine.Utility
                 r.width + delta.x * 2, r.height + delta.y * 2);
         }
     }
-
-    // Copied from Cinemachine3
-    public static class MathHelpers
-    {
-        public static float Bezier(float t, float p0, float p1, float p2, float p3)
-        {
-            t = Mathf.Clamp(t, 0, 1);
-            float d = 1f - t;
-            return d * d * d * p0 + 3f * d * d * t * p1
-                + 3f * d * t * t * p2 + t * t * t * p3;
-        }
-        public static float Bias(float t, float b)
-        {
-            return (Mathf.Clamp(t, 0, 1) / ((((1f/Mathf.Clamp(b, 0, 1)) - 2f) * (1f - t)) + 1f));
-        }
-    }
 }

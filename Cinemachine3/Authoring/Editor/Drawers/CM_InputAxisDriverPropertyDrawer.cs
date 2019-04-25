@@ -1,11 +1,8 @@
 using UnityEngine;
 using UnityEditor;
-using System.Reflection;
-using Unity.Cinemachine3;
-using Unity.Mathematics;
 using System;
-using Cinemachine.Editor;
 using Cinemachine;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Unity.Cinemachine3.Authoring.Editor
 {

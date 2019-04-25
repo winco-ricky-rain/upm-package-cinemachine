@@ -1,9 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Cinemachine.Utility;
 using UnityEngine.Serialization;
 using System;
 using Unity.Cinemachine.Common;
+using Cinemachine.Utility;
 
 namespace Cinemachine
 {

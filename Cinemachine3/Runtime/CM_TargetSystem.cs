@@ -6,6 +6,7 @@ using Unity.Burst;
 using Unity.Mathematics;
 using System;
 using UnityEngine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3
 {

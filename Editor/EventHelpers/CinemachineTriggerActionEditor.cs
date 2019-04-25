@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using UnityEngine.Playables;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -9,7 +10,7 @@ namespace Cinemachine.Editor
     internal class CinemachineTriggerActionEditor : BaseEditor<CinemachineTriggerAction>
     {
         const int vSpace = 2;
-        CinemachineTriggerAction.ActionSettings def 
+        CinemachineTriggerAction.ActionSettings def
             = new CinemachineTriggerAction.ActionSettings(); // to access name strings
 
         static bool mEnterExpanded;
@@ -20,7 +21,7 @@ namespace Cinemachine.Editor
         GUIContent[] mRepeatSubLabels = new GUIContent[2];
 
         GUIStyle mFoldoutStyle;
-        
+
         private void OnEnable()
         {
             mRepeatProperties[0] = FindProperty(x => x.m_SkipFirst);
@@ -83,8 +84,8 @@ namespace Cinemachine.Editor
                         property.FindPropertyRelative(() => def.m_StartTime),
                         property.FindPropertyRelative(() => def.m_Mode)
                     };
-                    GUIContent[] sublabels = new GUIContent[2] 
-                    { 
+                    GUIContent[] sublabels = new GUIContent[2]
+                    {
                         GUIContent.none, new GUIContent("s", props[1].tooltip)
                     };
                     InspectorUtility.MultiPropertyOnLine(

@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Reflection;
 using System;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
