@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine.Utility;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {

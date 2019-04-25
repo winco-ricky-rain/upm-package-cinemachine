@@ -2,7 +2,7 @@
 using Unity.Mathematics;
 using System;
 using Unity.Transforms;
-using Cinemachine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
 {

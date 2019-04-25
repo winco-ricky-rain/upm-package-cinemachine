@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEditor;
 using System;
-using Cinemachine.Utility;
 using System.Linq;
 using System.Collections.Generic;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {

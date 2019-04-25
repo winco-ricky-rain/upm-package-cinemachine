@@ -437,7 +437,7 @@ namespace Unity.Cinemachine3
             }
         }
 
-        public interface VcamGroupCallback
+        public interface IVcamGroupCallback
         {
             JobHandle Invoke(
                 EntityQuery filteredGroup, Entity channelEntity,
@@ -449,7 +449,7 @@ namespace Unity.Cinemachine3
         /// <param name="cb">the callback to invoke per channel</param>
         /// <param name="inputDeps">job handle to pass to callback</param>
         public JobHandle InvokePerVcamChannel<T>(
-            EntityQuery group, JobHandle inputDeps, T cb) where T : struct, VcamGroupCallback
+            EntityQuery group, JobHandle inputDeps, T cb) where T : struct, IVcamGroupCallback
         {
             if (EntityManager != null)
             {
@@ -477,7 +477,7 @@ namespace Unity.Cinemachine3
         public JobHandle InvokePerVcamChannel<COMPONENT, CB>(
             EntityQuery group, JobHandle inputDeps, COMPONENT c2, CB cb)
                 where COMPONENT : struct, ISharedComponentData
-                where CB : struct, VcamGroupCallback
+                where CB : struct, IVcamGroupCallback
         {
             if (EntityManager != null)
             {
@@ -503,7 +503,7 @@ namespace Unity.Cinemachine3
         /// <param name="channel"></param>
         /// <param name="blendLookup"></param>
         public void ResolveUndefinedBlends<T>(int channel, T blendLookup)
-            where T : struct, GetBlendCallback
+            where T : struct, IGetBlendCallback
         {
             ActiveChannelStateJobs.Complete();
             var e = GetChannelEntity(channel);
@@ -624,7 +624,7 @@ namespace Unity.Cinemachine3
             return fetchDeps;
         }
 
-        struct InitBlendStatesJobLaunch : VcamGroupCallback
+        struct InitBlendStatesJobLaunch : IVcamGroupCallback
         {
             public CM_ChannelSystem channelSystem;
             public EntityManager EntityManager;

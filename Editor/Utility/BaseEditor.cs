@@ -1,8 +1,8 @@
 ﻿using UnityEditor;
 using System;
 using System.Collections.Generic;
-using Cinemachine.Utility;
 using System.Linq.Expressions;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {
@@ -33,7 +33,7 @@ namespace Cinemachine.Editor
 
         protected virtual List<string> GetExcludedPropertiesInInspector()
         {
-            var excluded = new List<string>() { "m_Script" }; 
+            var excluded = new List<string>() { "m_Script" };
             if (mAdditionalExcluded != null)
                 excluded.AddRange(mAdditionalExcluded);
             return excluded;

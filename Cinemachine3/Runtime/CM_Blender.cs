@@ -8,7 +8,7 @@ using Cinemachine;
 
 namespace Unity.Cinemachine3
 {
-    public interface GetBlendCallback
+    public interface IGetBlendCallback
     {
         CM_BlendDefinition Invoke(Entity fromCam, Entity toCam);
     }
@@ -280,7 +280,7 @@ namespace Unity.Cinemachine3
             mCurrentBlend.EnsureCapacity(NumOverrideFrames + mNativeFrame.NumActiveFrames + 2);
         }
 
-        public void ResolveUndefinedBlends<T>(T cb) where T : struct, GetBlendCallback
+        public void ResolveUndefinedBlends<T>(T cb) where T : struct, IGetBlendCallback
         {
             for (int i = 0; i < mNativeFrame.NumActiveFrames-1; ++i)
             {

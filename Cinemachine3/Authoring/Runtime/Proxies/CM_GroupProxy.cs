@@ -3,7 +3,7 @@ using UnityEngine;
 using Unity.Entities;
 using System.Collections.Generic;
 using Unity.Transforms;
-using Cinemachine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
 {

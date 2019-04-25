@@ -2,7 +2,7 @@ using UnityEngine;
 using System;
 using Unity.Mathematics;
 using System.Runtime.CompilerServices;
-using Cinemachine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3
 {
@@ -24,7 +24,7 @@ namespace Unity.Cinemachine3
 
         /// <summary>The valid range for the axis value</summary>
         [Tooltip("The valid range for the axis value")]
-        [CM_RangeProperty]
+        [CM_Float2AsRangeProperty]
         public float2 range;
 
         /// <summary>If checked, then the axis will wrap around at the min/max values, forming a loop</summary>

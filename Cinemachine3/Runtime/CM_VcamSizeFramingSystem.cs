@@ -128,7 +128,7 @@ namespace Unity.Cinemachine3
             return targetSystem.RegisterTargetLookupReadJobs(framingDeps);
         }
 
-        struct InitVcamJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        struct InitVcamJobLaunch : CM_ChannelSystem.IVcamGroupCallback
         {
             public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
             public JobHandle Invoke(

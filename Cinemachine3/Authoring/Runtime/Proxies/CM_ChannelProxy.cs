@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Cinemachine.Common;
 using Cinemachine;
 
 namespace Unity.Cinemachine3.Authoring

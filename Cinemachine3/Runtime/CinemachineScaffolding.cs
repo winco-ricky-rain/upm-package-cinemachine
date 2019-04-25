@@ -1,12 +1,12 @@
-﻿using Cinemachine.Utility;
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Cinemachine3;
+using Cinemachine.Utility;
 
 namespace Cinemachine
 {
     // Temporary stuff that will go away as Cinemachine3 becomes
-    // fully independent of Cinemachine2
+    // fully independent of old Cinemachine
     public static class CinemachineScaffolding
     {
         /// <summary>Text description of a blend, for debugging</summary>

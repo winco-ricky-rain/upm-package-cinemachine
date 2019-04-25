@@ -5,11 +5,10 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
-namespace Cinemachine.Utility
+namespace Unity.Cinemachine.Common.Editor
 {
     /// <summary>An ad-hoc collection of helpers for reflection, used by Cinemachine
     /// or its editor tools in various places</summary>
-    [DocumentationSorting(DocumentationSortingAttribute.Level.Undoc)]
     public static class ReflectionHelpers
     {
         /// <summary>Copy the fields from one object to another</summary>
@@ -76,7 +75,7 @@ namespace Cinemachine.Utility
         {
             List<Type> foundTypes = new List<Type>(100);
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            string definedIn = typeof(CinemachineComponentBase).Assembly.GetName().Name;
+            string definedIn = typeof(ReflectionHelpers).Assembly.GetName().Name;
             foreach (Assembly assembly in assemblies)
             {
                 // Note that we have to call GetName().Name.  Just GetName() will not work.
@@ -92,47 +91,7 @@ namespace Cinemachine.Utility
             }
             return foundTypes;
         }
-#if false
-        /// <summary>call GetTypesInAssembly() for all assemblies that match a predicate</summary>
-        /// <param name="assemblyPredicate">Which assemblies to search</param>
-        /// <param name="predicate">What type to look for</param>
-        public static IEnumerable<Type> GetTypesInLoadedAssemblies(
-            Predicate<Assembly> assemblyPredicate, Predicate<Type> predicate)
-        {
-            Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-            assemblies = assemblies.Where((Assembly assembly)
-                    => { return assemblyPredicate(assembly); }).OrderBy((Assembly ass)
-                    => { return ass.FullName; }).ToArray();
 
-            List<Type> foundTypes = new List<Type>(100);
-            foreach (Assembly assembly in assemblies)
-            {
-                foreach (Type foundType in GetTypesInAssembly(assembly, predicate))
-                    foundTypes.Add(foundType);
-            }
-
-            return foundTypes;
-        }
-
-        /// <summary>Is a type defined and visible</summary>
-        /// <param name="fullname">Fullly-qualified type name</param>
-        /// <returns>true if the type exists</returns>
-        public static bool TypeIsDefined(string fullname)
-        {
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (Assembly assembly in assemblies)
-            {
-                try
-                {
-                    foreach (var type in assembly.GetTypes())
-                        if (type.FullName == fullname)
-                            return true;
-                }
-                catch (System.Exception) {} // Just skip uncooperative assemblies
-            }
-            return false;
-        }
-#endif
         /// <summary>Cheater extension to access internal field of an object</summary>
         /// <param name="type">The type of the field</param>
         /// <param name="obj">The object to access</param>

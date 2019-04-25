@@ -2,6 +2,7 @@
 using UnityEngine;
 using Cinemachine.Utility;
 using System;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {

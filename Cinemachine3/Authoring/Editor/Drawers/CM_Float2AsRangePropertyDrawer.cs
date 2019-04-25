@@ -5,8 +5,8 @@ using Unity.Mathematics;
 
 namespace Cinemachine.Editor.ECS
 {
-    [CustomPropertyDrawer(typeof(CM_RangePropertyAttribute))]
-    internal sealed class CM_RangePropertyDrawer : PropertyDrawer
+    [CustomPropertyDrawer(typeof(CM_Float2AsRangePropertyAttribute))]
+    internal sealed class CM_Float2AsRangePropertyDrawer : PropertyDrawer
     {
         const int hSpace = 2;
         public override void OnGUI(Rect rect, SerializedProperty property, GUIContent label)

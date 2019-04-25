@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using Unity.Entities;
 using System.Collections.Generic;
-using Cinemachine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
 {

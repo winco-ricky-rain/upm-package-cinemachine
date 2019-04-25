@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
- 
+using Unity.Cinemachine.Common;
+
 namespace Cinemachine
 {
     /// <summary>
@@ -37,7 +38,7 @@ namespace Cinemachine
         public bool m_Use2DDistance = false;
 
         // GML todo: add reaction configuration params here
- 
+
         protected override void PostPipelineStageCallback(
             CinemachineVirtualCameraBase vcam,
             CinemachineCore.Stage stage, ref CameraState state, float deltaTime)

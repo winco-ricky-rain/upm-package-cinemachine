@@ -258,7 +258,7 @@ namespace Unity.Cinemachine3
             return vcamDeps;
         }
 
-        struct InitVcamJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        struct InitVcamJobLaunch : CM_ChannelSystem.IVcamGroupCallback
         {
             public CM_VcamPreBodySystem system;
             public JobHandle Invoke(

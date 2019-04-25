@@ -2,12 +2,12 @@
 using UnityEditor;
 using Cinemachine.Editor;
 using System.Collections.Generic;
-using Cinemachine.Utility;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine
 {
     [CustomEditor(typeof(CinemachineFreeLook))]
-    internal sealed class CinemachineFreeLookEditor 
+    internal sealed class CinemachineFreeLookEditor
         : CinemachineVirtualCameraBaseEditor<CinemachineFreeLook>
     {
         protected override List<string> GetExcludedPropertiesInInspector()
@@ -37,7 +37,7 @@ namespace Cinemachine
 
         public override void OnInspectorGUI()
         {
-            Target.m_XAxis.ValueRangeLocked 
+            Target.m_XAxis.ValueRangeLocked
                 = (Target.m_BindingMode == CinemachineTransposer.BindingMode.SimpleFollowWithWorldUp);
 
             // Ordinary properties
@@ -54,9 +54,9 @@ namespace Cinemachine
             {
                 Rect rect = EditorGUILayout.GetControlRect(true);
                 SerializedProperty orbit = orbits.GetArrayElementAtIndex(i);
-                InspectorUtility.MultiPropertyOnLine(rect, 
+                InspectorUtility.MultiPropertyOnLine(rect,
                     new GUIContent(CinemachineFreeLook.RigNames[i]),
-                    new [] { orbit.FindPropertyRelative(() => Target.m_Orbits[i].m_Height), 
+                    new [] { orbit.FindPropertyRelative(() => Target.m_Orbits[i].m_Height),
                             orbit.FindPropertyRelative(() => Target.m_Orbits[i].m_Radius) },
                     null);
             }

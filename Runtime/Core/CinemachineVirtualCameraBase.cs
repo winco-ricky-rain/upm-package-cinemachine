@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Serialization;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {

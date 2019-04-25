@@ -3,10 +3,12 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Cinemachine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
 {
     [RequireComponent(typeof(GameObjectEntity))]
+    [SaveDuringPlay]
     public abstract class CM_VcamBase : MonoBehaviour, ICinemachineCamera
     {
         /// <summary>The priority will determine which camera becomes active based on the

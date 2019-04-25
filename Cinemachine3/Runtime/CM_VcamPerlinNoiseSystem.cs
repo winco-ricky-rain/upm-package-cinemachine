@@ -108,7 +108,7 @@ namespace Unity.Cinemachine3
             return vcamDeps;
         }
 
-        struct NoiseJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        struct NoiseJobLaunch : CM_ChannelSystem.IVcamGroupCallback
         {
             public NoiseSettings profile;
             public JobHandle Invoke(

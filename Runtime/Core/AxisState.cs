@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using Cinemachine.Utility;
 using UnityEngine.Serialization;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {

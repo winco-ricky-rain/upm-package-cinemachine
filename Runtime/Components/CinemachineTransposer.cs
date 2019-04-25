@@ -1,6 +1,6 @@
-using System;
 using Cinemachine.Utility;
 using UnityEngine;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {

@@ -1,12 +1,13 @@
 using Cinemachine.Utility;
 using UnityEngine;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {
     /// <summary>
-    /// Generate an Impulse Event this object's Collider collides with something 
+    /// Generate an Impulse Event this object's Collider collides with something
     /// or its trigger zone is entered.
-    /// 
+    ///
     /// This component should be attached to a GameObject with a Collider or a Collider2D.
     /// Objects colliding with this (or entering its trigger zone if it's a trigger) will be
     /// filtered according to the layer and tag settings defined here, and if they
@@ -47,7 +48,7 @@ namespace Cinemachine
             mRigidBody = GetComponent<Rigidbody>();
             mRigidBody2D = GetComponent<Rigidbody2D>();
         }
-        
+
         private void OnEnable() {} // For the Enabled checkbox
 
         private void OnCollisionEnter(Collision c)

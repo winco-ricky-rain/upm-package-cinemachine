@@ -1,0 +1,15 @@
+{
+    "name": "Unity.Cinemachine.Common.Editor",
+    "references": [
+        "GUID:2c9d3b519d895c74da2133b2ab702c41"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}

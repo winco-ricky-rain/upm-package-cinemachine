@@ -9,5 +9,14 @@ namespace Unity.Cinemachine3
         public CM_PipelineAttribute(CinemachineCore.Stage stage) { Stage = stage; }
     }
 
-    public sealed class CM_RangePropertyAttribute : PropertyAttribute {}
+    /// <summary>
+    /// Property applied to float2 to treat (x, y) as (min, max).
+    /// Used for custom drawing in the inspector.
+    /// </summary>
+    public sealed class CM_Float2AsRangePropertyAttribute : PropertyAttribute {}
+
+    /// <summary>
+    /// Property applied to BlendCurve.  Used for custom drawing in the inspector.
+    /// </summary>
+    public sealed class BlendCurvePropertyAttribute : PropertyAttribute {}
 }

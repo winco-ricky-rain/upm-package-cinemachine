@@ -1,13 +1,14 @@
 using UnityEngine;
 using System;
 using Cinemachine.Utility;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {
     /// <summary>Defines a world-space path, consisting of an array of waypoints,
     /// each of which has position and roll settings.  Bezier interpolation
     /// is performed between the waypoints, to get a smooth and continuous path.
-    /// The path will pass through all waypoints, and (unlike CinemachinePath) first 
+    /// The path will pass through all waypoints, and (unlike CinemachinePath) first
     /// and second order continuity is guaranteed</summary>
     [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
     [AddComponentMenu("Cinemachine/CinemachineSmoothPath")]
@@ -26,7 +27,7 @@ namespace Cinemachine
             [Tooltip("Position in path-local space")]
             public Vector3 position;
 
-            /// <summary>Defines the roll of the path at this waypoint.  
+            /// <summary>Defines the roll of the path at this waypoint.
             /// The other orientation axes are inferred from the tangent and world up.</summary>
             [Tooltip("Defines the roll of the path at this waypoint.  The other orientation axes are inferred from the tangent and world up.")]
             public float roll;
@@ -68,7 +69,7 @@ namespace Cinemachine
         /// <summary>True if the path ends are joined to form a continuous loop</summary>
         public override bool Looped { get { return m_Looped; } }
 
-        /// <summary>When calculating the distance cache, sample the path this many 
+        /// <summary>When calculating the distance cache, sample the path this many
         /// times between points</summary>
         public override int DistanceCacheSampleStepsPerSegment { get { return m_Resolution; } }
 
@@ -90,7 +91,7 @@ namespace Cinemachine
         void UpdateControlPoints()
         {
             int numPoints = (m_Waypoints == null) ? 0 : m_Waypoints.Length;
-            if (numPoints > 1 
+            if (numPoints > 1
                 && (Looped != m_IsLoopedCache
                     || m_ControlPoints1 == null || m_ControlPoints1.Length != numPoints
                     || m_ControlPoints2 == null || m_ControlPoints2.Length != numPoints))
@@ -137,7 +138,7 @@ namespace Cinemachine
                 {
                     if (Looped)
                         indexB = 0;
-                    else 
+                    else
                     {
                         --indexB;
                         --indexA;
@@ -161,7 +162,7 @@ namespace Cinemachine
                 if (indexA == indexB)
                     result = m_Waypoints[indexA].position;
                 else
-                    result = SplineHelpers.Bezier3(pos - indexA, 
+                    result = SplineHelpers.Bezier3(pos - indexA,
                         m_Waypoints[indexA].position, m_ControlPoints1[indexA].position,
                         m_ControlPoints2[indexA].position, m_Waypoints[indexB].position);
             }

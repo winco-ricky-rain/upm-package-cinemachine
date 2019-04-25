@@ -1,6 +1,7 @@
 {
     "name": "Unity.Cinemachine3",
     "references": [
+        "GUID:2c9d3b519d895c74da2133b2ab702c41",
         "GUID:734d92eba21c94caba915361bd5ac177",
         "GUID:e0cd26848372d4e5c891c569017e11f1",
         "GUID:a5baed0c9693541a5bd947d336ec7659",

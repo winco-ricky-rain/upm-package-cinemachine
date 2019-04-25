@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Cinemachine.Utility;
 using System.Reflection;
 using System.Linq;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {

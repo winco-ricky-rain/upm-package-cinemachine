@@ -3,8 +3,8 @@ using UnityEngine;
 using UnityEditor;
 using System;
 using System.Collections.Generic;
-using Cinemachine.Utility;
 using System.Reflection;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Cinemachine.Editor
 {

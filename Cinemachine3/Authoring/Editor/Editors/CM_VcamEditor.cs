@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Cinemachine;
-using Cinemachine.Utility;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Unity.Cinemachine3.Authoring.Editor
 {

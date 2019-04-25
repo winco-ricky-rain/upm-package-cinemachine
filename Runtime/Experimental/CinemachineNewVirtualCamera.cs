@@ -1,6 +1,7 @@
 #if true || CINEMACHINE_EXPERIMENTAL_VCAM
 using UnityEngine;
 using System;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {

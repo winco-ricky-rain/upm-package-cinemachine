@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using Cinemachine.Utility;
 using System;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {
@@ -21,12 +22,12 @@ namespace Cinemachine
     public class CinemachineConfiner : CinemachineExtension
     {
         /// <summary>The confiner can operate using a 2D bounding shape or a 3D bounding volume</summary>
-        public enum Mode 
-        { 
+        public enum Mode
+        {
             /// <summary>Use a 2D bounding shape, suitable for an orthographic camera</summary>
-            Confine2D, 
+            Confine2D,
             /// <summary>Use a 3D bounding shape, suitable for perspective cameras</summary>
-            Confine3D 
+            Confine3D
         };
         /// <summary>The confiner can operate using a 2D bounding shape or a 3D bounding volume</summary>
         [Tooltip("The confiner can operate using a 2D bounding shape or a 3D bounding volume")]
@@ -35,7 +36,7 @@ namespace Cinemachine
         /// <summary>The volume within which the camera is to be contained.</summary>
         [Tooltip("The volume within which the camera is to be contained")]
         public Collider m_BoundingVolume;
-        
+
         /// <summary>The 2D shape within which the camera is to be contained.</summary>
         [Tooltip("The 2D shape within which the camera is to be contained")]
         public Collider2D m_BoundingShape2D;
@@ -57,7 +58,7 @@ namespace Cinemachine
         {
             return GetExtraState<VcamExtraState>(vcam).confinerDisplacement > 0;
         }
-        
+
         private void OnValidate()
         {
             m_Damping = Mathf.Max(0, m_Damping);
@@ -68,10 +69,10 @@ namespace Cinemachine
             public Vector3 m_previousDisplacement;
             public float confinerDisplacement;
         };
-        
+
         /// <summary>Check if the bounding volume is defined</summary>
-        public bool IsValid 
-        {  
+        public bool IsValid
+        {
             get
             {
                 return ((m_ConfineMode == Mode.Confine3D && m_BoundingVolume != null)
@@ -110,7 +111,7 @@ namespace Cinemachine
         }
 
         private List<List<Vector2>> m_pathCache;
-       
+
         /// <summary>Call this if the bounding shape's points change at runtime</summary>
         public void InvalidatePathCache() { m_pathCache = null; }
 

@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.Entities;
 using Cinemachine;
 using Cinemachine.Utility;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
 {
@@ -149,7 +150,7 @@ namespace Unity.Cinemachine3.Authoring
             }
         }
 
-        struct FetchBlendDefinition : GetBlendCallback
+        struct FetchBlendDefinition : IGetBlendCallback
         {
             public CM_ClearShot clearShot;
             public CM_BlendDefinition Invoke(Entity fromCam, Entity toCam)

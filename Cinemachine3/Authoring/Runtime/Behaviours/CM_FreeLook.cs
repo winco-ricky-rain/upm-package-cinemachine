@@ -3,6 +3,7 @@ using System;
 using Unity.Mathematics;
 using Unity.Entities;
 using Cinemachine;
+using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
 {

@@ -1,14 +1,9 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using UnityEngine;
+using UnityEngine; // For PropertyAttributes
 
 namespace Unity.Cinemachine3
 {
-    /// <summary>
-    /// Property applied to BlendCurve.  Used for custom drawing in the inspector.
-    /// </summary>
-    public sealed class BlendCurvePropertyAttribute : PropertyAttribute {}
-
     [Serializable]
     public struct BlendCurve
     {

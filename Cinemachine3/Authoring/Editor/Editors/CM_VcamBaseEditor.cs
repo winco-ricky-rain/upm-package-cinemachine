@@ -6,6 +6,7 @@ using Unity.Cinemachine3;
 using Unity.Entities;
 using Cinemachine;
 using Cinemachine.Editor;
+using Unity.Cinemachine.Common.Editor;
 
 namespace Unity.Cinemachine3.Authoring.Editor
 {
@@ -101,13 +102,13 @@ namespace Unity.Cinemachine3.Authoring.Editor
                         "Enable the display of overlays in the Game view.  You can adjust colours and opacity in Edit/Preferences/Cinemachine."),
                     brain.m_ShowGameViewGuides);
 
-            SaveDuringPlay.SaveDuringPlay.Enabled = EditorGUILayout.Toggle(
+            SaveDuringPlay.Enabled = EditorGUILayout.Toggle(
                     new GUIContent(
                         "Save During Play",
                         "If checked, Virtual Camera settings changes made during Play Mode will be propagated back to the scene when Play Mode is exited."),
-                    SaveDuringPlay.SaveDuringPlay.Enabled);
+                    SaveDuringPlay.Enabled);
 
-            if (Application.isPlaying && SaveDuringPlay.SaveDuringPlay.Enabled)
+            if (Application.isPlaying && SaveDuringPlay.Enabled)
                 EditorGUILayout.HelpBox(
                     " Virtual Camera settings changes made during Play Mode will be propagated back to the scene when Play Mode is exited.",
                     MessageType.Info);

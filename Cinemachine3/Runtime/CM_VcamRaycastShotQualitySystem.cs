@@ -34,7 +34,7 @@ namespace Unity.Cinemachine3
             return jobDeps;
         }
 
-        struct QualityJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        struct QualityJobLaunch : CM_ChannelSystem.IVcamGroupCallback
         {
             public JobHandle Invoke(
                 EntityQuery filteredGroup, Entity channelEntity,

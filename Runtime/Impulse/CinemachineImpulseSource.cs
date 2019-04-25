@@ -1,16 +1,17 @@
 using UnityEngine;
+using Unity.Cinemachine.Common;
 
 namespace Cinemachine
 {
     /// <summary>
     /// An event-driven class that broadcasts an impulse signal to listeners.
-    /// 
+    ///
     /// This is the base class for custom impulse sources.  It contains an impulse
     /// definition, where the characteristics of the impulse signal are defined.
-    /// 
+    ///
     /// API methods are fined for actually broadcasting the impulse.  Call these
     /// methods from your custom code, or hook them up to game events in the Editor.
-    /// 
+    ///
     /// </summary>
     [DocumentationSorting(DocumentationSortingAttribute.Level.UserRef)]
     [SaveDuringPlay]
@@ -45,7 +46,7 @@ namespace Cinemachine
             GenerateImpulseAt(transform.position, velocity);
         }
 
-        /// <summary>Broadcast the Impulse Signal onto the appropriate channels, 
+        /// <summary>Broadcast the Impulse Signal onto the appropriate channels,
         /// with default velocity = (0, -1, 0), and a default position which is
         /// this transform's location.</summary>
         public void GenerateImpulse()

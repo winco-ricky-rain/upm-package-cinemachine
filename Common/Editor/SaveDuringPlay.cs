@@ -4,7 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveDuringPlay
+namespace Unity.Cinemachine.Common.Editor
 {
     /// <summary>A collection of tools for finding objects</summary>
     internal static class ObjectTreeUtil

@@ -171,7 +171,7 @@ namespace Unity.Cinemachine3
             return targetSystem.RegisterTargetLookupReadJobs(vcamDeps);
         }
 
-        struct DollyJobLaunch : CM_ChannelSystem.VcamGroupCallback
+        struct DollyJobLaunch : CM_ChannelSystem.IVcamGroupCallback
         {
             public CM_VcamTrackedDollySystem system;
             public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
