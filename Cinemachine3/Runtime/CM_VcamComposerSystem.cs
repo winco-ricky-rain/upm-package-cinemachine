@@ -244,33 +244,14 @@ namespace Unity.Cinemachine3
                 return inputDeps; // no targets yet
 
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
-            JobHandle composerDeps = channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, inputDeps, new ComposerJobLaunch { targetLookup = targetLookup });
+            JobHandle composerDeps = channelSystem.ScheduleForVcamsOnAllChannels(
+                m_vcamGroup, inputDeps, new ComposerJob { targetLookup = targetLookup });
 
             return targetSystem.RegisterTargetLookupReadJobs(composerDeps);
         }
 
-        struct ComposerJobLaunch : CM_ChannelSystem.IVcamGroupCallback
-        {
-            public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
-                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
-            {
-                var job = new ComposerJob
-                {
-                    deltaTime = state.deltaTime,
-                    fixedDelta = 0, //GML Time.fixedDeltaTime,
-                    aspect = c.settings.aspect,
-                    orthographic = c.settings.IsOrthographic,
-                    targetLookup = targetLookup
-                };
-                return job.Schedule(filteredGroup, inputDeps);
-            }
-        }
-
         [BurstCompile]
-        struct ComposerJob : IJobForEach<
+        struct ComposerJob : CM_ChannelSystem.IVcamPerChannelJob, IJobForEach<
             CM_VcamComposerState, CM_VcamRotationState,
             CM_VcamPositionState, CM_VcamLensState,
             CM_VcamLookAtTarget, CM_VcamComposer>
@@ -280,6 +261,16 @@ namespace Unity.Cinemachine3
             public float aspect;
             public bool orthographic;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+
+            public bool InitializeForChannel(
+                Entity channelEntity, CM_Channel c, CM_ChannelState state)
+            {
+                deltaTime = state.deltaTime;
+                fixedDelta = 0; //GML Time.fixedDeltaTime
+                aspect = c.settings.aspect;
+                orthographic = c.settings.IsOrthographic;
+                return true;
+            }
 
             public void Execute(
                 ref CM_VcamComposerState composerState,

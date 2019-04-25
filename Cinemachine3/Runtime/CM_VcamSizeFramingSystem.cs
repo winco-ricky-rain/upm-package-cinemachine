@@ -131,11 +131,11 @@ namespace Unity.Cinemachine3
             return targetSystem.RegisterTargetLookupReadJobs(framingDeps);
         }
 
-        struct InitVcamJobLaunch : CM_ChannelSystem.IVcamGroupCallback
+        struct InitVcamJobLaunch : CM_ChannelSystem.IPerChannelJobLauncher
         {
             public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
+            public JobHandle Execute(
+                EntityQuery vcams, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 if (c.settings.IsOrthographic)
@@ -147,7 +147,7 @@ namespace Unity.Cinemachine3
                         aspect = c.settings.aspect,
                         targetLookup = targetLookup
                     };
-                    return orthoJob.Schedule(filteredGroup, inputDeps);
+                    return orthoJob.Schedule(vcams, inputDeps);
                 }
                 var job = new SizeFramingJob
                 {
@@ -156,7 +156,7 @@ namespace Unity.Cinemachine3
                     aspect = c.settings.aspect,
                     targetLookup = targetLookup
                 };
-                return job.Schedule(filteredGroup, inputDeps);
+                return job.Schedule(vcams, inputDeps);
             }
         }
 

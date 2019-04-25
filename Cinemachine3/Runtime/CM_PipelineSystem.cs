@@ -265,46 +265,37 @@ namespace Unity.Cinemachine3
         {
             // Add any missing state components
             EntityManager.AddComponent(m_missingPosStateGroup,
-                    ComponentType.ReadWrite<CM_VcamPositionState>());
+                ComponentType.ReadWrite<CM_VcamPositionState>());
             EntityManager.AddComponent(m_missingRotStateGroup,
-                    ComponentType.ReadWrite<CM_VcamRotationState>());
+                ComponentType.ReadWrite<CM_VcamRotationState>());
             EntityManager.AddComponent(m_missingLensStateGroup,
                 ComponentType.ReadWrite<CM_VcamLensState>());
 
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
             channelSystem.InitChannelStates();
-            JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, inputDeps,
-                new InitVcamJobLaunch { system = this });
+            JobHandle vcamDeps = channelSystem.ScheduleForVcamsOnAllChannels(
+                m_vcamGroup, inputDeps, new InitVcamJob
+                    { positions = GetComponentDataFromEntity<LocalToWorld>(true) });
             return vcamDeps;
         }
 
-        struct InitVcamJobLaunch : CM_ChannelSystem.IVcamGroupCallback
-        {
-            public CM_VcamPreBodySystem system;
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
-                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
-            {
-                var initJob = new InitVcamJob
-                {
-                    channelSettings = c.settings,
-                    up = math.mul(c.settings.worldOrientation, math.up()),
-                    orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic,
-                    positions = system.GetComponentDataFromEntity<LocalToWorld>(true)
-                };
-                return initJob.Schedule(filteredGroup, inputDeps);
-            }
-        }
-
         [BurstCompile]
-        struct InitVcamJob : IJobForEachWithEntity<
+        struct InitVcamJob : CM_ChannelSystem.IVcamPerChannelJob, IJobForEachWithEntity<
             CM_VcamLensState, CM_VcamPositionState, CM_VcamRotationState, CM_VcamLens>
         {
             public CM_Channel.Settings channelSettings;
             public float3 up;
             public bool orthographic;
             [ReadOnly] public ComponentDataFromEntity<LocalToWorld> positions;
+
+            public bool InitializeForChannel(
+                Entity channelEntity, CM_Channel c, CM_ChannelState state)
+            {
+                channelSettings = c.settings;
+                up = math.mul(c.settings.worldOrientation, math.up());
+                orthographic = c.settings.projection == CM_Channel.Settings.Projection.Orthographic;
+                return true;
+            }
 
             public void Execute(
                 Entity entity, int index,

@@ -8,9 +8,9 @@ using Cinemachine;
 
 namespace Unity.Cinemachine3
 {
-    public interface IGetBlendCallback
+    public interface IGetBlendDefinition
     {
-        CM_BlendDefinition Invoke(Entity fromCam, Entity toCam);
+        CM_BlendDefinition GetBlend(Entity fromCam, Entity toCam);
     }
 
     public struct CM_BlendDefinition
@@ -280,14 +280,14 @@ namespace Unity.Cinemachine3
             mCurrentBlend.EnsureCapacity(NumOverrideFrames + mNativeFrame.NumActiveFrames + 2);
         }
 
-        public void ResolveUndefinedBlends<T>(T cb) where T : struct, IGetBlendCallback
+        public void ResolveUndefinedBlends<T>(T cb) where T : struct, IGetBlendDefinition
         {
             for (int i = 0; i < mNativeFrame.NumActiveFrames-1; ++i)
             {
                 var blend = mNativeFrame.ElementAt(i);
                 if (blend.IsUndefined())
                 {
-                    var def = cb.Invoke(mNativeFrame.ElementAt(i+1).cam, blend.cam);
+                    var def = cb.GetBlend(mNativeFrame.ElementAt(i+1).cam, blend.cam);
                     blend.blendCurve = def.curve;
                     blend.duration = def.duration;
                     mNativeFrame.ElementAt(i) = blend;

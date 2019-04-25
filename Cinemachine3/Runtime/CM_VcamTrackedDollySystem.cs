@@ -160,38 +160,19 @@ namespace Unity.Cinemachine3
                 return inputDeps; // no targets yet
 
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
-            JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, inputDeps, new DollyJobLaunch
+            JobHandle vcamDeps = channelSystem.ScheduleForVcamsOnAllChannels(
+                m_vcamGroup, inputDeps, new DollyJob
                 {
-                    system = this,
-                    targetLookup = targetLookup
+                    targetLookup = targetLookup,
+                    paths = GetComponentDataFromEntity<CM_PathState>(true),
+                    waypoints = GetBufferFromEntity<CM_PathWaypointElement>(true)
                 });
 
             return targetSystem.RegisterTargetLookupReadJobs(vcamDeps);
         }
 
-        struct DollyJobLaunch : CM_ChannelSystem.IVcamGroupCallback
-        {
-            public CM_VcamTrackedDollySystem system;
-            public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
-                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
-            {
-                var job = new DollyJob
-                {
-                    deltaTime = state.deltaTime,
-                    up = math.mul(c.settings.worldOrientation, math.up()),
-                    targetLookup = targetLookup,
-                    paths = system.GetComponentDataFromEntity<CM_PathState>(true),
-                    waypoints = system.GetBufferFromEntity<CM_PathWaypointElement>(true)
-                };
-                return job.Schedule(filteredGroup, inputDeps);
-            }
-        }
-
         [BurstCompile]
-        struct DollyJob : IJobForEachWithEntity<
+        struct DollyJob : CM_ChannelSystem.IVcamPerChannelJob, IJobForEachWithEntity<
             CM_VcamPositionState, CM_VcamRotationState, CM_VcamTrackedDollyState,
             CM_VcamTrackedDolly, CM_VcamFollowTarget>
         {
@@ -200,6 +181,14 @@ namespace Unity.Cinemachine3
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
             [ReadOnly] public ComponentDataFromEntity<CM_PathState> paths;
             [ReadOnly] public BufferFromEntity<CM_PathWaypointElement> waypoints;
+
+            public bool InitializeForChannel(
+                Entity channelEntity, CM_Channel c, CM_ChannelState state)
+            {
+                deltaTime = state.deltaTime;
+                up = math.mul(c.settings.worldOrientation, math.up());
+                return true;
+            }
 
             public void Execute(
                 Entity entity, int intex,

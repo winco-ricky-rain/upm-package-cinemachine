@@ -154,32 +154,18 @@ namespace Unity.Cinemachine3
                 return inputDeps; // no targets yet
 
             var channelSystem = World.GetOrCreateSystem<CM_ChannelSystem>();
-            JobHandle vcamDeps = channelSystem.InvokePerVcamChannel(
-                m_vcamGroup, inputDeps, new OrbitalJobLaunch { targetLookup = targetLookup });
+            JobHandle vcamDeps = channelSystem.ScheduleForVcamsOnAllChannels(
+                m_vcamGroup, inputDeps, new TrackTargetJob
+                {
+                    timeNow = Time.time,
+                    targetLookup = targetLookup
+                });
 
             return targetSystem.RegisterTargetLookupReadJobs(vcamDeps);
         }
 
-        struct OrbitalJobLaunch : CM_ChannelSystem.IVcamGroupCallback
-        {
-            public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
-                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
-            {
-                var job = new TrackTargetJob
-                {
-                    deltaTime = state.deltaTime,
-                    timeNow = Time.time,
-                    up = math.mul(c.settings.worldOrientation, math.up()),
-                    targetLookup = targetLookup
-                };
-                return job.Schedule(filteredGroup, inputDeps);
-            }
-        }
-
         [BurstCompile]
-        struct TrackTargetJob : IJobForEach<
+        struct TrackTargetJob : CM_ChannelSystem.IVcamPerChannelJob, IJobForEach<
             CM_VcamPositionState, CM_VcamOrbitalState,
             CM_VcamOrbital, CM_VcamFollowTarget>
         {
@@ -187,6 +173,14 @@ namespace Unity.Cinemachine3
             public float timeNow;
             public float3 up;
             [ReadOnly] public NativeHashMap<Entity, CM_TargetSystem.TargetInfo> targetLookup;
+
+            public bool InitializeForChannel(
+                Entity channelEntity, CM_Channel c, CM_ChannelState state)
+            {
+                deltaTime = state.deltaTime;
+                up = math.mul(c.settings.worldOrientation, math.up());
+                return true;
+            }
 
             public void Execute(
                 ref CM_VcamPositionState posState,

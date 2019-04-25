@@ -34,13 +34,13 @@ namespace Unity.Cinemachine3
             return jobDeps;
         }
 
-        struct QualityJobLaunch : CM_ChannelSystem.IVcamGroupCallback
+        struct QualityJobLaunch : CM_ChannelSystem.IPerChannelJobLauncher
         {
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
+            public JobHandle Execute(
+                EntityQuery vcams, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
-                var objectCount = filteredGroup.CalculateLength();
+                var objectCount = vcams.CalculateLength();
 
                 // These will be deallocated by the final job
                 var raycastCommands = new NativeArray<RaycastCommand>(objectCount, Allocator.TempJob);
@@ -52,7 +52,7 @@ namespace Unity.Cinemachine3
                     minDstanceFromTarget = 0, // GML todo: how to set this?
                     raycasts = raycastCommands
                 };
-                var setupDeps = setupRaycastsJob.Schedule(filteredGroup, inputDeps);
+                var setupDeps = setupRaycastsJob.Schedule(vcams, inputDeps);
                 var raycastDeps = RaycastCommand.ScheduleBatch(raycastCommands, raycastHits, 32, setupDeps);
 
                 if (c.settings.IsOrthographic)
@@ -63,7 +63,7 @@ namespace Unity.Cinemachine3
                         hits = raycastHits,         // deallocates on completion
                         raycasts = raycastCommands  // deallocates on completion
                     };
-                    return qualityJobOrtho.Schedule(filteredGroup, raycastDeps);
+                    return qualityJobOrtho.Schedule(vcams, raycastDeps);
                 }
 
                 var qualityJob = new CalculateQualityJob()
@@ -72,7 +72,7 @@ namespace Unity.Cinemachine3
                     hits = raycastHits,         // deallocates on completion
                     raycasts = raycastCommands  // deallocates on completion
                 };
-                return qualityJob.Schedule(filteredGroup, raycastDeps);
+                return qualityJob.Schedule(vcams, raycastDeps);
             }
         }
 

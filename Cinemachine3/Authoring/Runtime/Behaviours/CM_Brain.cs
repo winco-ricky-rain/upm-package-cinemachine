@@ -342,10 +342,10 @@ namespace Unity.Cinemachine3.Authoring
             }
         }
 
-        struct FetchBlendDefinition : IGetBlendCallback
+        struct FetchBlendDefinition : IGetBlendDefinition
         {
             public CM_Brain brain;
-            public CM_BlendDefinition Invoke(Entity fromCam, Entity toCam)
+            public CM_BlendDefinition GetBlend(Entity fromCam, Entity toCam)
             {
                 var def = brain.Channel.defaultBlend;
                 if (brain.customBlends != null)

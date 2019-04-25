@@ -101,36 +101,25 @@ namespace Unity.Cinemachine3
             JobHandle vcamDeps = inputDeps;
             for (int i = 0; i < uniqueTypes.Count; ++i)
             {
-                vcamDeps = channelSystem.InvokePerVcamChannel(
-                    m_vcamGroup, vcamDeps, uniqueTypes[i],
-                    new NoiseJobLaunch { profile = uniqueTypes[i].noiseProfile });
+                var profile = uniqueTypes[i].noiseProfile;
+                if (profile != null)
+                {
+                    var job = new PerlinNoiseJob();
+                    if (profile.OrientationNoise.Length > 0)
+                        job.rotNoise0 = profile.OrientationNoise[0];
+                    if (profile.OrientationNoise.Length > 1)
+                        job.rotNoise1 = profile.OrientationNoise[1];
+                    if (profile.OrientationNoise.Length > 2)
+                        job.rotNoise2 = profile.OrientationNoise[2];
+                    vcamDeps = channelSystem.ScheduleForVcamsOnAllChannelsWithFilter(
+                        m_vcamGroup, vcamDeps, uniqueTypes[i], job);
+                }
             }
             return vcamDeps;
         }
 
-        struct NoiseJobLaunch : CM_ChannelSystem.IVcamGroupCallback
-        {
-            public NoiseSettings profile;
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
-                CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
-            {
-                if (profile == null || state.deltaTime < 0)
-                    return inputDeps;
-
-                var job = new PerlinNoiseJob() { deltaTime = state.deltaTime };
-                if (profile.OrientationNoise.Length > 0)
-                    job.rotNoise0 = profile.OrientationNoise[0];
-                if (profile.OrientationNoise.Length > 1)
-                    job.rotNoise1 = profile.OrientationNoise[1];
-                if (profile.OrientationNoise.Length > 2)
-                    job.rotNoise2 = profile.OrientationNoise[2];
-                return job.Schedule(filteredGroup, inputDeps);
-            }
-        }
-
         [BurstCompile]
-        struct PerlinNoiseJob : IJobForEach<
+        struct PerlinNoiseJob : CM_ChannelSystem.IVcamPerChannelJob, IJobForEach<
             CM_VcamPositionState, CM_VcamRotationState, CM_VcamPerlinNoiseState, CM_VcamPerlinNoise>
         {
             // Note: only 3 rotation channels supported, that's it.  No independent pos noise.
@@ -138,6 +127,13 @@ namespace Unity.Cinemachine3
             public NoiseSettings.TransformNoiseParams rotNoise1;
             public NoiseSettings.TransformNoiseParams rotNoise2;
             public float deltaTime;
+
+            public bool InitializeForChannel(
+                Entity channelEntity, CM_Channel c, CM_ChannelState state)
+            {
+                deltaTime = state.deltaTime;
+                return deltaTime >= 0;
+            }
 
             public void Execute(
                 ref CM_VcamPositionState posState,

@@ -437,19 +437,23 @@ namespace Unity.Cinemachine3
             }
         }
 
-        public interface IVcamGroupCallback
+
+        public interface IVcamPerChannelJob
         {
-            JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
-                CM_Channel c, CM_ChannelState state, JobHandle inputDeps);
+            // Will be called prior to job being scheduled.
+            // Return true to schedule, false to skip this channel
+            bool InitializeForChannel(
+                Entity channelEntity, CM_Channel c, CM_ChannelState state);
         }
 
         /// <summary>Invoke a callback for each channel's vcams</summary>
-        /// <param name="group">all the vcams</param>
-        /// <param name="cb">the callback to invoke per channel</param>
-        /// <param name="inputDeps">job handle to pass to callback</param>
-        public JobHandle InvokePerVcamChannel<T>(
-            EntityQuery group, JobHandle inputDeps, T cb) where T : struct, IVcamGroupCallback
+        /// <param name="query">all the vcams</param>
+        /// <param name="job">the callback to invoke per channel</param>
+        /// <param name="inputDeps">input dependencies for job</param>
+        /// <returns>Scheduled job handles</returns>
+        public JobHandle ScheduleForVcamsOnAllChannels<T>(
+            EntityQuery query, JobHandle inputDeps, T job)
+                where T : struct, JobForEachExtensions.IBaseJobForEach, IVcamPerChannelJob
         {
             if (EntityManager != null)
             {
@@ -459,25 +463,27 @@ namespace Unity.Cinemachine3
                     for (int j = 0; j < entities.Length; ++j)
                     {
                         var cache = entities[j];
-                        group.SetFilter(new CM_VcamChannel { channel = cache.c.channel });
-                        if (group.CalculateLength() > 0)
-                            inputDeps = cb.Invoke(group, cache.e, cache.c, cache.state, inputDeps);
+                        query.SetFilter(new CM_VcamChannel { channel = cache.c.channel });
+                        if (query.CalculateLength() > 0
+                            && job.InitializeForChannel(cache.e, cache.c, cache.state))
+                                inputDeps = job.Schedule(query, inputDeps);
                     }
                 }
-                group.ResetFilter();
+                query.ResetFilter();
             }
             return inputDeps;
         }
 
         /// <summary>Invoke a callback for each channel's vcams</summary>
-        /// <param name="group">all the vcams</param>
-        /// <param name="c2">Other shared component for grouping</param>
-        /// <param name="cb">the callback to invoke per channel</param>
-        /// <param name="inputDeps">job handle to pass to callback</param>
-        public JobHandle InvokePerVcamChannel<COMPONENT, CB>(
-            EntityQuery group, JobHandle inputDeps, COMPONENT c2, CB cb)
+        /// <param name="query">all the vcams</param>
+        /// <param name="filter">Other shared component for grouping</param>
+        /// <param name="job">the callback to invoke per channel</param>
+        /// <param name="inputDeps">input dependencies for job</param>
+        /// <returns>Scheduled job handles</returns>
+        public JobHandle ScheduleForVcamsOnAllChannelsWithFilter<COMPONENT, T>(
+            EntityQuery query, JobHandle inputDeps, COMPONENT filter, T job)
                 where COMPONENT : struct, ISharedComponentData
-                where CB : struct, IVcamGroupCallback
+                where T : struct, JobForEachExtensions.IBaseJobForEach, IVcamPerChannelJob
         {
             if (EntityManager != null)
             {
@@ -487,12 +493,47 @@ namespace Unity.Cinemachine3
                     for (int j = 0; j < entities.Length; ++j)
                     {
                         var cache = entities[j];
-                        group.SetFilter(new CM_VcamChannel { channel = cache.c.channel }, c2);
-                        if (group.CalculateLength() > 0)
-                            inputDeps = cb.Invoke(group, cache.e, cache.c, cache.state, inputDeps);
+                        query.SetFilter(new CM_VcamChannel { channel = cache.c.channel }, filter);
+                        if (query.CalculateLength() > 0
+                            && job.InitializeForChannel(cache.e, cache.c, cache.state))
+                                inputDeps = job.Schedule(query, inputDeps);
                     }
                 }
-                group.ResetFilter();
+                query.ResetFilter();
+            }
+            return inputDeps;
+        }
+
+
+        public interface IPerChannelJobLauncher
+        {
+            JobHandle Execute(
+                EntityQuery vcams, Entity channelEntity,
+                CM_Channel c, CM_ChannelState state, JobHandle inputDeps);
+        }
+
+        /// <summary>Invoke a callback for each channel's vcams</summary>
+        /// <param name="vcams">all the vcams</param>
+        /// <param name="cb">the callback to invoke per channel</param>
+        /// <param name="inputDeps">job handle to pass to callback</param>
+        public JobHandle InvokePerVcamChannel<T>(
+            EntityQuery vcams, JobHandle inputDeps, T cb)
+                where T : struct, IPerChannelJobLauncher
+        {
+            if (EntityManager != null)
+            {
+                var entities = GetChannelCache(false);
+                for (int i = 0; i < entities.Length; ++i)
+                {
+                    for (int j = 0; j < entities.Length; ++j)
+                    {
+                        var cache = entities[j];
+                        vcams.SetFilter(new CM_VcamChannel { channel = cache.c.channel });
+                        if (vcams.CalculateLength() > 0)
+                            inputDeps = cb.Execute(vcams, cache.e, cache.c, cache.state, inputDeps);
+                    }
+                }
+                vcams.ResetFilter();
             }
             return inputDeps;
         }
@@ -503,7 +544,7 @@ namespace Unity.Cinemachine3
         /// <param name="channel"></param>
         /// <param name="blendLookup"></param>
         public void ResolveUndefinedBlends<T>(int channel, T blendLookup)
-            where T : struct, IGetBlendCallback
+            where T : struct, IGetBlendDefinition
         {
             ActiveChannelStateJobs.Complete();
             var e = GetChannelEntity(channel);
@@ -624,23 +665,23 @@ namespace Unity.Cinemachine3
             return fetchDeps;
         }
 
-        struct InitBlendStatesJobLaunch : IVcamGroupCallback
+        struct InitBlendStatesJobLaunch : IPerChannelJobLauncher
         {
             public CM_ChannelSystem channelSystem;
             public EntityManager EntityManager;
-            public JobHandle Invoke(
-                EntityQuery filteredGroup, Entity channelEntity,
+            public JobHandle Execute(
+                EntityQuery vcams, Entity channelEntity,
                 CM_Channel c, CM_ChannelState state, JobHandle inputDeps)
             {
                 var blendState = EntityManager.GetComponentData<CM_ChannelBlendState>(channelEntity);
-                blendState.priorityQueue.AllocateData(filteredGroup.CalculateLength());
+                blendState.priorityQueue.AllocateData(vcams.CalculateLength());
                 EntityManager.SetComponentData(channelEntity, blendState);
 
                 var populateJob = new PopulatePriorityQueueJob
                     { qualities = channelSystem.GetComponentDataFromEntity<CM_VcamShotQuality>(true) };
                 populateJob.AssignDataPtr(ref blendState);
 
-                return populateJob.Schedule(filteredGroup, inputDeps);
+                return populateJob.Schedule(vcams, inputDeps);
             }
         }
 
