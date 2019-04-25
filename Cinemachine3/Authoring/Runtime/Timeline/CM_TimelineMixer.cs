@@ -2,12 +2,12 @@
 
 using UnityEngine;
 using UnityEngine.Playables;
-using Cinemachine.ECS;
+using Unity.Cinemachine3;
 using Unity.Entities;
-using Cinemachine.ECS_Hybrid;
+using Unity.Cinemachine3.Authoring;
 using Cinemachine;
 
-//namespace Cinemachine.ECS_Hybrid
+//namespace Unity.Cinemachine3.Authoring
 //{
     internal sealed class CM_TimelineMixer : PlayableBehaviour
     {

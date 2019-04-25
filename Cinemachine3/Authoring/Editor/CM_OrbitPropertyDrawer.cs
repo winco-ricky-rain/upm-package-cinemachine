@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEditor;
-using Cinemachine.ECS;
+using Unity.Cinemachine3;
 
 namespace Cinemachine.Editor.ECS
 {

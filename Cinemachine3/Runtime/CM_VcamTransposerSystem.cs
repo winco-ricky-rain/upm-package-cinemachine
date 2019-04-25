@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using System;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [Serializable]
     public struct CM_VcamTransposer : IComponentData

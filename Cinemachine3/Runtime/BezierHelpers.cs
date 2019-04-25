@@ -2,7 +2,7 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     public static class BezierHelpers
     {

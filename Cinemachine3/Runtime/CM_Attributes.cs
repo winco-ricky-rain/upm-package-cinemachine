@@ -1,6 +1,7 @@
 ﻿using UnityEngine; // For PropertyAttribute
+using Cinemachine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     public sealed class CM_PipelineAttribute : System.Attribute
     {

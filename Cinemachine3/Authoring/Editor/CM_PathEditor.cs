@@ -1,13 +1,10 @@
 ﻿using UnityEditor;
 using UnityEngine;
-using System.Collections.Generic;
-using Cinemachine.ECS;
-using UnityEditorInternal;
-using Cinemachine.ECS_Hybrid;
 using Unity.Entities;
 using Unity.Mathematics;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomEditor(typeof(CM_PathProxy))]
     internal class CM_PathEditor : BaseEditor<CM_PathProxy>

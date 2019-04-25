@@ -1,8 +1,9 @@
 ﻿using Cinemachine.Utility;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Cinemachine3;
 
-namespace Cinemachine.ECS
+namespace Cinemachine
 {
     // Temporary stuff that will go away as Cinemachine3 becomes
     // fully independent of Cinemachine2
@@ -61,9 +62,9 @@ namespace Cinemachine.ECS
                 n.Constant);
         }
 
-        public static ECS.BlendCurve ToECS(this Cinemachine.BlendCurve c)
+        public static Unity.Cinemachine3.BlendCurve ToECS(this Cinemachine.BlendCurve c)
         {
-            return new ECS.BlendCurve { A = c.A, B = c.B, bias = c.bias };
+            return new Unity.Cinemachine3.BlendCurve { A = c.A, B = c.B, bias = c.bias };
         }
     }
 }

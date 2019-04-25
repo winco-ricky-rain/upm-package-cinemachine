@@ -1,9 +1,9 @@
-using Cinemachine.ECS;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [DisallowMultipleComponent]
     [CM_Pipeline(CinemachineCore.Stage.Body)]

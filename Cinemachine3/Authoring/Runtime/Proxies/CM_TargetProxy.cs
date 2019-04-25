@@ -1,7 +1,7 @@
-using Cinemachine.ECS;
 using Unity.Mathematics;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]

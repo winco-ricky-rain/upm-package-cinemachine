@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
-using Cinemachine.ECS_Hybrid;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomEditor(typeof(CM_GroupProxy))]
     internal class CM_GroupEditor : BaseEditor<CM_GroupProxy>

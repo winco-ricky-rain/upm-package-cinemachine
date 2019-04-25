@@ -4,8 +4,9 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Collections.LowLevel.Unsafe;
 using System.Collections.Generic;
+using Cinemachine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     public interface GetBlendCallback
     {

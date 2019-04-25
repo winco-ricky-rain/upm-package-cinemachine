@@ -19,9 +19,9 @@ namespace Cinemachine.Utility
         /// Only those fields that get caught in the filter will be copied</param>
         public static void CopyFields(
             System.Object src, System.Object dst,
-            System.Reflection.BindingFlags bindingAttr 
-                = System.Reflection.BindingFlags.Public 
-                | System.Reflection.BindingFlags.NonPublic 
+            System.Reflection.BindingFlags bindingAttr
+                = System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
                 | System.Reflection.BindingFlags.Instance)
         {
             if (src != null && dst != null)
@@ -79,9 +79,9 @@ namespace Cinemachine.Utility
             string definedIn = typeof(CinemachineComponentBase).Assembly.GetName().Name;
             foreach (Assembly assembly in assemblies)
             {
-                // Note that we have to call GetName().Name.  Just GetName() will not work.  
-                if ((!assembly.GlobalAssemblyCache) 
-                    && ((assembly.GetName().Name == definedIn) 
+                // Note that we have to call GetName().Name.  Just GetName() will not work.
+                if ((!assembly.GlobalAssemblyCache)
+                    && ((assembly.GetName().Name == definedIn)
                         || assembly.GetReferencedAssemblies().Any(a => a.Name == definedIn)))
                 try
                 {
@@ -122,7 +122,7 @@ namespace Cinemachine.Utility
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
             foreach (Assembly assembly in assemblies)
             {
-                try 
+                try
                 {
                     foreach (var type in assembly.GetTypes())
                         if (type.FullName == fullname)
@@ -193,8 +193,8 @@ namespace Cinemachine.Utility
                 return obj;
 
             var info = obj.GetType().GetField(
-                    fields[0], System.Reflection.BindingFlags.Public 
-                        | System.Reflection.BindingFlags.NonPublic 
+                    fields[0], System.Reflection.BindingFlags.Public
+                        | System.Reflection.BindingFlags.NonPublic
                         | System.Reflection.BindingFlags.Instance);
             obj = info.GetValue(obj);
 

@@ -1,10 +1,9 @@
-﻿using Cinemachine.ECS;
-using UnityEditor;
-using Cinemachine.ECS_Hybrid;
+﻿using UnityEditor;
 using Unity.Entities;
 using UnityEngine;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomEditor(typeof(CM_VcamTrackedDollyProxy))]
     internal class CM_VcamTrackedDollyEditor : BaseEditor<CM_VcamTrackedDollyProxy>

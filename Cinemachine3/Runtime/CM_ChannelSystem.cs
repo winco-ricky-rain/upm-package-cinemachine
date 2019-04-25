@@ -8,8 +8,9 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using Cinemachine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [Serializable]
     public struct CM_Channel : IComponentData

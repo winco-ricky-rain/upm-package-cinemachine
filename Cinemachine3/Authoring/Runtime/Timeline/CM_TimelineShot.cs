@@ -3,9 +3,9 @@
 using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
-using Cinemachine.ECS_Hybrid;
+using Unity.Cinemachine3.Authoring;
 
-//namespace Cinemachine.ECS_Hybrid
+//namespace Unity.Cinemachine3.Authoring
 //{
     /// <summary>
     /// Internal use only.  Not part of the public API.

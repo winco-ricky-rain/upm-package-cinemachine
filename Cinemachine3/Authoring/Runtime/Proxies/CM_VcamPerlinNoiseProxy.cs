@@ -1,7 +1,7 @@
-using Cinemachine.ECS;
 using UnityEngine;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [DisallowMultipleComponent]
     [CM_Pipeline(CinemachineCore.Stage.Noise)]

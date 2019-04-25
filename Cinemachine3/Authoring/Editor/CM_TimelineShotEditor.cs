@@ -5,7 +5,7 @@ using UnityEngine;
 using Cinemachine.Editor;
 using System.Collections.Generic;
 using UnityEditor.Timeline;
-using Cinemachine.ECS_Hybrid;
+using Unity.Cinemachine3.Authoring;
 
 //namespace Cinemachine.Timeline
 //{

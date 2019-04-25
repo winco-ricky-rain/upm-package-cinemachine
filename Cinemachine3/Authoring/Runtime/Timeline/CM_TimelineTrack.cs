@@ -4,9 +4,9 @@ using System;
 using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
-using Cinemachine.ECS_Hybrid;
+using Unity.Cinemachine3.Authoring;
 
-//namespace Cinemachine.ECS_Hybrid
+//namespace Unity.Cinemachine3.Authoring
 //{
     [Serializable]
     [TrackClipType(typeof(CM_TimelineShot))]

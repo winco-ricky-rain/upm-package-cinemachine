@@ -1,9 +1,9 @@
 #if CINEMACHINE_TIMELINE
 
 using UnityEngine.Playables;
-using Cinemachine.ECS_Hybrid;
+using Unity.Cinemachine3.Authoring;
 
-//namespace Cinemachine.ECS_Hybrid
+//namespace Unity.Cinemachine3.Authoring
 //{
     internal sealed class CM_TimelineShotPlayable : PlayableBehaviour
     {

@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Cinemachine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     public class CM_EntityVcam : ICinemachineCamera
     {

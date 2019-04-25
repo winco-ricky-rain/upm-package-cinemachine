@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
-using Cinemachine.ECS;
 using Unity.Entities;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     /// <summary>
     /// Simple FreeLook version of the virtual camera, just spline-driven orbital position

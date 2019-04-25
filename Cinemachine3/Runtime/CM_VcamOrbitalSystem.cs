@@ -6,7 +6,7 @@ using Unity.Burst;
 using UnityEngine;
 using System;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [Serializable]
     public struct CM_VcamOrbital : IComponentData

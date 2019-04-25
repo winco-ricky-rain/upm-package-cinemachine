@@ -3,7 +3,7 @@ using Unity.Entities;
 using Unity.Collections.LowLevel.Unsafe;
 using System.Runtime.CompilerServices;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     public unsafe struct CM_PriorityQueue
     {

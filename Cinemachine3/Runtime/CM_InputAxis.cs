@@ -2,8 +2,9 @@ using UnityEngine;
 using System;
 using Unity.Mathematics;
 using System.Runtime.CompilerServices;
+using Cinemachine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     /// <summary>
     /// Defines how to react to player input.

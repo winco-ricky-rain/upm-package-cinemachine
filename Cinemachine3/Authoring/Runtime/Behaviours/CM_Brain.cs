@@ -1,13 +1,13 @@
-﻿using Cinemachine.ECS;
-using Cinemachine.Utility;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Events;
 using Unity.Mathematics;
+using Cinemachine;
+using Cinemachine.Utility;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [DisallowMultipleComponent]
     [ExecuteAlways]

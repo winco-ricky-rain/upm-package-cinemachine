@@ -1,10 +1,10 @@
 using UnityEngine;
 using Unity.Entities;
-using Cinemachine.ECS;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [RequireComponent(typeof(GameObjectEntity))]
     public abstract class CM_VcamBase : MonoBehaviour, ICinemachineCamera

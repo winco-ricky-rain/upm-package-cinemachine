@@ -6,7 +6,7 @@ using Unity.Burst;
 using System;
 using UnityEngine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [Serializable]
     public struct CM_VcamHardLookAt : IComponentData

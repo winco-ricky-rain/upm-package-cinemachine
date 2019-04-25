@@ -2,11 +2,12 @@
 using UnityEditor;
 using System.Collections.Generic;
 using Cinemachine.Utility;
-using Cinemachine.ECS_Hybrid;
-using Cinemachine.ECS;
+using Unity.Cinemachine3;
 using Unity.Entities;
+using Cinemachine;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     /// <summary>
     /// Base class for virtual camera editors.

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 
-namespace Unity.Cinemachine3.Authoring.Editor
+namespace Unity.Cinemachine33.Authoring.Editor
 {
     [InitializeOnLoad]
     internal sealed class EditorGlue
@@ -29,7 +29,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
                 return;
             }
 
-            if (instance.GetComponent<Cinemachine.ECS_Hybrid.CM_Brain>() != null)
+            if (instance.GetComponent<Unity.Cinemachine3.Authoring.CM_Brain>() != null)
             {
                 Rect texRect = new Rect(
                     selectionRect.xMax - selectionRect.height, selectionRect.yMin,

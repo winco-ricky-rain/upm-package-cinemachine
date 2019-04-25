@@ -6,7 +6,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using System.Runtime.CompilerServices;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]

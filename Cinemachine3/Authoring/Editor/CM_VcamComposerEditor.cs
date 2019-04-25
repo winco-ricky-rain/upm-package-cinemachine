@@ -1,13 +1,12 @@
 ﻿using UnityEngine;
 using UnityEditor;
-using Cinemachine.Utility;
-using Cinemachine.ECS_Hybrid;
-using static Cinemachine.ECS.MathHelpers;
-using Cinemachine.ECS;
+using static Unity.Cinemachine3.MathHelpers;
 using Unity.Mathematics;
 using Unity.Entities;
+using Cinemachine.Utility;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomEditor(typeof(CM_VcamComposerProxy))]
     internal class CM_VcamComposerEditor : BaseEditor<CM_VcamComposerProxy>

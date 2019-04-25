@@ -1,9 +1,9 @@
 using UnityEngine;
 using Unity.Entities;
-using Cinemachine.ECS;
+using Cinemachine;
 using Cinemachine.Utility;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [DisallowMultipleComponent]
     [ExecuteAlways]

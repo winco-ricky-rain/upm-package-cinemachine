@@ -1,6 +1,6 @@
-using Cinemachine.ECS;
+using Unity.Cinemachine3;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [UnityEngine.DisallowMultipleComponent]
     public class CM_VcamShotQualityProxy : CM_ComponentProxyBase<CM_VcamShotQuality>

@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
 using UnityEditor;
-using Cinemachine.ECS_Hybrid;
-using Cinemachine.ECS;
 using Unity.Mathematics;
 using Unity.Entities;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomEditor(typeof(CM_VcamOrbitalProxy))]
     internal class CM_VcamOrbitalEditor : BaseEditor<CM_VcamOrbitalProxy>

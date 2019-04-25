@@ -1,6 +1,6 @@
 using Unity.Entities;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     public abstract class CM_ComponentProxyBase<T> : ComponentDataProxy<T> where T : struct, IComponentData
     {

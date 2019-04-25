@@ -1,10 +1,10 @@
 ﻿using UnityEngine;
-using Cinemachine.ECS;
 using System;
 using Unity.Mathematics;
 using Unity.Entities;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     /// <summary>
     /// FreeLook version of the virtual camera.

@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     /// <summary>
     /// Property applied to BlendCurve.  Used for custom drawing in the inspector.

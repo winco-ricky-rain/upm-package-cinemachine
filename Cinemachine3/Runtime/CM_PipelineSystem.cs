@@ -8,7 +8,7 @@ using UnityEngine;
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [Serializable]
     public struct CM_VcamChannel : ISharedComponentData

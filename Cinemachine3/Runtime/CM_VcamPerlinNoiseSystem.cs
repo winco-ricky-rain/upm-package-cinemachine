@@ -6,10 +6,10 @@ using Unity.Burst;
 using System;
 using UnityEngine;
 using System.Collections.Generic;
-using System.Runtime;
 using System.Runtime.CompilerServices;
+using Cinemachine;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [Serializable]
     public struct CM_VcamPerlinNoise : IComponentData

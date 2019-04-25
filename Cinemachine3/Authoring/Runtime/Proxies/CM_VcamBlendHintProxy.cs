@@ -1,7 +1,6 @@
-using Unity.Entities;
-using Cinemachine.ECS;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]

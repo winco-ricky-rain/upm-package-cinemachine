@@ -1,8 +1,8 @@
 using UnityEngine;
-using Cinemachine.ECS;
+using Unity.Cinemachine3;
 using Unity.Entities;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     /// <summary>
     /// This is a very simple behaviour that constrains its transform to a CM_Path.

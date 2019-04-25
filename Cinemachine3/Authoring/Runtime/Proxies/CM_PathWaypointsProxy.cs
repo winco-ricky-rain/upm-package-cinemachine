@@ -1,12 +1,9 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Entities;
-using Cinemachine.ECS;
 using System.Collections.Generic;
-using Unity.Transforms;
-using UnityEngine.UI;
+using Cinemachine;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [DisallowMultipleComponent]
     [SaveDuringPlay]

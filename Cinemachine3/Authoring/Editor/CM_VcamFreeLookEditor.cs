@@ -1,8 +1,9 @@
 ﻿using UnityEngine;
 using UnityEditor;
-using Cinemachine.ECS_Hybrid;
+using Cinemachine;
+using Cinemachine.Editor;
 
-namespace Cinemachine.Editor.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring.Editor
 {
     [CustomEditor(typeof(CM_FreeLook), true)]
     public class CM_FreeLookEditor : CM_VcamBaseEditor<CM_FreeLook>

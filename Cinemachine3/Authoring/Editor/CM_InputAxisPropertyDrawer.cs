@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Reflection;
-using Cinemachine.ECS;
+using Unity.Cinemachine3;
 using Unity.Mathematics;
 
 namespace Cinemachine.Editor.ECS

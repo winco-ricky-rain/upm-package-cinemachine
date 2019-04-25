@@ -3,11 +3,11 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Burst;
 using UnityEngine.Jobs;
-using Cinemachine.ECS;
+using Unity.Cinemachine3;
 using UnityEngine;
 using Unity.Mathematics;
 
-namespace Cinemachine.ECS_Hybrid
+namespace Unity.Cinemachine3.Authoring
 {
     [ExecuteAlways]
     [UpdateAfter(typeof(CM_VcamFinalizeSystem))]

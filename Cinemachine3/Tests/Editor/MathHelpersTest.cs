@@ -4,7 +4,7 @@ using NUnit.Framework;
 using System.Collections;
 using Unity.Mathematics;
 
-namespace Cinemachine.ECS
+namespace Unity.Cinemachine3
 {
     [TestFixture]
     public class MathHelpersTest
