@@ -3,9 +3,7 @@
 using UnityEngine;
 using UnityEngine.Playables;
 using Unity.Cinemachine3;
-using Unity.Entities;
 using Unity.Cinemachine3.Authoring;
-using Cinemachine;
 
 //namespace Unity.Cinemachine3.Authoring
 //{
@@ -16,18 +14,14 @@ using Cinemachine;
         private int mBrainOverrideId = -1;
         private bool mPlaying;
 
-        static CM_ChannelSystem ActiveChannelSystem
-        {
-            get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
-        }
-
         public override void OnPlayableDestroy(Playable playable)
         {
-            var channelSystem = ActiveChannelSystem;
+            var channelSystem = ChannelHelper.ChannelSystem;
             if (mBrain != null && channelSystem != null)
             {
                 // clean up
-                channelSystem.ReleaseCameraOverride(mBrain.Channel.channel, mBrainOverrideId);
+                var ch = new ChannelHelper(mBrain.Entity);
+                channelSystem.ReleaseCameraOverride(ch.Channel.channel, mBrainOverrideId);
             }
             mBrainOverrideId = -1;
         }
@@ -57,7 +51,7 @@ using Cinemachine;
             else
                 mBrain = go.GetComponent<CM_Brain>();
 
-            var channelSystem = ActiveChannelSystem;
+            var channelSystem = ChannelHelper.ChannelSystem;
             if (mBrain == null || channelSystem == null)
                 return;
 
@@ -103,7 +97,7 @@ using Cinemachine;
             VirtualCamera camB = incomingIsB ? clipB.vcam : clipA.vcam;
             float camWeightB = incomingIsB ? clipB.weight : 1 - clipB.weight;
             mBrainOverrideId = channelSystem.SetCameraOverride(
-                mBrain.Channel.channel,
+                new ChannelHelper(mBrain.Entity).Channel.channel,
                 mBrainOverrideId, 2f,
                 camA, camB, camWeightB);
         }

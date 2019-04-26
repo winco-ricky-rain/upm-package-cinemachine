@@ -1,9 +1,8 @@
+using System;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using Cinemachine;
-using System;
-using Cinemachine.Utility;
 
 namespace Unity.Cinemachine3
 {
@@ -18,10 +17,7 @@ namespace Unity.Cinemachine3
         /// <param name="lhs">An VirtualCamera object.</param>
         /// <param name="rhs">Another VirtualCamera object.</param>
         /// <returns>True, if both Entities are identical.</returns>
-        public static bool operator == (VirtualCamera lhs, VirtualCamera rhs)
-        {
-            return lhs.Entity == rhs.Entity;
-        }
+        public static bool operator == (VirtualCamera lhs, VirtualCamera rhs) { return lhs.Entity == rhs.Entity; }
 
         /// <summary>
         /// VirtualCamera instances are equal if they refer to the same entity.
@@ -29,10 +25,7 @@ namespace Unity.Cinemachine3
         /// <param name="lhs">An VirtualCamera object.</param>
         /// <param name="rhs">Another VirtualCamera object.</param>
         /// <returns>True, if entities are different.</returns>
-        public static bool operator != (VirtualCamera lhs, VirtualCamera rhs)
-        {
-            return !(lhs == rhs);
-        }
+        public static bool operator != (VirtualCamera lhs, VirtualCamera rhs) { return !(lhs == rhs); }
 
         /// <summary>
         /// VirtualCamera instances are equal if they refer to the same entity.
@@ -41,19 +34,13 @@ namespace Unity.Cinemachine3
         /// <returns>True, if the compare parameter contains an VirtualCamera object
         /// wrapping the same entity
         /// as this Entity.</returns>
-        public override bool Equals(object compare)
-        {
-            return this == (VirtualCamera) compare;
-        }
+        public override bool Equals(object compare) { return this == (VirtualCamera)compare; }
 
         /// <summary>
         /// A hash used for comparisons.
         /// </summary>
         /// <returns>A unique hash code.</returns>
-        public override int GetHashCode()
-        {
-            return Entity.GetHashCode();
-        }
+        public override int GetHashCode() { return Entity.GetHashCode(); }
 
         /// <summary>
         /// A "blank" Entity object that does not refer to an actual entity.
@@ -65,19 +52,13 @@ namespace Unity.Cinemachine3
         /// </summary>
         /// <param name="o">The other VirtualCamera.</param>
         /// <returns>True, if the VirtualCamera instances wrap the same entity.</returns>
-        public bool Equals(VirtualCamera o)
-        {
-            return Entity == o.Entity;
-        }
+        public bool Equals(VirtualCamera o) { return Entity == o.Entity; }
 
         /// <summary>
         /// Provides a debugging string.
         /// </summary>
         /// <returns>A string containing the entity index and generational version.</returns>
-        public override string ToString()
-        {
-            return Entity.ToString();
-        }
+        public override string ToString() { return Entity.ToString(); }
 
         public Entity Entity { get; set; }
 
@@ -86,56 +67,90 @@ namespace Unity.Cinemachine3
             return new VirtualCamera { Entity = e };
         }
 
+        /// <summary>Is this a null entity?</summary>
         public bool IsNull { get { return Entity == Entity.Null; } }
 
+        /// <summary>Does this entity really wrap a virtual camera?</summary>
+        public bool IsVirtualCamera
+        {
+            get
+            {
+                var e = Entity;
+                var m = World.Active?.EntityManager;
+                return m != null && m.Exists(e) && m.HasComponent<CM_VcamChannel>(e);
+            }
+        }
+
+        /// <summary>Is the vcam currently conrolling a Camera?</summary>
         public bool IsLive
         {
             get
             {
+                // GML todo: replace this with flag in the vcam state
                 var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
                 return m == null ? false : m.IsLive(this);
             }
         }
 
+        /// <summary>What channel this vcam is on</summary>
+        public int ChannelValue
+        {
+            get
+            {
+                var e = Entity;
+                var m = World.Active?.EntityManager;
+                if (m != null && m.Exists(e) && m.HasComponent<CM_VcamChannel>(e))
+                    return m.GetSharedComponentData<CM_VcamChannel>(e).channel;
+                return 0;
+            }
+        }
+
+        /// <summary>Walk up the chain of vcam parents to the top channel</summary>
+        public int FindTopLevelChannel()
+        {
+            var ch = new ChannelHelper(ChannelValue);
+            var parentVcam = FromEntity(ch.Entity);
+            while (parentVcam.IsVirtualCamera)
+            {
+                ch = new ChannelHelper(parentVcam.ChannelValue);
+                parentVcam = FromEntity(ch.Entity);
+            }
+            return ch.Channel.channel;
+        }
+
+        /// <summary>Display name for the vcam, also used in custom blend asset</summary>
         public string Name
         {
             get
             {
-                // GML TODO
-                return IsNull ? string.Empty : Entity.ToString();
+                var e = Entity;
+                var m = World.Active?.EntityManager;
+                if (m != null && m.Exists(e))
+                {
+                    if (m.HasComponent<Transform>(e))
+                        return m.GetComponentObject<Transform>(e).name;
+                }
+                // GML todo: entity name
+                return IsNull ? "(null)" : Entity.ToString();
             }
         }
 
+        /// <summary>Debug description of the vcam, if it's a channel</summary>
         public string Description
         {
             get
             {
-                var m = World.Active?.EntityManager;
-                var e = Entity;
-                if (m == null || e == Entity.Null || !m.HasComponent<CM_Channel>(e))
+                var ch = new ChannelHelper(Entity);
+                if (!ch.IsChannel)
                     return string.Empty;
-                var cs = World.Active?.GetExistingSystem<CM_ChannelSystem>();
-                if (cs == null)
-                    return string.Empty;
-
-                // Show the active camera and blend
-                var c = m.GetComponentData<CM_Channel>(e).channel;
-                var blend = cs.GetActiveBlend(c);
+                var blend = ch.ActiveBlend;
                 if (blend.outgoingCam != Entity.Null)
                     return blend.Description();
-
-                var vcam = cs.GetActiveVirtualCamera(c);
-                if (vcam.IsNull)
-                    return "(none)";
-
-                var sb = CinemachineDebug.SBFromPool();
-                sb.Append("["); sb.Append(vcam.Name); sb.Append("]");
-                string text = sb.ToString();
-                CinemachineDebug.ReturnToPool(sb);
-                return text;
+                return ch.ActiveVirtualCamera.Name;
             }
         }
 
+        /// <summary>Current state of the vcam or channel, may be the result of blends</summary>
         public CameraState State
         {
             get
@@ -146,16 +161,11 @@ namespace Unity.Cinemachine3
                 if (m != null && e != Entity.Null)
                 {
                     // Is this entity a channel?
-                    if (m.HasComponent<CM_ChannelBlendState>(e) && m.HasComponent<CM_Channel>(e))
-                    {
-                        if (m.GetSharedComponentData<CM_VcamChannel>(e).channel
-                                != m.GetComponentData<CM_Channel>(e).channel)
-                        {
-                            var blendState = m.GetComponentData<CM_ChannelBlendState>(e);
-                            return blendState.blender.State.cameraState;
-                        }
-                    }
+                    var ch = new ChannelHelper(Entity, m);
+                    if (ch.IsChannel)
+                        return ch.CameraState;
 
+                    // Fetch the state from the relevant components
                     bool noLens = true;
                     if (m.HasComponent<CM_VcamLensState>(e))
                     {

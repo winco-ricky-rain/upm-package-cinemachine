@@ -1,5 +1,4 @@
 using UnityEngine;
-using Unity.Entities;
 using Cinemachine;
 using Cinemachine.Utility;
 using Unity.Cinemachine.Common;
@@ -24,80 +23,7 @@ namespace Unity.Cinemachine3.Authoring
         /// </summary>
         public CinemachineBlenderSettings customBlends;
 
-        static CM_ChannelSystem ActiveChannelSystem
-        {
-            get { return World.Active?.GetExistingSystem<CM_ChannelSystem>(); }
-        }
-
-        CM_ChannelState ChannelState
-        {
-            get
-            {
-                var m = World.Active?.EntityManager;
-                if (m != null && m.HasComponent<CM_ChannelState>(Entity))
-                    return m.GetComponentData<CM_ChannelState>(Entity);
-                return new CM_ChannelState();
-            }
-        }
-
-        CM_Channel Channel
-        {
-            get
-            {
-                var m = World.Active?.EntityManager;
-                if (m != null)
-                    return m.GetComponentData<CM_Channel>(Entity);
-                return CM_Channel.Default;
-            }
-            set
-            {
-                var m = World.Active?.EntityManager;
-                if (m != null && m.HasComponent<CM_Channel>(Entity))
-                    m.SetComponentData(Entity, value);
-            }
-        }
-
-        /// <summary>
-        /// Get the current active virtual camera.
-        /// </summary>
-        public VirtualCamera ActiveVirtualCamera
-        {
-            get
-            {
-                var m = ActiveChannelSystem;
-                return m == null ? VirtualCamera.Null : m.GetActiveVirtualCamera(Channel.channel);
-            }
-        }
-
-        /// <summary>
-        /// Is there a blend in progress?
-        /// </summary>
-        public bool IsBlending
-        {
-            get
-            {
-                var channelSystem = ActiveChannelSystem;
-                if (channelSystem != null)
-                    return channelSystem.IsBlending(Channel.channel);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Get the current blend in progress.  Returns null if none.
-        /// </summary>
-        public CM_BlendState ActiveBlend
-        {
-            get
-            {
-                var channelSystem = ActiveChannelSystem;
-                if (channelSystem != null)
-                    return channelSystem.GetActiveBlend(Channel.channel);
-                return new CM_BlendState();
-            }
-        }
-
-        ///  Will only be called if Unity Editor - never in build
+        /// Will only be called if Unity Editor - never in build
         private void OnGuiHandler()
         {
             if (!showDebugText)
@@ -111,37 +37,6 @@ namespace Unity.Cinemachine3.Authoring
                 Rect r = CinemachineDebug.GetScreenPos(this, text, GUI.skin.box);
                 GUI.Label(r, text, GUI.skin.box);
                 CinemachineDebug.ReturnToPool(sb);
-            }
-        }
-
-        void ResolveUndefinedBlends()
-        {
-            var channelSystem = ActiveChannelSystem;
-            if (channelSystem != null)
-            {
-                channelSystem.ResolveUndefinedBlends(
-                    Channel.channel, new FetchBlendDefinition { clearShot = this });
-            }
-        }
-
-        struct FetchBlendDefinition : IGetBlendDefinition
-        {
-            public CM_ClearShot clearShot;
-            public CM_BlendDefinition GetBlend(VirtualCamera fromCam, VirtualCamera toCam)
-            {
-                var def = clearShot.Channel.defaultBlend;
-                if (clearShot.customBlends != null)
-                    def = clearShot.customBlends.GetBlendForVirtualCameras(fromCam.Name, toCam.Name, def);
-
-                // Invoke the cusom blend callback
-                if (CM_Brain.OnCreateBlend != null)
-                    def = CM_Brain.OnCreateBlend(clearShot.gameObject, fromCam, toCam, def);
-
-                return new CM_BlendDefinition
-                {
-                    curve = def.BlendCurve,
-                    duration = def.m_Style == CinemachineBlendDefinition.Style.Cut ? 0 : def.m_Time
-                };
             }
         }
 
@@ -161,16 +56,17 @@ namespace Unity.Cinemachine3.Authoring
 
         protected override void Update()
         {
-            var c = Channel;
-            var s = ParentChannelComponent;
-            var p = s.settings.projection;
-            if (c.settings.aspect != s.settings.aspect || c.settings.projection != p)
+            var ch = new ChannelHelper(Entity);
+            var c = ch.Channel;
+            var cTop = new ChannelHelper(VirtualCamera.FindTopLevelChannel()).Channel;
+            var p = cTop.settings.projection;
+            if (c.settings.aspect != cTop.settings.aspect || c.settings.projection != p)
             {
-                c.settings.aspect = s.settings.aspect;
+                c.settings.aspect = cTop.settings.aspect;
                 c.settings.projection = p;
-                Channel = c;
+                ch.Channel = c;
             }
-            ResolveUndefinedBlends();
+            ch.ResolveUndefinedBlends(customBlends);
             base.Update();
         }
     }

@@ -2,7 +2,8 @@ using Unity.Entities;
 
 namespace Unity.Cinemachine3.Authoring
 {
-    public abstract class CM_ComponentProxyBase<T> : ComponentDataProxy<T> where T : struct, IComponentData
+    public abstract class CM_ComponentProxyBase<T>
+        : ComponentDataProxy<T> where T : struct, IComponentData
     {
         public bool TryGetEntityAndManager(out EntityManager entityManager, out Entity entity)
         {

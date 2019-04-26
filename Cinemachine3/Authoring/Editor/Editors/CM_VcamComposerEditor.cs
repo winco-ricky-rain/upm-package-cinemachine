@@ -17,7 +17,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
 
         protected virtual void OnEnable()
         {
-            TopLevelChannel = Target.Vcam == null ? 0 : Target.Vcam.FindTopLevelChannel();
+            TopLevelChannel = Target.Vcam == null ? 0 : Target.Vcam.VirtualCamera.FindTopLevelChannel();
 
             mScreenGuideEditor = new CinemachineScreenComposerGuides();
             mScreenGuideEditor.GetHardGuide = () => { return ToRect(Target.Value.GetHardGuideRect()); };
@@ -100,6 +100,14 @@ namespace Unity.Cinemachine3.Authoring.Editor
             return targetMarkerTex;
         }
 
+        protected CM_Brain FindBrain()
+        {
+            var ch = new ChannelHelper(TopLevelChannel);
+            if (ch.EntityManager.HasComponent<CM_Brain>(ch.Entity))
+                return ch.EntityManager.GetComponentObject<CM_Brain>(ch.Entity);
+            return null;
+        }
+
         protected virtual void OnGUI()
         {
             if (Target == null)
@@ -107,7 +115,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
 
             // Draw the camera guides
             var vcam = Target.Vcam;
-            var brain = vcam == null ? null : CM_Brain.FindBrain(TopLevelChannel);
+            var brain = vcam == null ? null : FindBrain();
             if (brain == null || brain.OutputCamera == null || !brain.m_ShowGameViewGuides)
                 return;
 

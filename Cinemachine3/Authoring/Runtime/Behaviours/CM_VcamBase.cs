@@ -23,85 +23,50 @@ namespace Unity.Cinemachine3.Authoring
         /// other virtual cameras </summary>
         public CinemachineVirtualCameraBase.TransitionParams transitions; // GML fixme
 
-        public bool IsLive
-        {
-            get
-            {
-                var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
-                return m == null ? false : m.IsLive(VirtualCamera.FromEntity(Entity));
-            }
-        }
+        /// <summary>Get the VirtualCamera representation of this vcam</summary>
+        public VirtualCamera VirtualCamera { get { return VirtualCamera.FromEntity(Entity); } }
 
-        public virtual bool IsValid { get { return !(this == null); } }
+        /// <summary>Is the vcam currently conrolling a Camera?</summary>
+        public bool IsLive { get { return VirtualCamera.IsLive; } }
+
+        /// <summary>What channel this vcam is on</summary>
+        public int ChannelValue { get { return VirtualCamera.ChannelValue; } }
 
         /// <summary>The CameraState object holds all of the information
         /// necessary to position the Unity camera.  It is the output of this class.</summary>
-        public virtual CameraState State
-        {
-            get { return VirtualCamera.FromEntity(Entity).State; }
-        }
+        public virtual CameraState State { get { return VirtualCamera.State; } }
 
-        protected GameObjectEntity m_gameObjectEntityComponent;
-
+        // GML todo: use conversion instead
+        protected GameObjectEntity m_gameObjectEntity;
         public Entity Entity
         {
-            get
-            {
-                return m_gameObjectEntityComponent == null
-                    ? Entity.Null : m_gameObjectEntityComponent.Entity;
-            }
+            get { return m_gameObjectEntity == null ? Entity.Null : m_gameObjectEntity.Entity; }
         }
 
-        public VirtualCamera VirtualCamera { get { return VirtualCamera.FromEntity(Entity); } }
-
-        public T GetEntityComponentData<T>() where T : struct, IComponentData
+        /// <summary>Get component data, with all the null checks.
+        /// Returns default if nonexistant</summary>
+        public T SafeGetComponentData<T>() where T : struct, IComponentData
         {
+            var e = Entity;
             var m = World.Active?.EntityManager;
-            if (m != null)
-                if (m.HasComponent<T>(Entity))
-                    return m.GetComponentData<T>(Entity);
+            if (m != null && m.Exists(e))
+                if (m.HasComponent<T>(e))
+                    return m.GetComponentData<T>(e);
             return new T();
         }
 
-        protected CM_ChannelState ParentChannelState
+        /// <summary>Set component data, with all the null checks</summary>
+        public void SafeSetComponentData<T>(T c) where T : struct, IComponentData
         {
-            get
-            {
-                var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
-                if (m != null)
-                    return m.GetChannelState(ParentChannel);
-                return new CM_ChannelState();
-            }
-        }
-
-        protected CM_Channel ParentChannelComponent
-        {
-            get
-            {
-                var m = World.Active?.GetExistingSystem<CM_ChannelSystem>();
-                if (m != null)
-                    return m.GetChannelComponent(ParentChannel);
-                return new CM_Channel();
-            }
-        }
-
-        public int ParentChannel { get { return gameObject.layer; } } // GML is this the right thing?
-
-        public int FindTopLevelChannel()
-        {
-            var channel = ParentChannel;
+            var e = Entity;
             var m = World.Active?.EntityManager;
-            var channelSystem = World.Active?.GetExistingSystem<CM_ChannelSystem>();
-            if (m != null && channelSystem != null)
+            if (m != null && m.Exists(e))
             {
-                var e = channelSystem.GetChannelEntity(channel);
-                while (e != Entity.Null && m.HasComponent<CM_VcamChannel>(e))
-                {
-                    channel = m.GetSharedComponentData<CM_VcamChannel>(e).channel;
-                    e = channelSystem.GetChannelEntity(channel);
-                }
+                if (m.HasComponent<T>(e))
+                    m.SetComponentData(e, c);
+                else
+                    m.AddComponentData(e, c);
             }
-            return channel;
         }
 
 #if true // GML todo something better here
@@ -134,36 +99,35 @@ namespace Unity.Cinemachine3.Authoring
 
         protected virtual void PushValuesToEntityComponents()
         {
+            var e = Entity;
             var m = World.Active?.EntityManager;
-            if (m == null || !m.Exists(Entity))
+            if (m == null || !m.Exists(e))
                 return;
 
-            if (!m.HasComponent<CM_VcamChannel>(Entity))
-                m.AddSharedComponentData(Entity, new CM_VcamChannel());
-            if (!m.HasComponent<CM_VcamPriority>(Entity))
-                m.AddComponentData(Entity, new CM_VcamPriority()); // GML todo: vcamSequence
-            if (!m.HasComponent<CM_VcamShotQuality>(Entity))
+            if (!m.HasComponent<CM_VcamChannel>(e))
+                m.AddSharedComponentData(e, new CM_VcamChannel());
+            if (!m.HasComponent<CM_VcamPriority>(e))
+                m.AddComponentData(e, new CM_VcamPriority());
+            if (!m.HasComponent<CM_VcamShotQuality>(e))
                 m.AddComponentData(Entity, new CM_VcamShotQuality());
 
-            var c = m.GetSharedComponentData<CM_VcamChannel>(Entity);
-            if (c.channel != ParentChannel)
-                m.SetSharedComponentData(Entity, new CM_VcamChannel
+            // GML todo: change this.  Don't want to be tied to layers
+            if (ChannelValue != gameObject.layer)
+                m.SetSharedComponentData(e, new CM_VcamChannel
                 {
-                    channel = ParentChannel
+                    channel = gameObject.layer
                 });
 
-            m.SetComponentData(Entity, new CM_VcamPriority
+            m.SetComponentData(e, new CM_VcamPriority
             {
                 priority = priority
                 // GML todo: vcamSequence
             });
-
-            // GML todo: set the name
         }
 
         protected virtual void OnEnable()
         {
-            m_gameObjectEntityComponent = GetComponent<GameObjectEntity>();
+            m_gameObjectEntity = GetComponent<GameObjectEntity>();
             PushValuesToEntityComponents();
         }
 

@@ -59,7 +59,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
         private static void DrawBrainGizmos(CM_Brain brain, GizmoType drawType)
         {
             if (brain.m_ShowCameraFrustum)
-                DrawCameraFrustumGizmo(brain.CurrentCameraState, Color.white); // GML why is this color hardcoded?
+                DrawCameraFrustumGizmo(brain.CameraState, Color.white); // GML why is this color hardcoded?
         }
 
         public class ComponentManagerDropdown

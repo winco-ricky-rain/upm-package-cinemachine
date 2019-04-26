@@ -16,26 +16,12 @@ namespace Cinemachine
         {
             var sb = CinemachineDebug.SBFromPool();
             var cam = VirtualCamera.FromEntity(blend.cam);
-            if (cam.IsNull)
-                sb.Append("(none)");
-            else
-            {
-                sb.Append("[");
-                sb.Append(cam.Name);
-                sb.Append("]");
-            }
+            sb.Append(cam.Name);
             sb.Append(" ");
             sb.Append((int)(blend.weight * 100f));
             sb.Append("% from ");
             var outgoingCam = VirtualCamera.FromEntity(blend.outgoingCam);
-            if (outgoingCam.IsNull)
-                sb.Append("(none)");
-            else
-            {
-                sb.Append("[");
-                sb.Append(outgoingCam.Name);
-                sb.Append("]");
-            }
+            sb.Append(outgoingCam.Name);
             string text = sb.ToString();
             CinemachineDebug.ReturnToPool(sb);
             return text;

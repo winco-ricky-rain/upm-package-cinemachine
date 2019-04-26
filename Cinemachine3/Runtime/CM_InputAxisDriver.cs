@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using Unity.Mathematics;
-using Cinemachine;
 using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3
@@ -73,7 +72,7 @@ namespace Unity.Cinemachine3
         {
             if (!string.IsNullOrEmpty(name))
             {
-                try { inputValue = CinemachineCore.GetInputAxis(name); }
+                try { inputValue = ClientHooks.GetInputAxis(name); }
                 catch (ArgumentException) {}
                 //catch (ArgumentException e) { Debug.LogError(e.ToString()); }
             }

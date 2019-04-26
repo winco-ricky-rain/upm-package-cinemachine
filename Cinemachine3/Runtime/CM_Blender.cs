@@ -42,7 +42,7 @@ namespace Unity.Cinemachine3
 
         // Special value for undefined blends
         const float kAbsurdlyLong = 1e10f;
-        public static CM_Blend UndefinedBlend { get {return new CM_Blend { duration = kAbsurdlyLong }; } }
+        public static CM_Blend UndefinedBlend { get { return new CM_Blend { duration = kAbsurdlyLong }; } }
         public bool IsUndefined() { return duration >= kAbsurdlyLong; }
     }
 

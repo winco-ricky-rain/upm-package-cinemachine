@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using Unity.Entities;
 using Cinemachine;
 using Cinemachine.Editor;
 using Cinemachine.Utility;
@@ -20,15 +19,15 @@ namespace Unity.Cinemachine3.Authoring.Editor
 
         protected virtual void OnEnable()
         {
-            TopLevelChannel = Target.FindTopLevelChannel();
+            TopLevelChannel = Target.VirtualCamera.FindTopLevelChannel();
         }
 
         protected virtual void OnDisable()
         {
-            var brain = Target == null ? null : CM_Brain.FindBrain(TopLevelChannel);
-            if (brain != null && brain.SoloCamera == Target.VirtualCamera)
+            var ch = new ChannelHelper(TopLevelChannel);
+            if (ch.SoloCamera == Target.VirtualCamera)
             {
-                brain.SoloCamera = VirtualCamera.Null;
+                ch.SoloCamera = VirtualCamera.Null;
                 // GML is this the right thing to do?
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
@@ -67,10 +66,9 @@ namespace Unity.Cinemachine3.Authoring.Editor
             rect.width -= rectLabel.width;
             rect.x += rectLabel.width;
 
-            var brain = CM_Brain.FindBrain(TopLevelChannel);
+            var ch = new ChannelHelper(TopLevelChannel);
             Color color = GUI.color;
-            bool isSolo = brain != null && brain.SoloCamera == Target.VirtualCamera
-                && !Target.VirtualCamera.IsNull;
+            bool isSolo = ch.SoloCamera == Target.VirtualCamera && !Target.VirtualCamera.IsNull;
             if (isSolo)
                 GUI.color = CM_Brain.GetSoloGUIColor();
 
@@ -79,11 +77,11 @@ namespace Unity.Cinemachine3.Authoring.Editor
             GUI.Label(rectLabel, isLive ? "Status: Live"
                 : (Target.isActiveAndEnabled ? "Status: Standby" : "Status: Disabled"));
             GUI.enabled = true;
-            GUI.enabled = brain != null;
+            GUI.enabled = FindBrain() != null;
             if (GUI.Button(rect, "Solo", "Button"))
             {
                 isSolo = !isSolo;
-                brain.SoloCamera = isSolo ? Target.VirtualCamera : VirtualCamera.Null;
+                ch.SoloCamera = isSolo ? Target.VirtualCamera : VirtualCamera.Null;
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
             GUI.enabled = true;
@@ -94,7 +92,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
 
         protected void DrawGlobalControlsInInspector()
         {
-            var brain = CM_Brain.FindBrain(TopLevelChannel);
+            var brain = FindBrain();
             if (brain != null)
                 brain.m_ShowGameViewGuides = EditorGUILayout.Toggle(
                     new GUIContent(
@@ -112,6 +110,14 @@ namespace Unity.Cinemachine3.Authoring.Editor
                 EditorGUILayout.HelpBox(
                     " Virtual Camera settings changes made during Play Mode will be propagated back to the scene when Play Mode is exited.",
                     MessageType.Info);
+        }
+
+        protected CM_Brain FindBrain()
+        {
+            var ch = new ChannelHelper(TopLevelChannel);
+            if (ch.EntityManager.HasComponent<CM_Brain>(ch.Entity))
+                return ch.EntityManager.GetComponentObject<CM_Brain>(ch.Entity);
+            return null;
         }
 
         static readonly string kGizmoFileName = "Packages/com.unity.cinemachine/Gizmos/cm_logo.png";
