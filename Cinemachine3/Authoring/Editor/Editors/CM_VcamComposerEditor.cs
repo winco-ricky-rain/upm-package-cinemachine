@@ -17,7 +17,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
 
         protected virtual void OnEnable()
         {
-            TopLevelChannel = Target.Vcam == null ? 0 : Target.Vcam.VirtualCamera.FindTopLevelChannel();
+            TopLevelChannel = Target.VirtualCamera.FindTopLevelChannel();
 
             mScreenGuideEditor = new CinemachineScreenComposerGuides();
             mScreenGuideEditor.GetHardGuide = () => { return ToRect(Target.Value.GetHardGuideRect()); };
@@ -114,16 +114,14 @@ namespace Unity.Cinemachine3.Authoring.Editor
                 return;
 
             // Draw the camera guides
-            var vcam = Target.Vcam;
-            var brain = vcam == null ? null : FindBrain();
+            var vcam = Target.VirtualCamera;
+            var brain = FindBrain();
             if (brain == null || brain.OutputCamera == null || !brain.m_ShowGameViewGuides)
                 return;
 
-            var entity = Target.Entity;
-            bool isLive = vcam.IsLive;
-
             // Screen guides
-            var state = VirtualCamera.FromEntity(entity).State;
+            var state = vcam.State;
+            bool isLive = vcam.IsLive;
             mScreenGuideEditor.OnGUI_DrawGuides(isLive, brain.OutputCamera, state.Lens, true);
 
             // Draw an on-screen gizmo for the target

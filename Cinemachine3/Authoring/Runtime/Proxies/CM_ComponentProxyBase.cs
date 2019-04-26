@@ -53,8 +53,9 @@ namespace Unity.Cinemachine3.Authoring
         }
     }
 
-    public abstract class CM_VcamComponentProxyBase<T> : CM_ComponentProxyBase<T> where T : struct, IComponentData
+    public abstract class CM_VcamComponentProxyBase<T>
+        : CM_ComponentProxyBase<T> where T : struct, IComponentData
     {
-        public CM_VcamBase Vcam { get { return GetComponent<CM_VcamBase>(); } }
+        public VirtualCamera VirtualCamera { get { return VirtualCamera.FromEntity(Entity); } }
     }
 }

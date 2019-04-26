@@ -25,7 +25,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
             var up = math.mul(orient, math.up());
 
             Color originalGizmoColour = Gizmos.color;
-            Gizmos.color = orbital.Vcam.IsLive
+            Gizmos.color = orbital.VirtualCamera.IsLive
                 ? CinemachineSettings.CinemachineCoreSettings.ActiveGizmoColour
                 : CinemachineSettings.CinemachineCoreSettings.InactiveGizmoColour;
 
