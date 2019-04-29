@@ -1,13 +1,10 @@
 using UnityEngine;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
 using Cinemachine;
 using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
 {
-    [RequireComponent(typeof(GameObjectEntity))]
     [SaveDuringPlay]
     public abstract class CM_VcamBase : MonoBehaviour
     {
@@ -36,37 +33,9 @@ namespace Unity.Cinemachine3.Authoring
         /// necessary to position the Unity camera.  It is the output of this class.</summary>
         public virtual CameraState State { get { return VirtualCamera.State; } }
 
-        // GML todo: use conversion instead
-        protected GameObjectEntity m_gameObjectEntity;
         public Entity Entity
         {
-            get { return m_gameObjectEntity == null ? Entity.Null : m_gameObjectEntity.Entity; }
-        }
-
-        /// <summary>Get component data, with all the null checks.
-        /// Returns default if nonexistant</summary>
-        public T SafeGetComponentData<T>() where T : struct, IComponentData
-        {
-            var e = Entity;
-            var m = World.Active?.EntityManager;
-            if (m != null && m.Exists(e))
-                if (m.HasComponent<T>(e))
-                    return m.GetComponentData<T>(e);
-            return new T();
-        }
-
-        /// <summary>Set component data, with all the null checks. Adds if necessary</summary>
-        public void SafeSetComponentData<T>(T c) where T : struct, IComponentData
-        {
-            var e = Entity;
-            var m = World.Active?.EntityManager;
-            if (m != null && m.Exists(e))
-            {
-                if (m.HasComponent<T>(e))
-                    m.SetComponentData(e, c);
-                else
-                    m.AddComponentData(e, c);
-            }
+            get { return new GameObjectEntityHelper(transform, true).Entity; }
         }
 
         protected virtual void PushValuesToEntityComponents()
@@ -96,7 +65,6 @@ namespace Unity.Cinemachine3.Authoring
 
         protected virtual void OnEnable()
         {
-            m_gameObjectEntity = GetComponent<GameObjectEntity>();
             PushValuesToEntityComponents();
         }
 

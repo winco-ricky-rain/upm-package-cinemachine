@@ -19,9 +19,8 @@ namespace Unity.Cinemachine3.Authoring
         {
             get
             {
-                // GML is there a better way?
                 if (path != null)
-                    return path.GetComponent<GameObjectEntity>().Entity;
+                    return new GameObjectEntityHelper(path.transform, true).Entity;
                 return Entity.Null;
             }
         }

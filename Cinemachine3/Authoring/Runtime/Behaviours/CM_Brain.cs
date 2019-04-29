@@ -13,7 +13,6 @@ namespace Unity.Cinemachine3.Authoring
     [DisallowMultipleComponent]
     [ExecuteAlways]
     [SaveDuringPlay]
-    [RequireComponent(typeof(GameObjectEntity))]
     [RequireComponent(typeof(CM_ChannelProxy))]
     [AddComponentMenu("Cinemachine/CM_Brain")]
     public class CM_Brain : MonoBehaviour
@@ -111,22 +110,14 @@ namespace Unity.Cinemachine3.Authoring
             get { return new ChannelHelper(Entity).CameraState; }
         }
 
-        // GML todo: get rid of this
-        GameObjectEntity m_gameObjectEntityComponent;
-
         public Entity Entity
         {
-            get
-            {
-                return m_gameObjectEntityComponent == null
-                    ? Entity.Null : m_gameObjectEntityComponent.Entity;
-            }
+            get { return new GameObjectEntityHelper(transform, true).Entity; }
         }
 
         private void OnEnable()
         {
             outputCamera = GetComponent<Camera>();
-            m_gameObjectEntityComponent = GetComponent<GameObjectEntity>();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }

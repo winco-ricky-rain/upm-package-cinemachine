@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 using Unity.Entities;
 using System.Collections.Generic;
-using Unity.Transforms;
 using Unity.Cinemachine.Common;
 
 namespace Unity.Cinemachine3.Authoring
@@ -98,36 +97,6 @@ namespace Unity.Cinemachine3.Authoring
             return -1;
         }
 
-        protected EntityManager ActiveEntityManager { get { return World.Active?.EntityManager; } }
-
-#if true // GML todo something better here
-        protected Entity EnsureTargetCompliance(Transform target)
-        {
-            if (target == null)
-                return Entity.Null;
-
-            var m = ActiveEntityManager;
-            if (m == null)
-                return Entity.Null;
-
-            var goe = target.GetComponent<GameObjectEntity>();
-            if (goe == null)
-                goe = target.gameObject.AddComponent<GameObjectEntity>();
-
-            var e = goe.Entity;
-            if (e != Entity.Null)
-            {
-                if (!m.HasComponent<CM_Target>(e))
-                    m.AddComponentData(e, new CM_Target());
-                if (!m.HasComponent<LocalToWorld>(e))
-                    m.AddComponentData(e, new LocalToWorld());
-                if (!m.HasComponent<CopyTransformFromGameObject>(e))
-                    m.AddComponentData(e, new CopyTransformFromGameObject());
-            }
-            return e;
-        }
-#endif
-
         List<CM_GroupBufferElement> scratchList = new List<CM_GroupBufferElement>();
         void DoUpdate()
         {
@@ -139,9 +108,10 @@ namespace Unity.Cinemachine3.Authoring
             for (int i = 0; i < count; ++i)
             {
                 var t = m_Targets[i];
-                var e = EnsureTargetCompliance(t.target);
-                if (e != Entity.Null)
-                    scratchList.Add(new CM_GroupBufferElement { target = e, weight = t.weight });
+                var goh = new GameObjectEntityHelper(t.target, true);
+                goh.EnsureTransformCompliance();
+                goh.SafeAddComponentData(new CM_Target());
+                scratchList.Add(new CM_GroupBufferElement { target = goh.Entity, weight = t.weight });
             }
             SetValue(scratchList);
         }
