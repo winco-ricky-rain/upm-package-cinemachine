@@ -5,7 +5,7 @@ using Cinemachine;
 namespace Unity.Cinemachine3
 {
     /// <summary>
-    /// Helper functions for doing stuff will channel entities.
+    /// Helper functions for doing stuff with channel entities.
     /// Instantiate as needed, don't keep.
     /// </summary>
     public struct ChannelHelper
@@ -72,14 +72,14 @@ namespace Unity.Cinemachine3
             }
         }
 
-        /// <summary>The channel attached to this channel</summary>
+        /// <summary>The channel attached to this entity</summary>
         public CM_Channel Channel
         {
             get { return SafeGetComponentData<CM_Channel>(); }
             set { SafeSetComponentData(value); }
         }
 
-        /// <summary>The channel state attached to this channel</summary>
+        /// <summary>The channel state attached to this entity</summary>
         public CM_ChannelState ChannelState
         {
             get { return SafeGetComponentData<CM_ChannelState>(); }
@@ -95,11 +95,8 @@ namespace Unity.Cinemachine3
         /// <summary>Is there a blend in progress?</summary>
         public bool IsBlending
         {
-            get
-            {
-                var m = ChannelSystem;
-                return (m == null) ? false : m.IsBlending(Channel.channel);
-            }
+            get { return SoloCamera.IsNull
+                && SafeGetComponentData<CM_ChannelBlendState>().blender.IsBlending; }
         }
 
         /// <summary>Get the current blend in progress.  Will be empty if none.</summary>
@@ -107,10 +104,10 @@ namespace Unity.Cinemachine3
         {
             get
             {
-                var channelSystem = ChannelSystem;
-                if (channelSystem != null)
-                    return channelSystem.GetActiveBlend(Channel.channel);
-                return new CM_BlendState();
+                var solo = SoloCamera;
+                if (!solo.IsNull)
+                    return new CM_BlendState { cam = solo.Entity, weight = 1 };
+                return SafeGetComponentData<CM_ChannelBlendState>().blender.State;
             }
         }
 
@@ -131,13 +128,7 @@ namespace Unity.Cinemachine3
         /// </summary>
         public CameraState CameraState
         {
-            get
-            {
-                var channelSystem = ChannelSystem;
-                if (channelSystem != null)
-                    return channelSystem.GetCurrentCameraState(Channel.channel);
-                return CameraState.Default;
-            }
+            get { return ActiveBlend.cameraState; }
         }
 
         /// <summary>

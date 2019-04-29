@@ -55,7 +55,7 @@ namespace Unity.Cinemachine3.Authoring
             return new T();
         }
 
-        /// <summary>Set component data, with all the null checks</summary>
+        /// <summary>Set component data, with all the null checks. Adds if necessary</summary>
         public void SafeSetComponentData<T>(T c) where T : struct, IComponentData
         {
             var e = Entity;
@@ -69,60 +69,29 @@ namespace Unity.Cinemachine3.Authoring
             }
         }
 
-#if true // GML todo something better here
-        protected Entity EnsureTargetCompliance(Transform target)
-        {
-            if (target == null)
-                return Entity.Null;
-
-            var m = World.Active?.EntityManager;
-            if (m == null)
-                return Entity.Null;
-
-            var goe = target.GetComponent<GameObjectEntity>();
-            if (goe == null)
-                goe = target.gameObject.AddComponent<GameObjectEntity>();
-
-            var e = goe.Entity;
-            if (e != Entity.Null)
-            {
-                if (!m.HasComponent<CM_Target>(e))
-                    m.AddComponentData(e, new CM_Target());
-                if (!m.HasComponent<LocalToWorld>(e))
-                    m.AddComponentData(e, new LocalToWorld { Value = float4x4.identity });
-                if (!m.HasComponent<CopyTransformFromGameObject>(e))
-                    m.AddComponentData(e, new CopyTransformFromGameObject());
-            }
-            return e;
-        }
-#endif
-
         protected virtual void PushValuesToEntityComponents()
         {
-            var e = Entity;
-            var m = World.Active?.EntityManager;
-            if (m == null || !m.Exists(e))
+            var goh = new GameObjectEntityHelper(transform, true);
+            if (goh.IsNull)
                 return;
 
-            if (!m.HasComponent<CM_VcamChannel>(e))
-                m.AddSharedComponentData(e, new CM_VcamChannel());
-            if (!m.HasComponent<CM_VcamPriority>(e))
-                m.AddComponentData(e, new CM_VcamPriority());
-            if (!m.HasComponent<CM_VcamShotQuality>(e))
-                m.AddComponentData(Entity, new CM_VcamShotQuality());
-
             // GML todo: change this.  Don't want to be tied to layers
-            if (ChannelValue != gameObject.layer)
-                m.SetSharedComponentData(e, new CM_VcamChannel
+            if (!goh.EntityManager.HasComponent<CM_VcamChannel>(goh.Entity)
+                || ChannelValue != gameObject.layer)
+            {
+                goh.SafeSetSharedComponentData(new CM_VcamChannel
                 {
                     channel = gameObject.layer
                 });
+            }
 
-            m.SetComponentData(e, new CM_VcamPriority
+            goh.SafeSetComponentData(new CM_VcamPriority
             {
                 priority = priority
                 // GML todo: vcamSequence
             });
+
+            goh.SafeAddComponentData(new CM_VcamShotQuality());
         }
 
         protected virtual void OnEnable()

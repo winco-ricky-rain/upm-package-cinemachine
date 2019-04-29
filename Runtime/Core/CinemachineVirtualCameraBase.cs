@@ -208,8 +208,6 @@ namespace Cinemachine
 
         public bool IsLive { get { return CinemachineCore.Instance.IsLive(this); } }
 
-        public Entity AsEntity { get { return Entity.Null; }}
-
         /// <summary>Get the LookAt target for the Aim component in the Cinemachine pipeline.</summary>
         public abstract Transform LookAt { get; set; }
 

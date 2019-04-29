@@ -42,9 +42,7 @@ namespace Unity.Cinemachine3
         /// <returns>A unique hash code.</returns>
         public override int GetHashCode() { return Entity.GetHashCode(); }
 
-        /// <summary>
-        /// A "blank" Entity object that does not refer to an actual entity.
-        /// </summary>
+        /// <summary>A "blank" Entity object that does not refer to an actual entity.</summary>
         public static VirtualCamera Null => new VirtualCamera();
 
         /// <summary>

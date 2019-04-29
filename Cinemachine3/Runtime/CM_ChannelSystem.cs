@@ -182,7 +182,7 @@ namespace Unity.Cinemachine3
                     EntityManager.AddComponentData(e, c);
             }
         }
-
+/*
         public CM_ChannelState GetChannelState(int channel)
         {
             return GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel));
@@ -266,7 +266,7 @@ namespace Unity.Cinemachine3
                 return true;
             return GetEntityComponentData<CM_ChannelBlendState>(e).blender.IsLive(vcam);
         }
-
+*/
         /// <summary>
         /// True if the VirtualCamera is the current active camera
         /// or part of a current blend, either directly or indirectly because its parents are live.

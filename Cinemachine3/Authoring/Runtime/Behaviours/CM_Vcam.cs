@@ -36,18 +36,9 @@ namespace Unity.Cinemachine3.Authoring
         {
             base.PushValuesToEntityComponents();
 
-            var m = World.Active?.EntityManager;
-            if (m == null || !m.Exists(Entity))
-                return;
-
-            if (!m.HasComponent<LocalToWorld>(Entity))
-                m.AddComponentData(Entity, new LocalToWorld());
-            if (!m.HasComponent<CopyTransformFromGameObject>(Entity))
-                m.AddComponentData(Entity, new CopyTransformFromGameObject());
-
-            if (!m.HasComponent<CM_VcamLens>(Entity))
-                m.AddComponentData(Entity, CM_VcamLens.Default);
-            m.SetComponentData(Entity, new CM_VcamLens
+            var goh = new GameObjectEntityHelper(transform, true);
+            goh.EnsureTransformCompliance();
+            goh.SafeSetComponentData(new CM_VcamLens
             {
                 fov = lens.Orthographic ? lens.OrthographicSize : lens.FieldOfView,
                 nearClip = lens.NearClipPlane,
@@ -56,16 +47,15 @@ namespace Unity.Cinemachine3.Authoring
                 lensShift = lens.LensShift
             });
 
-            // GML todo: GC allocs? - cache this stuff
-            var e = EnsureTargetCompliance(followTarget);
-            if (!m.HasComponent<CM_VcamFollowTarget>(Entity))
-                m.AddComponentData(Entity, new CM_VcamFollowTarget{ target = e });
-            m.SetComponentData(Entity, new CM_VcamFollowTarget{ target = e });
+            var th = new GameObjectEntityHelper(followTarget, true);
+            th.EnsureTransformCompliance();
+            th.SafeAddComponentData(new CM_Target());
+            goh.SafeSetComponentData(new CM_VcamFollowTarget{ target = th.Entity });
 
-            e = EnsureTargetCompliance(lookAtTarget);
-            if (!m.HasComponent<CM_VcamLookAtTarget>(Entity))
-                m.AddComponentData(Entity, new CM_VcamLookAtTarget{ target = e });
-            m.SetComponentData(Entity, new CM_VcamLookAtTarget{ target = e });
+            th = new GameObjectEntityHelper(lookAtTarget, true);
+            th.EnsureTransformCompliance();
+            th.SafeAddComponentData(new CM_Target());
+            goh.SafeSetComponentData(new CM_VcamLookAtTarget{ target = th.Entity });
         }
     }
 }
