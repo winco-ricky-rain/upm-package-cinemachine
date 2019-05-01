@@ -74,8 +74,9 @@ namespace Unity.Cinemachine3.Authoring
         }
 
         /// <summary>Makes sure the internal child cache is up to date</summary>
-        void OnEnable()
+        protected override void OnEnable()
         {
+            base.OnEnable();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }

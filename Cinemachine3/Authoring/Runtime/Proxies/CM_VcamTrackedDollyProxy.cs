@@ -17,12 +17,7 @@ namespace Unity.Cinemachine3.Authoring
 
         public Entity PathEntity
         {
-            get
-            {
-                if (path != null)
-                    return new ConvertEntityHelper(path.transform, true).Entity;
-                return Entity.Null;
-            }
+            get { return path == null ? Entity.Null : path.Entity; }
         }
 
         protected override void OnValidate()

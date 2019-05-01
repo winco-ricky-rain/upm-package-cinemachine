@@ -52,18 +52,11 @@ namespace Unity.Cinemachine3.Authoring
         {
             base.Update();
 
-            // GML temp stuff
             // Make sure the target entities are properly set up
-            var ch = new ConvertEntityHelper(transform);
-            var th = new GameObjectEntityHelper(followTarget, true);
-            th.EnsureTransformCompliance();
-            th.SafeAddComponentData(new CM_Target());
-            ch.SafeSetComponentData(new CM_VcamFollowTarget{ target = th.Entity });
-
-            th = new GameObjectEntityHelper(lookAtTarget, true);
-            th.EnsureTransformCompliance();
-            th.SafeAddComponentData(new CM_Target());
-            ch.SafeSetComponentData(new CM_VcamLookAtTarget{ target = th.Entity });
+            SafeSetComponentData(new CM_VcamFollowTarget
+                { target = CM_TargetProxy.ValidateTarget(followTarget, true) });
+            SafeSetComponentData(new CM_VcamLookAtTarget
+                { target = CM_TargetProxy.ValidateTarget(lookAtTarget, true) });
         }
     }
 }

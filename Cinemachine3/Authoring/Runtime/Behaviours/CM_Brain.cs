@@ -14,7 +14,7 @@ namespace Unity.Cinemachine3.Authoring
     [ExecuteAlways]
     [SaveDuringPlay]
     [AddComponentMenu("Cinemachine/CM_Brain")]
-    public class CM_Brain : MonoBehaviour, IConvertGameObjectToEntity
+    public class CM_Brain : CM_EntityProxyBase
     {
         /// <summary>
         /// When enabled, the current camera and blend will be indicated in the game window, for debugging.
@@ -112,28 +112,27 @@ namespace Unity.Cinemachine3.Authoring
             get { return new ChannelHelper(Entity).CameraState; }
         }
 
-        public Entity Entity
+        public override void Convert(
+            Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
-            get { return new ConvertEntityHelper(transform, true).Entity; }
-        }
-
-        public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
-        {
+            base.Convert(entity, dstManager, conversionSystem);
             dstManager.AddComponentData(entity, Channel);
-            // GML temp stuff
+
+            // GML temp stuff for hybrid.  Needed for editor FindBrain
             dstManager.AddComponentObject(entity, this);
         }
 
-        void OnValidate()
+        protected override void OnValidate()
         {
             var c = Channel;
             c.Validate();
             Channel = c;
-            ConvertEntityHelper.DestroyEntity(transform);
+            base.OnValidate();
         }
 
-        private void OnEnable()
+        protected override void OnEnable()
         {
+            base.OnEnable();
             outputCamera = GetComponent<Camera>();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;

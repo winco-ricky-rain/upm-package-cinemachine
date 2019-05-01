@@ -7,7 +7,7 @@ using Unity.Transforms;
 namespace Unity.Cinemachine3.Authoring
 {
     [SaveDuringPlay]
-    public abstract class CM_VcamBase : MonoBehaviour, IConvertGameObjectToEntity
+    public abstract class CM_VcamBase : CM_EntityProxyBase
     {
         /// <summary>The priority will determine which camera becomes active based on the
         /// state of other cameras and this camera.  Higher numbers have greater priority.
@@ -34,13 +34,10 @@ namespace Unity.Cinemachine3.Authoring
         /// necessary to position the Unity camera.  It is the output of this class.</summary>
         public virtual CameraState State { get { return VirtualCamera.State; } }
 
-        public Entity Entity
+        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
-            get { return new ConvertEntityHelper(transform).Entity; }
-        }
+            base.Convert(entity, dstManager, conversionSystem);
 
-        public virtual void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
-        {
             // GML todo: change this.  Don't want to be tied to layers
             dstManager.AddSharedComponentData(entity, new CM_VcamChannel { channel = gameObject.layer });
 
@@ -52,11 +49,6 @@ namespace Unity.Cinemachine3.Authoring
                 dstManager.AddComponentObject(entity, transform);
             if (!dstManager.HasComponent<CopyTransformFromGameObject>(entity))
                 dstManager.AddComponentData(entity, new CopyTransformFromGameObject());
-        }
-
-        protected virtual void OnValidate()
-        {
-            ConvertEntityHelper.DestroyEntity(transform);
         }
 
         protected virtual void Update()

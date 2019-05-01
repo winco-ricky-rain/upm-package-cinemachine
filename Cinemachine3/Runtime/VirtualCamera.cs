@@ -126,7 +126,9 @@ namespace Unity.Cinemachine3
                 if (m != null && m.Exists(e))
                 {
                     if (m.HasComponent<Transform>(e))
-                        return m.GetComponentObject<Transform>(e).name;
+                        return m.GetComponentObject<Transform>(e).name
+                            + " " + Entity.ToString() // GML temp debugging
+                            ;
                 }
                 // GML todo: entity name
                 return IsNull ? "(null)" : Entity.ToString();

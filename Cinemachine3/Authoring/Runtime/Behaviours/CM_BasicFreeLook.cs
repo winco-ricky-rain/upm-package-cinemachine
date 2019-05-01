@@ -54,10 +54,9 @@ namespace Unity.Cinemachine3.Authoring
         {
             base.Update();
 
-            var ch = new ConvertEntityHelper(transform);
-            if (ch.HasComponent<CM_VcamOrbital>())
+            if (HasComponent<CM_VcamOrbital>())
             {
-                var orbital = ch.SafeGetComponentData<CM_VcamOrbital>();
+                var orbital = SafeGetComponentData<CM_VcamOrbital>();
 
                 // Update our axes
                 bool changed = horizontalInput.Update(Time.deltaTime, ref orbital.horizontalAxis);
@@ -69,7 +68,7 @@ namespace Unity.Cinemachine3.Authoring
                     orbital.verticalAxis.CancelRecentering();
                     orbital.radialAxis.CancelRecentering();
                 }
-                ch.SafeSetComponentData(orbital);
+                SafeSetComponentData(orbital);
             }
         }
     }

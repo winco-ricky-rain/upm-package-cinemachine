@@ -38,8 +38,9 @@ namespace Unity.Cinemachine3.Authoring
             bottomRig = new CM_FreeLookRigBlendableSettings();
         }
 
-        protected void OnEnable()
+        protected override void OnEnable()
         {
+            base.OnEnable();
             haveMiddleRigSnapshot = false;
         }
 
@@ -56,12 +57,8 @@ namespace Unity.Cinemachine3.Authoring
             if (haveMiddleRigSnapshot)
             {
                 float blendAmount = 0.5f;
-                var ch = new ConvertEntityHelper(transform);
-                if (ch.HasComponent<CM_VcamOrbital>())
-                {
-                    var c = ch.SafeGetComponentData<CM_VcamOrbital>();
-                    blendAmount = c.verticalAxis.GetNormalizedValue();
-                }
+                if (HasComponent<CM_VcamOrbital>())
+                    blendAmount = SafeGetComponentData<CM_VcamOrbital>().verticalAxis.GetNormalizedValue();
 
                 CM_FreeLookRigBlendableSettings otherRig;
                 if (blendAmount < 0.5f)
