@@ -27,4 +27,8 @@ namespace Unity.Cinemachine.Common
     /// </summary>
     public sealed class NoSaveDuringPlayAttribute : PropertyAttribute {}
 
+    /// <summary>
+    /// Suppresses the foldout on a complex property
+    /// </summary>
+    public sealed class HideFoldoutAttribute : PropertyAttribute {}
 }

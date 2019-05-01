@@ -13,9 +13,8 @@ namespace Unity.Cinemachine3.Authoring
     [DisallowMultipleComponent]
     [ExecuteAlways]
     [SaveDuringPlay]
-    [RequireComponent(typeof(CM_ChannelProxy))]
     [AddComponentMenu("Cinemachine/CM_Brain")]
-    public class CM_Brain : MonoBehaviour
+    public class CM_Brain : MonoBehaviour, IConvertGameObjectToEntity
     {
         /// <summary>
         /// When enabled, the current camera and blend will be indicated in the game window, for debugging.
@@ -52,6 +51,9 @@ namespace Unity.Cinemachine3.Authoring
         /// <summary>When the Camera gets positioned by the virtual camera.</summary>
         [Tooltip("When the Camera gets positioned by the virtual camera")]
         public UpdateMethod m_UpdateMethod = UpdateMethod.OnPreCull;
+
+        [HideFoldout]
+        public CM_Channel Channel;
 
         /// <summary>
         /// This is the asset which contains custom settings for specific blends.
@@ -112,7 +114,22 @@ namespace Unity.Cinemachine3.Authoring
 
         public Entity Entity
         {
-            get { return new GameObjectEntityHelper(transform, true).Entity; }
+            get { return new ConvertEntityHelper(transform, true).Entity; }
+        }
+
+        public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+        {
+            dstManager.AddComponentData(entity, Channel);
+            // GML temp stuff
+            dstManager.AddComponentObject(entity, this);
+        }
+
+        void OnValidate()
+        {
+            var c = Channel;
+            c.Validate();
+            Channel = c;
+            ConvertEntityHelper.DestroyEntity(transform);
         }
 
         private void OnEnable()
@@ -147,8 +164,7 @@ namespace Unity.Cinemachine3.Authoring
             var camera = OutputCamera;
             if (camera != null)
             {
-                var ch = new ChannelHelper(Entity);
-                var c = ch.Channel;
+                var c = Channel;
                 CM_Channel.Settings.Projection p = camera.orthographic
                     ? CM_Channel.Settings.Projection.Orthographic
                     : CM_Channel.Settings.Projection.Perspective;
@@ -156,8 +172,10 @@ namespace Unity.Cinemachine3.Authoring
                 {
                     c.settings.aspect = camera.aspect;
                     c.settings.projection = p;
-                    ch.Channel = c;
+                    Channel = c;
                 }
+                var ch = new ChannelHelper(Entity);
+                ch.Channel = c;
             }
             if (m_UpdateMethod == UpdateMethod.Update)
                 ProcessActiveVcam();

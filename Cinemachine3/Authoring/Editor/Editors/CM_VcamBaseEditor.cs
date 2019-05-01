@@ -25,7 +25,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
         protected virtual void OnDisable()
         {
             var ch = new ChannelHelper(TopLevelChannel);
-            if (ch.SoloCamera == Target.VirtualCamera)
+            if (Target != null && ch.SoloCamera == Target.VirtualCamera)
             {
                 ch.SoloCamera = VirtualCamera.Null;
                 // GML is this the right thing to do?

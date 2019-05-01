@@ -2,11 +2,12 @@ using UnityEngine;
 using Unity.Entities;
 using Cinemachine;
 using Unity.Cinemachine.Common;
+using Unity.Transforms;
 
 namespace Unity.Cinemachine3.Authoring
 {
     [SaveDuringPlay]
-    public abstract class CM_VcamBase : MonoBehaviour
+    public abstract class CM_VcamBase : MonoBehaviour, IConvertGameObjectToEntity
     {
         /// <summary>The priority will determine which camera becomes active based on the
         /// state of other cameras and this camera.  Higher numbers have greater priority.
@@ -35,47 +36,31 @@ namespace Unity.Cinemachine3.Authoring
 
         public Entity Entity
         {
-            get { return new GameObjectEntityHelper(transform, true).Entity; }
+            get { return new ConvertEntityHelper(transform).Entity; }
         }
 
-        protected virtual void PushValuesToEntityComponents()
+        public virtual void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
-            var goh = new GameObjectEntityHelper(transform, true);
-            if (goh.IsNull)
-                return;
-
             // GML todo: change this.  Don't want to be tied to layers
-            if (!goh.EntityManager.HasComponent<CM_VcamChannel>(goh.Entity)
-                || ChannelValue != gameObject.layer)
-            {
-                goh.SafeSetSharedComponentData(new CM_VcamChannel
-                {
-                    channel = gameObject.layer
-                });
-            }
+            dstManager.AddSharedComponentData(entity, new CM_VcamChannel { channel = gameObject.layer });
 
-            goh.SafeSetComponentData(new CM_VcamPriority
-            {
-                priority = priority
-                // GML todo: vcamSequence
-            });
+            dstManager.AddComponentData(entity, new CM_VcamPriority { priority = priority });
+            dstManager.AddComponentData(entity, new CM_VcamShotQuality());
 
-            goh.SafeAddComponentData(new CM_VcamShotQuality());
+            // GML temp stuff necessary for hybrid - how to get rid of it?
+            if (!dstManager.HasComponent<Transform>(entity))
+                dstManager.AddComponentObject(entity, transform);
+            if (!dstManager.HasComponent<CopyTransformFromGameObject>(entity))
+                dstManager.AddComponentData(entity, new CopyTransformFromGameObject());
         }
 
-        protected virtual void OnEnable()
+        protected virtual void OnValidate()
         {
-            PushValuesToEntityComponents();
+            ConvertEntityHelper.DestroyEntity(transform);
         }
 
-        protected virtual void OnDisable()
-        {
-        }
-
-        // GML: Needed in editor only, probably, only if something is dirtied
         protected virtual void Update()
         {
-            PushValuesToEntityComponents();
         }
     }
 }

@@ -106,7 +106,12 @@ namespace Unity.Cinemachine3
             {
                 var solo = SoloCamera;
                 if (!solo.IsNull)
-                    return new CM_BlendState { cam = solo.Entity, weight = 1 };
+                    return new CM_BlendState
+                    {
+                        cam = solo.Entity,
+                        weight = 1,
+                        cameraState = solo.State
+                    };
                 return SafeGetComponentData<CM_ChannelBlendState>().blender.State;
             }
         }

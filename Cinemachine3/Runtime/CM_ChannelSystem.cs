@@ -89,6 +89,13 @@ namespace Unity.Cinemachine3
                 };
             }
         }
+
+        public void Validate()
+        {
+            settings.worldOrientation = math.normalizesafe(settings.worldOrientation);
+            activateAfter = math.max(0, activateAfter);
+            minDuration = math.max(0, minDuration);
+        }
     }
 
     public struct CM_ChannelState : IComponentData
@@ -182,91 +189,7 @@ namespace Unity.Cinemachine3
                     EntityManager.AddComponentData(e, c);
             }
         }
-/*
-        public CM_ChannelState GetChannelState(int channel)
-        {
-            return GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel));
-        }
 
-        public CM_Channel GetChannelComponent(int channel)
-        {
-            return GetEntityComponentData<CM_Channel>(GetChannelEntity(channel));
-        }
-
-        public VirtualCamera GetSoloCamera(int channel)
-        {
-            return VirtualCamera.FromEntity(
-                GetEntityComponentData<CM_ChannelState>(GetChannelEntity(channel)).soloCamera);
-        }
-
-        public void SetSoloCamera(int channel, VirtualCamera vcam)
-        {
-            var e = GetChannelEntity(channel);
-            var s = GetEntityComponentData<CM_ChannelState>(e);
-            s.soloCamera = vcam.Entity;
-            SetEntityComponentData(e, s);
-        }
-
-        /// <summary>Get the current active virtual camera.</summary>
-        /// <param name="channel">The CM channel id to check</param>
-        public VirtualCamera GetActiveVirtualCamera(int channel)
-        {
-            var e = GetChannelEntity(channel);
-            var s = GetEntityComponentData<CM_ChannelState>(e);
-            return VirtualCamera.FromEntity(s.activeVcam);
-        }
-
-        /// <summary>Is there a blend in progress?</summary>
-        /// <param name="channel">The CM channel id to check</param>
-        public bool IsBlending(int channel)
-        {
-            var e = GetChannelEntity(channel);
-            if (GetEntityComponentData<CM_ChannelState>(e).soloCamera != Entity.Null)
-                return false;
-            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.IsBlending;
-        }
-
-        /// <summary>
-        /// Get the current blend in progress.  May be degenerate, i.e. less than 2 cams
-        /// </summary>
-        /// <param name="channel">The CM channel id to check</param>
-        public CM_BlendState GetActiveBlend(int channel)
-        {
-            var e = GetChannelEntity(channel);
-            var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
-            if (solo != Entity.Null)
-                return new CM_BlendState { cam = solo, weight = 1 };
-            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.State;
-        }
-
-        /// <summary>Current camera state, final result of all blends</summary>
-        /// <param name="channel">The CM channel id to check</param>
-        public CameraState GetCurrentCameraState(int channel)
-        {
-            var e = GetChannelEntity(channel);
-            var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
-            if (solo != Entity.Null)
-                return VirtualCamera.FromEntity(solo).State;
-            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.State.cameraState;
-        }
-
-        /// <summary>
-        /// True if the VirtualCamera is the current active camera
-        /// or part of a current blend, either directly or indirectly because its parents are live.
-        /// </summary>
-        /// <param name="channel">The CM channel id to check</param>
-        /// <param name="vcam">The camera to test whether it is live</param>
-        /// <returns>True if the camera is live (directly or indirectly)
-        /// or part of a blend in progress.</returns>
-        public bool IsLive(int channel, VirtualCamera vcam)
-        {
-            var e = GetChannelEntity(channel);
-            var solo = GetEntityComponentData<CM_ChannelState>(e).soloCamera;
-            if (solo != Entity.Null && solo == vcam.Entity)
-                return true;
-            return GetEntityComponentData<CM_ChannelBlendState>(e).blender.IsLive(vcam);
-        }
-*/
         /// <summary>
         /// True if the VirtualCamera is the current active camera
         /// or part of a current blend, either directly or indirectly because its parents are live.

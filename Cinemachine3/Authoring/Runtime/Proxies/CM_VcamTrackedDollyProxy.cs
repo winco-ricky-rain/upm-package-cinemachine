@@ -9,7 +9,7 @@ namespace Unity.Cinemachine3.Authoring
     [CM_Pipeline(PipelineStage.Body)]
     [SaveDuringPlay]
     [ExecuteAlways]
-    public class CM_VcamTrackedDollyProxy : CM_VcamComponentProxyBase<CM_VcamTrackedDolly>
+    public class CM_VcamTrackedDollyProxy : CM_VcamComponentBase<CM_VcamTrackedDolly>
     {
         /// <summary>The path to which the camera will be constrained.  This must be non-null.</summary>
         [Tooltip("The path to which the camera will be constrained.  This must be non-null.")]
@@ -20,12 +20,12 @@ namespace Unity.Cinemachine3.Authoring
             get
             {
                 if (path != null)
-                    return new GameObjectEntityHelper(path.transform, true).Entity;
+                    return new ConvertEntityHelper(path.transform, true).Entity;
                 return Entity.Null;
             }
         }
 
-        private void OnValidate()
+        protected override void OnValidate()
         {
             var v = Value;
             v.damping = math.max(0, v.damping);
@@ -35,6 +35,7 @@ namespace Unity.Cinemachine3.Authoring
                 a.searchResolution = math.max(1, a.searchResolution);
                 v.autoDolly = a;
             Value = v;
+            base.OnValidate();
         }
 
         private void Reset()

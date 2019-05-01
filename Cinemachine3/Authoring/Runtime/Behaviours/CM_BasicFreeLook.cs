@@ -42,22 +42,22 @@ namespace Unity.Cinemachine3.Authoring
             };
         }
 
-        protected virtual void OnValidate()
+        protected override void OnValidate()
         {
             horizontalInput.Validate();
             verticalInput.Validate();
             radialInput.Validate();
+            base.OnValidate();
         }
 
         protected override void Update()
         {
             base.Update();
 
-            var e = Entity;
-            var m = World.Active?.EntityManager;
-            if (m != null && m.Exists(e) && m.HasComponent<CM_VcamOrbital>(e))
+            var ch = new ConvertEntityHelper(transform);
+            if (ch.HasComponent<CM_VcamOrbital>())
             {
-                CM_VcamOrbital orbital = m.GetComponentData<CM_VcamOrbital>(e);
+                var orbital = ch.SafeGetComponentData<CM_VcamOrbital>();
 
                 // Update our axes
                 bool changed = horizontalInput.Update(Time.deltaTime, ref orbital.horizontalAxis);
@@ -69,7 +69,7 @@ namespace Unity.Cinemachine3.Authoring
                     orbital.verticalAxis.CancelRecentering();
                     orbital.radialAxis.CancelRecentering();
                 }
-                m.SetComponentData(e, orbital);
+                ch.SafeSetComponentData(orbital);
             }
         }
     }

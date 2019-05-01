@@ -163,6 +163,8 @@ namespace Unity.Cinemachine3.Authoring.Editor
                 mTarget.GetComponents(mBahaviourList);
                 for (int i = 0; i < mBahaviourList.Count; ++i)
                 {
+                    if (mBahaviourList[i] == null || mBahaviourList[i].GetType() == null)
+                        continue;
                     var attr = mBahaviourList[i].GetType().GetCustomAttribute<CM_PipelineAttribute>();
                     if (attr != null && attr.Stage == mStageFilter)
                     {

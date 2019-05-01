@@ -54,7 +54,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
         {
             BeginInspector();
 
-            if (Target.SafeGetEntityComponentData<CM_VcamLookAtTarget>().target == Entity.Null)
+            if (new ConvertEntityHelper(Target.transform).SafeGetComponentData<CM_VcamLookAtTarget>().target == Entity.Null)
                 EditorGUILayout.HelpBox(
                     "A LookAt target is required.  Behaviour will be undefined.  Remove this component you don't want a LookAt target.",
                     MessageType.Error);

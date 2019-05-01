@@ -6,9 +6,9 @@ namespace Unity.Cinemachine3.Authoring
     [UnityEngine.DisallowMultipleComponent]
     [CM_Pipeline(PipelineStage.Aim)]
     [SaveDuringPlay]
-    public class CM_VcamComposerProxy : CM_VcamComponentProxyBase<CM_VcamComposer>
+    public class CM_VcamComposerProxy : CM_VcamComponentBase<CM_VcamComposer>
     {
-        private void OnValidate()
+        protected override void OnValidate()
         {
             var v = Value;
             v.damping = math.max(float2.zero, v.damping);
@@ -18,6 +18,7 @@ namespace Unity.Cinemachine3.Authoring
             v.SetHardGuideRect(v.GetHardGuideRect());
             v.softZoneBias = math.clamp(v.softZoneBias, new float2(-1, -1), new float2(1, 1));
             Value = v;
+            base.OnValidate();
         }
 
         private void Reset()

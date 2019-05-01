@@ -6,15 +6,16 @@ namespace Unity.Cinemachine3.Authoring
     [UnityEngine.DisallowMultipleComponent]
     [CM_Pipeline(PipelineStage.Body)]
     [SaveDuringPlay]
-    public class CM_VcamOrbitalProxy : CM_VcamComponentProxyBase<CM_VcamOrbital>
+    public class CM_VcamOrbitalProxy : CM_VcamComponentBase<CM_VcamOrbital>
     {
-        private void OnValidate()
+        protected override void OnValidate()
         {
             var v = Value;
             v.damping = math.max(float3.zero, v.damping);
             v.angularDamping = math.max(0, v.angularDamping);
             v.splineCurvature = math.clamp(v.splineCurvature, 0, 1);
             Value = v;
+            base.OnValidate();
         }
 
         private void Reset()

@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using System;
 using Unity.Transforms;
 using Unity.Cinemachine.Common;
+using Unity.Entities;
 
 namespace Unity.Cinemachine3.Authoring
 {
@@ -10,7 +11,7 @@ namespace Unity.Cinemachine3.Authoring
     [SaveDuringPlay]
     [ExecuteAlways]
     [RequireComponent(typeof(CM_PathWaypointsProxy))]
-    public class CM_PathProxy : CM_ComponentProxyBase<CM_Path>
+    public class CM_PathProxy : CM_ComponentBase<CM_Path>
     {
         /// <summary>This class holds the settings that control how the path
         /// will appear in the editor scene view.  The path is not visible in the game view</summary>
@@ -30,24 +31,23 @@ namespace Unity.Cinemachine3.Authoring
         [Tooltip("The settings that control how the path will appear in the editor scene view.")]
         public Appearance appearance;
 
-        protected virtual void PushValuesToEntityComponents()
+        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
-            var m = ActiveEntityManager;
-            var e = Entity;
-            if (m == null || !m.Exists(e))
-                return;
+            base.Convert(entity, dstManager, conversionSystem);
 
-            if (!m.HasComponent<CopyTransformFromGameObject>(e))
-                m.AddComponentData(e, new CopyTransformFromGameObject());
-            if (!m.HasComponent<LocalToWorld>(e))
-                m.AddComponentData(e, new LocalToWorld { Value = float4x4.identity } );
+            // GML temp stuff for hybrid - how to remove?
+            if (!dstManager.HasComponent<Transform>(entity))
+                dstManager.AddComponentObject(entity, transform);
+            if (!dstManager.HasComponent<CopyTransformFromGameObject>(entity))
+                dstManager.AddComponentData(entity, new CopyTransformFromGameObject());
         }
 
-        private void OnValidate()
+        protected override void OnValidate()
         {
             var v = Value;
             v.resolution = math.max(1, v.resolution);
             Value = v;
+            base.OnValidate();
         }
 
         private void Reset()
@@ -63,12 +63,6 @@ namespace Unity.Cinemachine3.Authoring
                 inactivePathColor = Color.gray,
                 width = 0.2f
             };
-        }
-
-        protected override void OnEnable()
-        {
-            base.OnEnable();
-            PushValuesToEntityComponents();
         }
     }
 }

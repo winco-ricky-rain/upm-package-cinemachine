@@ -5,9 +5,9 @@ namespace Unity.Cinemachine3.Authoring
 {
     [UnityEngine.DisallowMultipleComponent]
     [SaveDuringPlay]
-    public class CM_VcamSizeFramingProxy : CM_VcamComponentProxyBase<CM_VcamSizeFraming>
+    public class CM_VcamSizeFramingProxy : CM_VcamComponentBase<CM_VcamSizeFraming>
     {
-        private void OnValidate()
+        protected override void OnValidate()
         {
             var v = Value;
             v.screenFit = math.max(CM_VcamSizeFraming.kMinScreenFitSize, v.screenFit);
@@ -21,6 +21,7 @@ namespace Unity.Cinemachine3.Authoring
             v.orthoSizeRange.x = math.max(0, v.orthoSizeRange.x);
             v.orthoSizeRange.y = math.max(v.orthoSizeRange.x, v.orthoSizeRange.y);
             Value = v;
+            base.OnValidate();
         }
 
         private void Reset()

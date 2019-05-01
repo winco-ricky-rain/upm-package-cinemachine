@@ -1,7 +1,7 @@
 namespace Unity.Cinemachine3.Authoring
 {
     [UnityEngine.DisallowMultipleComponent]
-    public class CM_VcamShotQualityProxy : CM_ComponentProxyBase<CM_VcamShotQuality>
+    public class CM_VcamShotQualityProxy : CM_ComponentBase<CM_VcamShotQuality>
     {
         private void Reset()
         {

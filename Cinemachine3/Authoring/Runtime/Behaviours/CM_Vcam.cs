@@ -1,5 +1,4 @@
 using UnityEngine;
-using Unity.Transforms;
 using Cinemachine;
 using Unity.Cinemachine.Common;
 using Unity.Entities;
@@ -32,13 +31,11 @@ namespace Unity.Cinemachine3.Authoring
         /// <summary>API for the editor, to make the dragging of position handles behave better.</summary>
         public bool UserIsDragging { get; set; }
 
-        protected override void PushValuesToEntityComponents()
+        public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
-            base.PushValuesToEntityComponents();
+            base.Convert(entity, dstManager, conversionSystem);
 
-            var goh = new GameObjectEntityHelper(transform, true);
-            goh.EnsureTransformCompliance();
-            goh.SafeSetComponentData(new CM_VcamLens
+            dstManager.AddComponentData(entity, new CM_VcamLens
             {
                 fov = lens.Orthographic ? lens.OrthographicSize : lens.FieldOfView,
                 nearClip = lens.NearClipPlane,
@@ -47,15 +44,26 @@ namespace Unity.Cinemachine3.Authoring
                 lensShift = lens.LensShift
             });
 
+            dstManager.AddComponentData(entity, new CM_VcamFollowTarget());
+            dstManager.AddComponentData(entity, new CM_VcamLookAtTarget());
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
+            // GML temp stuff
+            // Make sure the target entities are properly set up
+            var ch = new ConvertEntityHelper(transform);
             var th = new GameObjectEntityHelper(followTarget, true);
             th.EnsureTransformCompliance();
             th.SafeAddComponentData(new CM_Target());
-            goh.SafeSetComponentData(new CM_VcamFollowTarget{ target = th.Entity });
+            ch.SafeSetComponentData(new CM_VcamFollowTarget{ target = th.Entity });
 
             th = new GameObjectEntityHelper(lookAtTarget, true);
             th.EnsureTransformCompliance();
             th.SafeAddComponentData(new CM_Target());
-            goh.SafeSetComponentData(new CM_VcamLookAtTarget{ target = th.Entity });
+            ch.SafeSetComponentData(new CM_VcamLookAtTarget{ target = th.Entity });
         }
     }
 }

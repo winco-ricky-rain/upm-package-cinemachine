@@ -6,14 +6,15 @@ namespace Unity.Cinemachine3.Authoring
     [UnityEngine.DisallowMultipleComponent]
     [CM_Pipeline(PipelineStage.Body)]
     [SaveDuringPlay]
-    public class CM_VcamTransposerProxy : CM_VcamComponentProxyBase<CM_VcamTransposer>
+    public class CM_VcamTransposerProxy : CM_VcamComponentBase<CM_VcamTransposer>
     {
-        private void OnValidate()
+        protected override void OnValidate()
         {
             var v = Value;
             v.damping = math.max(float3.zero, v.damping);
             v.angularDamping = math.max(0, v.angularDamping);
             Value = v;
+            base.OnValidate();
         }
 
         private void Reset()
