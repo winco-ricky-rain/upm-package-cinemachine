@@ -269,8 +269,11 @@ namespace Unity.Cinemachine3
         {
             int count = mCurrentBlend.NumActiveFrames;
             for (int i = 0; i < count; ++i)
-                if (!mCurrentBlend.ElementAt(i).IsUndefined())
-                    vcams.Add(VirtualCamera.FromEntity(mCurrentBlend.ElementAt(i).cam));
+            {
+                var element = mCurrentBlend.ElementAt(i);
+                if (!element.IsUndefined() && element.BlendWeight() > 0)
+                    vcams.Add(VirtualCamera.FromEntity(element.cam));
+            }
         }
 
         // Call this from the main thread, before Update() gets called.

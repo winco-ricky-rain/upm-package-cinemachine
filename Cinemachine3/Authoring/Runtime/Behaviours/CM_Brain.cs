@@ -244,7 +244,14 @@ namespace Unity.Cinemachine3.Authoring
                 channelSystem.GetLiveVcams(c.channel, scratchList, true); // deep
                 var previous = liveVcamsPreviousFrame.Count > 0
                     ? liveVcamsPreviousFrame[0] : VirtualCamera.Null;
-                bool isBlending = ch.IsBlending;
+
+                bool isCut = true;
+                for (int i = scratchList.Count - 1; isCut && i >= 0; --i)
+                {
+                    var vcam = scratchList[i];
+                    if (vcam.IsVirtualCamera && liveVcamsPreviousFrame.Contains(vcam))
+                        isCut = false;
+                }
                 for (int i = scratchList.Count - 1; i >= 0; --i)
                 {
                     var vcam = scratchList[i];
@@ -263,7 +270,7 @@ namespace Unity.Cinemachine3.Authoring
                     {
                         // Send transition notification to observers
                         if (events.vcamActivatedEvent != null)
-                            events.vcamActivatedEvent.Invoke(vcam, previous, isBlending);
+                            events.vcamActivatedEvent.Invoke(vcam, previous, isCut);
                     }
                 }
                 var temp = liveVcamsPreviousFrame;
