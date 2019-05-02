@@ -9,7 +9,7 @@ namespace Unity.Cinemachine3.Authoring
     public abstract class CM_EntityProxyBase : MonoBehaviour, IConvertGameObjectToEntity
     {
         // GML todo: when do we clean this up?
-        static Dictionary<World, Dictionary<GameObject, Entity>> EntityLookup
+        static Dictionary<World, Dictionary<GameObject, Entity>> s_EntityLookup
             = new Dictionary<World, Dictionary<GameObject, Entity>>();
 
         static Entity LookupEntity(World w, GameObject go)
@@ -17,10 +17,10 @@ namespace Unity.Cinemachine3.Authoring
             var e = Entity.Null;
             if (w != null)
             {
-                if (!EntityLookup.TryGetValue(w, out Dictionary<GameObject, Entity> d))
+                if (!s_EntityLookup.TryGetValue(w, out Dictionary<GameObject, Entity> d))
                 {
                     d = new Dictionary<GameObject, Entity>();
-                    EntityLookup.Add(w, d);
+                    s_EntityLookup.Add(w, d);
                 }
                 d.TryGetValue(go, out e);
             }
@@ -31,23 +31,12 @@ namespace Unity.Cinemachine3.Authoring
         {
             if (w != null)
             {
-                if (!EntityLookup.TryGetValue(w, out Dictionary<GameObject, Entity> d))
+                if (!s_EntityLookup.TryGetValue(w, out Dictionary<GameObject, Entity> d))
                 {
                     d = new Dictionary<GameObject, Entity>();
-                    EntityLookup.Add(w, d);
+                    s_EntityLookup.Add(w, d);
                 }
                 d[go] = e;
-            }
-        }
-
-        static void RemoveEntityLookup(GameObject go)
-        {
-            var it = EntityLookup.GetEnumerator();
-            while (it.MoveNext())
-            {
-                var d = it.Current.Value;
-                if (d.ContainsKey(go))
-                    d.Remove(go);
             }
         }
 
@@ -80,13 +69,15 @@ namespace Unity.Cinemachine3.Authoring
             var w = World.Active;
             var e = LookupEntity(w, gameObject);
             if (w != null && e != Entity.Null)
+            {
                 w.EntityManager.DestroyEntity(e);
-            RemoveEntityLookup(gameObject);
+                SetEntityLookup(w, gameObject, Entity.Null);
+            }
         }
 
         protected virtual void OnEnable()
         {
-            RemoveEntityLookup(gameObject);
+            SetEntityLookup(World.Active, gameObject, Entity.Null);
         }
 
         protected virtual void OnDisable()
@@ -169,6 +160,8 @@ namespace Unity.Cinemachine3.Authoring
             if (enabled)
                 dstManager.AddComponentData(entity, Value);
         }
+
+        public void Validate() { OnValidate(); }
     }
 
     public abstract class CM_SharedComponentBase<T>
@@ -183,6 +176,8 @@ namespace Unity.Cinemachine3.Authoring
             if (enabled)
                 dstManager.AddSharedComponentData(entity, Value);
         }
+
+        public void Validate() { OnValidate(); }
     }
 
     public abstract class CM_DynamicBufferBase<T>
@@ -229,6 +224,8 @@ namespace Unity.Cinemachine3.Authoring
                     buffer.Add(element);
             }
         }
+
+        public void Validate() { OnValidate(); }
     }
 
     /// <summary>

@@ -166,8 +166,10 @@ namespace Unity.Cinemachine3
                         return ch.CameraState;
 
                     // Fetch the state from the relevant components
-                    bool noLens = true;
-                    if (m.HasComponent<CM_VcamLensState>(e))
+                    CameraState.BlendHintValue suppress = 0;
+                    if (!m.HasComponent<CM_VcamLensState>(e))
+                        suppress |= CameraState.BlendHintValue.NoLens;
+                    else
                     {
                         var c = m.GetComponentData<CM_VcamLensState>(e);
                         state.Lens = new LensSettings
@@ -181,16 +183,19 @@ namespace Unity.Cinemachine3
                             Orthographic = c.orthographic,
                             SensorSize = new Vector2(c.aspect, 1f) // GML todo: physical camera
                         };
-                        noLens = false;
                     }
-                    if (m.HasComponent<CM_VcamPositionState>(e))
+                    if (!m.HasComponent<CM_VcamPositionState>(e))
+                        suppress |= CameraState.BlendHintValue.NoPosition;
+                    else
                     {
                         var c = m.GetComponentData<CM_VcamPositionState>(e);
                         state.RawPosition = c.raw;
                         state.ReferenceUp = c.up;
                         state.PositionCorrection = c.correction;
                     }
-                    if (m.HasComponent<CM_VcamRotationState>(e))
+                    if (!m.HasComponent<CM_VcamRotationState>(e))
+                        suppress |= CameraState.BlendHintValue.NoOrientation;
+                    else
                     {
                         var c = m.GetComponentData<CM_VcamRotationState>(e);
                         state.ReferenceLookAt = c.lookAtPoint;
@@ -202,9 +207,8 @@ namespace Unity.Cinemachine3
                     {
                         var c = m.GetComponentData<CM_VcamBlendHint>(e);
                         state.BlendHint = (CameraState.BlendHintValue)c.blendHint; // GML fixme
-                        if (noLens)
-                            state.BlendHint |= CameraState.BlendHintValue.NoLens;
                     }
+                    state.BlendHint |= suppress;
                     if (m.HasComponent<CM_VcamShotQuality>(e))
                     {
                         var c = m.GetComponentData<CM_VcamShotQuality>(e);

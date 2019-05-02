@@ -27,12 +27,14 @@ namespace Unity.Cinemachine3.Authoring.Editor
                 var v = Target.Value;
                 v.SetHardGuideRect(FromRect(r));
                 Target.Value = v;
+                Target.Validate();
             };
             mScreenGuideEditor.SetSoftGuide = (Rect r) =>
             {
                 var v = Target.Value;
                 v.SetSoftGuideRect(FromRect(r));
                 Target.Value = v;
+                Target.Validate();
             };
             mScreenGuideEditor.Target = () => { return serializedObject; };
 

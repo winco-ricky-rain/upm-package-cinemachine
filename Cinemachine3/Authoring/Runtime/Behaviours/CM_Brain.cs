@@ -196,34 +196,6 @@ namespace Unity.Cinemachine3.Authoring
                 ProcessActiveVcam();
         }
 
-        /// <summary> Apply a CameraState to the game object and Camera component</summary>
-        private void PushStateToUnityCamera(CameraState state)
-        {
-            if ((state.BlendHint & CameraState.BlendHintValue.NoPosition) == 0)
-                transform.position = state.FinalPosition;
-            if ((state.BlendHint & CameraState.BlendHintValue.NoOrientation) == 0)
-                transform.rotation = state.FinalOrientation;
-            if ((state.BlendHint & CameraState.BlendHintValue.NoLens) == 0)
-            {
-                Camera cam = OutputCamera;
-                if (cam != null)
-                {
-                    cam.nearClipPlane = state.Lens.NearClipPlane;
-                    cam.farClipPlane = state.Lens.FarClipPlane;
-                    cam.fieldOfView = state.Lens.FieldOfView;
-                    if (cam.orthographic)
-                        cam.orthographicSize = state.Lens.OrthographicSize;
-                    else
-                    {
-                        cam.usePhysicalProperties = state.Lens.IsPhysicalCamera;
-                        cam.lensShift = state.Lens.LensShift;
-                    }
-                }
-            }
-            if (events.cameraUpdatedEvent != null)
-                events.cameraUpdatedEvent.Invoke(this);
-        }
-
         private void OnGuiHandler()
         {
             if (!m_ShowDebugText)
@@ -298,9 +270,46 @@ namespace Unity.Cinemachine3.Authoring
                 liveVcamsPreviousFrame = scratchList;
                 scratchList = temp;
             }
+
+            // If there is no current vcam, preserve the current camera state
+            if (!ch.ActiveVirtualCamera.IsVirtualCamera)
+            {
+                state.BlendHint |= (CameraState.BlendHintValue.NoPosition
+                    | CameraState.BlendHintValue.NoOrientation
+                    | CameraState.BlendHintValue.NoLens);
+            }
+
             // Move the camera
             if (liveVcamsPreviousFrame.Count > 0)
                 PushStateToUnityCamera(state);
+        }
+
+        /// <summary> Apply a CameraState to the game object and Camera component</summary>
+        private void PushStateToUnityCamera(CameraState state)
+        {
+            if ((state.BlendHint & CameraState.BlendHintValue.NoPosition) == 0)
+                transform.position = state.FinalPosition;
+            if ((state.BlendHint & CameraState.BlendHintValue.NoOrientation) == 0)
+                transform.rotation = state.FinalOrientation;
+            if ((state.BlendHint & CameraState.BlendHintValue.NoLens) == 0)
+            {
+                Camera cam = OutputCamera;
+                if (cam != null)
+                {
+                    cam.nearClipPlane = state.Lens.NearClipPlane;
+                    cam.farClipPlane = state.Lens.FarClipPlane;
+                    cam.fieldOfView = state.Lens.FieldOfView;
+                    if (cam.orthographic)
+                        cam.orthographicSize = state.Lens.OrthographicSize;
+                    else
+                    {
+                        cam.usePhysicalProperties = state.Lens.IsPhysicalCamera;
+                        cam.lensShift = state.Lens.LensShift;
+                    }
+                }
+            }
+            if (events.cameraUpdatedEvent != null)
+                events.cameraUpdatedEvent.Invoke(this);
         }
     }
 }
