@@ -116,10 +116,13 @@ namespace Unity.Cinemachine3.Authoring
             Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-            dstManager.AddComponentData(entity, Channel);
+            if (enabled)
+            {
+                dstManager.AddComponentData(entity, Channel);
 
-            // GML temp stuff for hybrid.  Needed for editor FindBrain
-            dstManager.AddComponentObject(entity, this);
+                // GML temp stuff for hybrid.  Needed for editor FindBrain
+                dstManager.AddComponentObject(entity, this);
+            }
         }
 
         protected override void OnValidate()
@@ -138,8 +141,9 @@ namespace Unity.Cinemachine3.Authoring
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }
 
-        private void OnDisable()
+        protected override void OnDisable()
         {
+            base.OnDisable();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
         }
 

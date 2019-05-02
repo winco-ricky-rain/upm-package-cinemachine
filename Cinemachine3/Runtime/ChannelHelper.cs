@@ -50,6 +50,13 @@ namespace Unity.Cinemachine3
             get { return SafeGetSystem<CM_ChannelSystem>(); }
         }
 
+        /// <summary>Does entity have a component?</summary>
+        public bool HasComponent<T>()
+        {
+            return EntityManager != null && Entity != Entity.Null
+                && EntityManager.HasComponent<T>(Entity);
+        }
+
         /// <summary>Get component data, with all the null checks.
         /// Returns default if nonexistant</summary>
         public T SafeGetComponentData<T>() where T : struct, IComponentData

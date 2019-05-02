@@ -21,12 +21,14 @@ namespace Unity.Cinemachine3.Authoring
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-
-            // GML temp stuff for hybrid - how to remove?
-            if (!dstManager.HasComponent<Transform>(entity))
-                dstManager.AddComponentObject(entity, transform);
-            if (!dstManager.HasComponent<CopyTransformFromGameObject>(entity))
-                dstManager.AddComponentData(entity, new CopyTransformFromGameObject());
+            if (enabled)
+            {
+                // GML temp stuff for hybrid - how to remove?
+                if (!dstManager.HasComponent<Transform>(entity))
+                    dstManager.AddComponentObject(entity, transform);
+                if (!dstManager.HasComponent<CopyTransformFromGameObject>(entity))
+                    dstManager.AddComponentData(entity, new CopyTransformFromGameObject());
+            }
         }
 
         public static Entity ValidateTarget(Transform target, bool createProxies)

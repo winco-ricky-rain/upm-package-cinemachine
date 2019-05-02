@@ -47,7 +47,8 @@ namespace Unity.Cinemachine3.Authoring
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-            dstManager.AddComponentData(entity, Channel);
+            if (enabled)
+                dstManager.AddComponentData(entity, Channel);
         }
 
         protected override void OnValidate()
@@ -81,8 +82,9 @@ namespace Unity.Cinemachine3.Authoring
             CinemachineDebug.OnGUIHandlers += OnGuiHandler;
         }
 
-        void OnDisable()
+        protected override void OnDisable()
         {
+            base.OnDisable();
             CinemachineDebug.OnGUIHandlers -= OnGuiHandler;
         }
 

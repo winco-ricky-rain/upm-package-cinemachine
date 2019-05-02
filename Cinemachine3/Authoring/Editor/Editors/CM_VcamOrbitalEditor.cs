@@ -15,7 +15,8 @@ namespace Unity.Cinemachine3.Authoring.Editor
         {
             var e = orbital.Entity;
             var m = World.Active?.EntityManager;
-            if (m == null || e == Entity.Null || !m.HasComponent<CM_VcamOrbitalState>(e))
+            if (m == null || e == Entity.Null
+                    || !m.HasComponent<CM_VcamOrbitalState>(e) || !orbital.enabled)
                 return;
 
             var state = m.GetComponentData<CM_VcamOrbitalState>(e);

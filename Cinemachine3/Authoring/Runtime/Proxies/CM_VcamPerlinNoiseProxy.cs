@@ -23,8 +23,11 @@ namespace Unity.Cinemachine3.Authoring
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-            dstManager.AddSharedComponentData(
-                entity, new CM_VcamPerlinNoiseDefinition{ noiseProfile = noiseProfile });
+            if (enabled)
+            {
+                dstManager.AddSharedComponentData(
+                    entity, new CM_VcamPerlinNoiseDefinition{ noiseProfile = noiseProfile });
+            }
         }
 
         private void Reset()

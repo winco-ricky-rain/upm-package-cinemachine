@@ -34,18 +34,20 @@ namespace Unity.Cinemachine3.Authoring
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-
-            dstManager.AddComponentData(entity, new CM_VcamLens
+            if (enabled)
             {
-                fov = lens.Orthographic ? lens.OrthographicSize : lens.FieldOfView,
-                nearClip = lens.NearClipPlane,
-                farClip = lens.FarClipPlane,
-                dutch = lens.Dutch,
-                lensShift = lens.LensShift
-            });
+                dstManager.AddComponentData(entity, new CM_VcamLens
+                {
+                    fov = lens.Orthographic ? lens.OrthographicSize : lens.FieldOfView,
+                    nearClip = lens.NearClipPlane,
+                    farClip = lens.FarClipPlane,
+                    dutch = lens.Dutch,
+                    lensShift = lens.LensShift
+                });
 
-            dstManager.AddComponentData(entity, new CM_VcamFollowTarget());
-            dstManager.AddComponentData(entity, new CM_VcamLookAtTarget());
+                dstManager.AddComponentData(entity, new CM_VcamFollowTarget());
+                dstManager.AddComponentData(entity, new CM_VcamLookAtTarget());
+            }
         }
 
         protected override void Update()

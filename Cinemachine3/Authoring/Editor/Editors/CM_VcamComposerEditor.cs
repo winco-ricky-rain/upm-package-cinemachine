@@ -53,12 +53,13 @@ namespace Unity.Cinemachine3.Authoring.Editor
         public override void OnInspectorGUI()
         {
             BeginInspector();
-
+#if false
+            // GML this not working - CM_VcamLookAtTarget is created at runtime
             if (Target.SafeGetComponentData<CM_VcamLookAtTarget>().target == Entity.Null)
                 EditorGUILayout.HelpBox(
                     "A LookAt target is required.  Behaviour will be undefined.  Remove this component you don't want a LookAt target.",
                     MessageType.Error);
-
+#endif
             // First snapshot some settings
             Rect oldHard = ToRect(Target.Value.GetHardGuideRect());
             Rect oldSoft = ToRect(Target.Value.GetSoftGuideRect());
@@ -103,23 +104,23 @@ namespace Unity.Cinemachine3.Authoring.Editor
         protected CM_Brain FindBrain()
         {
             var ch = new ChannelHelper(TopLevelChannel);
-            if (ch.EntityManager.HasComponent<CM_Brain>(ch.Entity))
+            if (ch.HasComponent<CM_Brain>())
                 return ch.EntityManager.GetComponentObject<CM_Brain>(ch.Entity);
             return null;
         }
 
         protected virtual void OnGUI()
         {
-            if (Target == null)
+            if (Target == null || !Target.enabled)
                 return;
 
             // Draw the camera guides
-            var vcam = Target.VirtualCamera;
             var brain = FindBrain();
             if (brain == null || brain.OutputCamera == null || !brain.m_ShowGameViewGuides)
                 return;
 
             // Screen guides
+            var vcam = Target.VirtualCamera;
             var state = vcam.State;
             bool isLive = vcam.IsLive;
             mScreenGuideEditor.OnGUI_DrawGuides(isLive, brain.OutputCamera, state.Lens, true);

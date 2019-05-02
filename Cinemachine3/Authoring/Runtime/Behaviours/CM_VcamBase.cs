@@ -37,18 +37,20 @@ namespace Unity.Cinemachine3.Authoring
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
+            if (enabled)
+            {
+                // GML todo: change this.  Don't want to be tied to layers
+                dstManager.AddSharedComponentData(entity, new CM_VcamChannel { channel = gameObject.layer });
 
-            // GML todo: change this.  Don't want to be tied to layers
-            dstManager.AddSharedComponentData(entity, new CM_VcamChannel { channel = gameObject.layer });
+                dstManager.AddComponentData(entity, new CM_VcamPriority { priority = priority });
+                dstManager.AddComponentData(entity, new CM_VcamShotQuality());
 
-            dstManager.AddComponentData(entity, new CM_VcamPriority { priority = priority });
-            dstManager.AddComponentData(entity, new CM_VcamShotQuality());
-
-            // GML temp stuff necessary for hybrid - how to get rid of it?
-            if (!dstManager.HasComponent<Transform>(entity))
-                dstManager.AddComponentObject(entity, transform);
-            if (!dstManager.HasComponent<CopyTransformFromGameObject>(entity))
-                dstManager.AddComponentData(entity, new CopyTransformFromGameObject());
+                // GML temp stuff necessary for hybrid - how to get rid of it?
+                if (!dstManager.HasComponent<Transform>(entity))
+                    dstManager.AddComponentObject(entity, transform);
+                if (!dstManager.HasComponent<CopyTransformFromGameObject>(entity))
+                    dstManager.AddComponentData(entity, new CopyTransformFromGameObject());
+            }
         }
 
         protected virtual void Update()

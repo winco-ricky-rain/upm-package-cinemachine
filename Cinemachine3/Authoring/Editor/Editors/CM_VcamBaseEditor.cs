@@ -115,7 +115,7 @@ namespace Unity.Cinemachine3.Authoring.Editor
         protected CM_Brain FindBrain()
         {
             var ch = new ChannelHelper(TopLevelChannel);
-            if (ch.EntityManager.HasComponent<CM_Brain>(ch.Entity))
+            if (ch.HasComponent<CM_Brain>())
                 return ch.EntityManager.GetComponentObject<CM_Brain>(ch.Entity);
             return null;
         }

@@ -8,52 +8,104 @@ namespace Unity.Cinemachine3.Authoring
     [RequiresEntityConversion]
     public abstract class CM_EntityProxyBase : MonoBehaviour, IConvertGameObjectToEntity
     {
-        Entity _entity;
+        // GML todo: when do we clean this up?
+        static Dictionary<World, Dictionary<GameObject, Entity>> EntityLookup
+            = new Dictionary<World, Dictionary<GameObject, Entity>>();
+
+        static Entity LookupEntity(World w, GameObject go)
+        {
+            var e = Entity.Null;
+            if (w != null)
+            {
+                if (!EntityLookup.TryGetValue(w, out Dictionary<GameObject, Entity> d))
+                {
+                    d = new Dictionary<GameObject, Entity>();
+                    EntityLookup.Add(w, d);
+                }
+                d.TryGetValue(go, out e);
+            }
+            return e;
+        }
+
+        static void SetEntityLookup(World w, GameObject go, Entity e)
+        {
+            if (w != null)
+            {
+                if (!EntityLookup.TryGetValue(w, out Dictionary<GameObject, Entity> d))
+                {
+                    d = new Dictionary<GameObject, Entity>();
+                    EntityLookup.Add(w, d);
+                }
+                d[go] = e;
+            }
+        }
+
+        static void RemoveEntityLookup(GameObject go)
+        {
+            var it = EntityLookup.GetEnumerator();
+            while (it.MoveNext())
+            {
+                var d = it.Current.Value;
+                if (d.ContainsKey(go))
+                    d.Remove(go);
+            }
+        }
+
         public Entity Entity
         {
             get
             {
-                if (_entity == Entity.Null)
-                    ConvertNow();
-                return _entity;
+                var e = Entity.Null;
+                var w = World.Active;
+                if (w == null)
+                {
+                    DefaultWorldInitialization.DefaultLazyEditModeInitialize();
+                    w = World.Active;
+                }
+                if (w != null)
+                {
+                    e = LookupEntity(w, gameObject);
+                    if (e == Entity.Null)
+                    {
+                        GameObjectConversionUtility.ConvertGameObjectHierarchy(gameObject, w);
+                        e = LookupEntity(w, gameObject);
+                    }
+                }
+                return e;
             }
-        }
-
-        void ConvertNow()
-        {
-            DefaultWorldInitialization.DefaultLazyEditModeInitialize();
-            var w = World.Active;
-            if (w != null)
-                GameObjectConversionUtility.ConvertGameObjectHierarchy(gameObject, w);
-//            else
-//                Debug.LogWarning("CM_EntityProxyBase.ConvertNow failed because there was no Active World", this);
         }
 
         public void DestroyEntity()
         {
             var w = World.Active;
-            if (w != null && _entity != Entity.Null)
-                w.EntityManager.DestroyEntity(_entity);
-            _entity = Entity.Null;
+            var e = LookupEntity(w, gameObject);
+            if (w != null && e != Entity.Null)
+                w.EntityManager.DestroyEntity(e);
+            RemoveEntityLookup(gameObject);
         }
 
         protected virtual void OnEnable()
         {
-            _entity = Entity.Null;
+            RemoveEntityLookup(gameObject);
+        }
+
+        protected virtual void OnDisable()
+        {
+            DestroyEntity();
         }
 
         protected virtual void OnValidate()
         {
-            DestroyEntity();
+            DestroyEntity(); // GML this is a little heavy.  We just want to reconvert
         }
 
         public virtual void Convert(
             Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
-            _entity = entity;
+            SetEntityLookup(dstManager.World, gameObject, entity);
         }
 
-        /// <summary>Add component data, but only if absent</summary>
+        /// <summary>Does entity have a component?</summary>
         public bool HasComponent<T>()
         {
             var m = World.Active?.EntityManager;
@@ -114,7 +166,8 @@ namespace Unity.Cinemachine3.Authoring
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-            dstManager.AddComponentData(entity, Value);
+            if (enabled)
+                dstManager.AddComponentData(entity, Value);
         }
     }
 
@@ -127,7 +180,8 @@ namespace Unity.Cinemachine3.Authoring
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-            dstManager.AddSharedComponentData(entity, Value);
+            if (enabled)
+                dstManager.AddSharedComponentData(entity, Value);
         }
     }
 
@@ -160,20 +214,28 @@ namespace Unity.Cinemachine3.Authoring
         }
 
         /// <summary>
-        /// Oveeride this to improve performance and make IsSame() valid
+        /// Override this to improve performance and make IsSame() valid
         /// </summary>
         protected virtual bool IsEqual(T a, T b) { return false; }
 
         public override void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
         {
             base.Convert(entity, dstManager, conversionSystem);
-            var buffer = dstManager.AddBuffer<T>(entity);
-            buffer.Clear();
-            foreach (var element in Values)
-                buffer.Add(element);
+            if (enabled)
+            {
+                var buffer = dstManager.AddBuffer<T>(entity);
+                buffer.Clear();
+                foreach (var element in Values)
+                    buffer.Add(element);
+            }
         }
     }
 
+    /// <summary>
+    /// This is the base class for components of a virtual camera.
+    /// A convenience method is provided for accessing the VirtualCamera.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public abstract class CM_VcamComponentBase<T>
         : CM_ComponentBase<T> where T : struct, IComponentData
     {
