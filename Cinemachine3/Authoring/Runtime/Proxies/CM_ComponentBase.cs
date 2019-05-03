@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Unity.Cinemachine3.Authoring
 {
-    [RequiresEntityConversion]
+    //[RequiresEntityConversion]
     public abstract class CM_EntityProxyBase : MonoBehaviour, IConvertGameObjectToEntity
     {
         // GML todo: when do we clean this up?

@@ -42,7 +42,8 @@ namespace Unity.Cinemachine3
     }
 
     [Serializable]
-    public struct CM_VcamPerlinNoiseDefinition : ISharedComponentData
+    public struct CM_VcamPerlinNoiseDefinition
+        : ISharedComponentData, IEquatable<CM_VcamPerlinNoiseDefinition>
     {
         /// <summary>
         /// Serialized property for referencing a NoiseSettings asset
@@ -52,6 +53,19 @@ namespace Unity.Cinemachine3
             + "Make your own or just use one of the many presets.")]
         [NoiseSettingsProperty]
         public NoiseSettings noiseProfile;
+
+        /// <summary>Comparator for IEquatable<>.</summary>
+        public bool Equals(CM_VcamPerlinNoiseDefinition other)
+        {
+            return noiseProfile == other.noiseProfile;
+        }
+
+        /// <summary>A hash used for comparisons.</summary>
+        /// <returns>A unique hash code.</returns>
+        public override int GetHashCode()
+        {
+            return noiseProfile == null ? 0 : noiseProfile.GetHashCode();
+        }
     }
 
     [Serializable]
