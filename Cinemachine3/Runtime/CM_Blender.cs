@@ -6,6 +6,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using System.Collections.Generic;
 using Cinemachine;
 using Unity.Cinemachine.Common;
+using System.Runtime.InteropServices;
 
 namespace Unity.Cinemachine3
 {
@@ -47,11 +48,12 @@ namespace Unity.Cinemachine3
     }
 
     // Support for blend chaining
+    [StructLayout(LayoutKind.Explicit, Size = 16)]
     unsafe struct CM_ChainedBlend
     {
-        CM_Blend* stack;
-        int capacity;
-        int length;
+        [FieldOffset(0)] CM_Blend* stack;
+        [FieldOffset(8)] int capacity;
+        [FieldOffset(12)] int length;
 
         public int NumActiveFrames
         {
@@ -115,24 +117,44 @@ namespace Unity.Cinemachine3
             ++NumActiveFrames;
         }
 
-        public CameraState GetState()
+        public CameraState GetState(ref int depth)
         {
             CameraState state = CameraState.Default;
+            if (depth >= 64)
+                return state;
+            ++depth;
             int i = NumActiveFrames;
             for (--i; i >= 0; --i)
             {
                 if (stack[i].cam != Entity.Null)
                 {
-                    state = VirtualCamera.FromEntity(stack[i].cam).State;
+                    state = VcamState(stack[i].cam, ref depth);
                     break;
                 }
             }
             for (--i; i >= 0; --i)
             {
                 state = CameraState.Lerp(
-                    state, VirtualCamera.FromEntity(stack[i].cam).State, stack[i].BlendWeight());
+                    state, VcamState(stack[i].cam, ref depth),
+                    stack[i].BlendWeight());
             }
+            --depth;
             return state;
+        }
+
+        // Get a vcam state with channel recursion protection
+        CameraState VcamState(Entity e, ref int depth)
+        {
+            // Is this entity a channel?
+            var ch = new ChannelHelper(e);
+            if (ch.IsChannel)
+            {
+                if (!ch.SoloCamera.IsNull)
+                    return ch.CameraState;
+                return ch.SafeGetComponentData<CM_ChannelBlendState>().blender.GetState(
+                    ref depth).cameraState;
+            }
+            return VirtualCamera.FromEntity(e).State;
         }
 
         // Does this blend involve a specific camera?
@@ -175,6 +197,7 @@ namespace Unity.Cinemachine3
         public CameraState cameraState; // Full result of blend (can involve more cams)
     }
 
+    [StructLayout(LayoutKind.Explicit, Size = 56)]
     internal unsafe struct CM_Blender
     {
         struct Frame
@@ -185,15 +208,15 @@ namespace Unity.Cinemachine3
             public float weightB;
         }
 
-        Frame* frameStack;
-        int capacity;
-        public int NumOverrideFrames { get; private set; }
+        [FieldOffset(0)] Frame* frameStack;
+        [FieldOffset(8)] CM_ChainedBlend mNativeFrame;
+        [FieldOffset(24)] CM_ChainedBlend mCurrentBlend;
+        [FieldOffset(40)] int capacity;
+        [FieldOffset(44)] int mLastFrameId;
+        [FieldOffset(48)] int mActiveVcamIndex;
+        [FieldOffset(52)] int mNumOverrideFrames;
 
-        private int mLastFrameId;
-        private int mActiveVcamIndex;
-
-        CM_ChainedBlend mNativeFrame;
-        CM_ChainedBlend mCurrentBlend;
+        public int NumOverrideFrames { get { return mNumOverrideFrames; } }
 
         public void Dispose()
         {
@@ -204,7 +227,7 @@ namespace Unity.Cinemachine3
                 UnsafeUtility.Free(frameStack, Allocator.Persistent);
             frameStack = null;
             capacity = 0;
-            NumOverrideFrames = 0;
+            mNumOverrideFrames = 0;
         }
 
         /// <summary>Get the current active virtual camera.</summary>
@@ -233,30 +256,36 @@ namespace Unity.Cinemachine3
             }
         }
 
+        public CM_BlendState GetState(ref int depth)
+        {
+            int count = mCurrentBlend.NumActiveFrames;
+            if (count == 0)
+                return new CM_BlendState { cameraState = CameraState.Default };
+            var blend0 = mCurrentBlend.ElementAt(0);
+            if (count == 1 || blend0.IsComplete())
+                return new CM_BlendState
+                {
+                    cam = blend0.cam,
+                    weight = 1,
+                    outgoingCam = Entity.Null,
+                    cameraState = mCurrentBlend.GetState(ref depth)
+                };
+            var state = new CM_BlendState
+            {
+                cam = blend0.cam,
+                weight = blend0.BlendWeight(),
+                outgoingCam = mCurrentBlend.ElementAt(1).cam,
+                cameraState = mCurrentBlend.GetState(ref depth)
+            };
+            return state;
+        }
+
         public CM_BlendState State
         {
             get
             {
-                int count = mCurrentBlend.NumActiveFrames;
-                if (count == 0)
-                    return new CM_BlendState { cameraState = CameraState.Default };
-                var blend0 = mCurrentBlend.ElementAt(0);
-                if (count == 1 || blend0.IsComplete())
-                    return new CM_BlendState
-                    {
-                        cam = blend0.cam,
-                        weight = 1,
-                        outgoingCam = Entity.Null,
-                        cameraState = mCurrentBlend.GetState()
-                    };
-                var state = new CM_BlendState
-                {
-                    cam = blend0.cam,
-                    weight = blend0.BlendWeight(),
-                    outgoingCam = mCurrentBlend.ElementAt(1).cam,
-                    cameraState = mCurrentBlend.GetState()
-                };
-                return state;
+                int depth = 0;
+                return GetState(ref depth);
             }
         }
 
@@ -368,7 +397,7 @@ namespace Unity.Cinemachine3
                     if (numLeft > 0)
                         UnsafeUtility.MemMove(
                             frameStack + src, frameStack + src + 1, numLeft * sizeof(Frame));
-                    --NumOverrideFrames;
+                    --mNumOverrideFrames;
                     break;
                 }
             }
@@ -384,7 +413,7 @@ namespace Unity.Cinemachine3
                     return i;
             }
             // Not found - add it
-            int newIndex = NumOverrideFrames++;
+            int newIndex = mNumOverrideFrames++;
             if (capacity <= newIndex)
             {
                 var old = frameStack;

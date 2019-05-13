@@ -9,6 +9,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 using Unity.Cinemachine.Common;
+using System.Runtime.InteropServices;
 
 namespace Unity.Cinemachine3
 {
@@ -53,13 +54,17 @@ namespace Unity.Cinemachine3
     /// Cache of path distances
     public struct CM_PathState : ISystemStateComponentData
     {
+        [StructLayout(LayoutKind.Explicit, Size = 32)]
         internal unsafe struct DistanceCache
         {
-            float2* p2d2p;   // x = p2d, y = d2p
+            [FieldOffset(0)] float2* p2d2p;   // x = p2d, y = d2p
 
-            public float2 p2d2pStep;
-            public bool valid;
-            public int Length { get; private set; }
+            [FieldOffset(8)] public float2 p2d2pStep;
+            [FieldOffset(24)] int mLength;
+            [FieldOffset(28)] public bool valid;
+
+            public int Length { get { return mLength; } }
+
             public void Allocate(int size)
             {
                 Dispose();
@@ -68,7 +73,7 @@ namespace Unity.Cinemachine3
                     p2d2p = (float2*)UnsafeUtility.Malloc(
                         sizeof(float2) * size, UnsafeUtility.AlignOf<float2>(), Allocator.Persistent);
                 }
-                Length = size;
+                mLength = size;
             }
 
             public void Dispose()
@@ -76,7 +81,7 @@ namespace Unity.Cinemachine3
                 if (p2d2p != null)
                     UnsafeUtility.Free(p2d2p, Allocator.Persistent);
                 p2d2p = null;
-                Length = 0;
+                mLength = 0;
             }
 
             public ref float2 p2d2pAt(int i)

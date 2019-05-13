@@ -2,9 +2,11 @@
 using Unity.Entities;
 using Unity.Collections.LowLevel.Unsafe;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Unity.Cinemachine3
 {
+    [StructLayout(LayoutKind.Explicit, Size = 16)]
     public unsafe struct CM_PriorityQueue
     {
         public struct QueueEntry
@@ -14,8 +16,10 @@ namespace Unity.Cinemachine3
             public CM_VcamShotQuality shotQuality;
         }
 
-        QueueEntry* data;
-        public int Length { get; private set; }
+        [FieldOffset(0)] QueueEntry* data;
+        [FieldOffset(8)] int mLength;
+
+        public int Length { get { return mLength; } }
 
         // Call from a job
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -47,7 +51,7 @@ namespace Unity.Cinemachine3
             {
                 if (data != null)
                     UnsafeUtility.Free(data, Allocator.Persistent);
-                Length = length;
+                mLength = length;
                 data = null;
                 if (length > 0)
                 {
@@ -65,7 +69,7 @@ namespace Unity.Cinemachine3
             if (data != null)
                 UnsafeUtility.Free(data, Allocator.Persistent);
             data = null;
-            Length = 0;
+            mLength = 0;
         }
     }
 }
