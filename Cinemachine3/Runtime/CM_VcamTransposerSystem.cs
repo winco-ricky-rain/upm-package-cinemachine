@@ -149,9 +149,10 @@ namespace Unity.Cinemachine3
                     math.select(float3.zero, transposer.damping, dt >= 0),
                     prevPos, targetPos, targetRot);
 
-                var followOffset = math.mul(targetRot, transposer.followOffset);
+                var followOffset = transposer.followOffset;
                 followOffset.x = math.select(
                     followOffset.x, 0, transposer.bindingMode == BindingMode.SimpleFollowWithWorldUp);
+                followOffset = math.mul(targetRot, followOffset);
                 posState.raw = targetPos + followOffset;
                 posState.up = math.mul(targetRot, math.up());
                 posState.dampingBypass = followOffset - transposerState.previousTargetOffset;
