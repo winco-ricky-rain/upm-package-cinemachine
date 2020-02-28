@@ -58,7 +58,7 @@ namespace Cinemachine
 
         /// <summary>If camera is orthographic, screen edges will be confined to the volume.</summary>
         [Tooltip("Use when screen window is bigger than the confiner.")]
-        public bool m_ScreenWindowBiggerThanConfiner = true;
+        public bool m_FitWindowToConfiner = true;
         
         /// <summary>How gradually to return the camera to the bounding volume if it goes beyond the borders</summary>
         [Tooltip("How gradually to return the camera to the bounding volume if it goes beyond the borders.  "
@@ -114,7 +114,7 @@ namespace Cinemachine
                 {
                     Vector3 displacement;
                     if (m_ConfineScreenEdges && state.Lens.Orthographic)
-                        displacement = ConfineScreenEdges(vcam, ref state, m_ScreenWindowBiggerThanConfiner);
+                        displacement = ConfineScreenEdges(vcam, ref state, m_FitWindowToConfiner);
                     else
                         displacement = ConfinePoint(state.CorrectedPosition);
 
@@ -239,14 +239,13 @@ namespace Cinemachine
             Vector3 vy = (rot * Vector3.up) * height;
 
             Vector3 camPos = state.CorrectedPosition;
+            // to avoid float drift
+            camPos.x = Mathf.Round(camPos.x * 1e3f) / 1e3f;
+            camPos.y = Mathf.Round(camPos.y * 1e3f) / 1e3f;
+            camPos.z = Mathf.Round(camPos.z * 1e3f) / 1e3f;
             
-            Vector3 dx = Vector3.zero;
-            Vector3 dy = Vector3.zero;
-            while (fit)
+            if (fit)
             {
-                vx -= dx;
-                vy -= dy;
-                
                 // camera view corners
                 // A...D 
                 // .[+].
@@ -261,36 +260,40 @@ namespace Cinemachine
                 Vector3 dC = ConfinePoint(C);
                 Vector3 dD = ConfinePoint(D);
 
-                dx.x = Mathf.Max(WidthSquash(dA, dD), WidthSquash(dB, dC));// / 2.0f;
-                dy.y = Mathf.Max(HeightSquash(dA, dB), HeightSquash(dD, dC));// / 2.0f;
+                float dx = Mathf.Max(WidthSquash(dA, dD), WidthSquash(dB, dC)) * 2; 
+                float dy = Mathf.Max(HeightSquash(dA, dB), HeightSquash(dD, dC)) * 2;
 
-                if (dx.x < Mathf.Epsilon && dy.y < Mathf.Epsilon)
-                {
-                    break;
-                }
+                vx.x -= dx;
+                vy.y -= dy;
             }
             
             Vector3 displacement = Vector3.zero;
+            Vector3 lastD = Vector3.zero;
             const int kMaxIter = 12;
             for (int i = 0; i < kMaxIter; ++i)
             {
-                Vector3 A = (camPos + vy) - vx;
-                Vector3 B = (camPos - vy) - vx;
-                Vector3 C = (camPos - vy) + vx;
-                Vector3 D = (camPos + vy) + vx;
-                
-                Vector3 d = ConfinePoint(B);
+                Vector3 d = ConfinePoint((camPos - vy) - vx);
                 if (d.AlmostZero())
-                    d = ConfinePoint(C);
+                    d = ConfinePoint((camPos + vy) + vx);
                 if (d.AlmostZero())
-                    d = ConfinePoint(D);
+                    d = ConfinePoint((camPos - vy) + vx);
                 if (d.AlmostZero())
-                    d = ConfinePoint(A);
+                    d = ConfinePoint((camPos + vy) - vx);
+                if (d.AlmostZero())
+                    d = ConfinePoint((camPos + vy) + vx);
                 if (d.AlmostZero())
                     break;
+                if (d == (-1) * lastD)
+                {
+                    d *= 0.5f;
+                    displacement += d;
+                    break;
+                }
                 displacement += d;
                 camPos += d;
+                lastD = d;
             }
+
             return displacement;
         }
 
