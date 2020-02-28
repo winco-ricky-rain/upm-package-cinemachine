@@ -56,6 +56,10 @@ namespace Cinemachine
             + "If not checked, then only the camera center will be confined")]
         public bool m_ConfineScreenEdges = true;
 
+        /// <summary>If camera is orthographic, screen edges will be confined to the volume.</summary>
+        [Tooltip("Use when screen window is bigger than the confiner.")]
+        public bool m_ScreenWindowBiggerThanConfiner = true;
+        
         /// <summary>How gradually to return the camera to the bounding volume if it goes beyond the borders</summary>
         [Tooltip("How gradually to return the camera to the bounding volume if it goes beyond the borders.  "
             + "Higher numbers are more gradual.")]
@@ -110,7 +114,7 @@ namespace Cinemachine
                 {
                     Vector3 displacement;
                     if (m_ConfineScreenEdges && state.Lens.Orthographic)
-                        displacement = ConfineScreenEdges(vcam, ref state);
+                        displacement = ConfineScreenEdges(vcam, ref state, m_ScreenWindowBiggerThanConfiner);
                     else
                         displacement = ConfinePoint(state.CorrectedPosition);
 
@@ -226,32 +230,86 @@ namespace Cinemachine
         }
 
         // Camera must be orthographic
-        private Vector3 ConfineScreenEdges(CinemachineVirtualCameraBase vcam, ref CameraState state)
+        private Vector3 ConfineScreenEdges(CinemachineVirtualCameraBase vcam, ref CameraState state, bool fit = false)
         {
             Quaternion rot = Quaternion.Inverse(state.CorrectedOrientation);
-            float dy = state.Lens.OrthographicSize;
-            float dx = dy * state.Lens.Aspect;
-            Vector3 vx = (rot * Vector3.right) * dx;
-            Vector3 vy = (rot * Vector3.up) * dy;
+            float height = state.Lens.OrthographicSize;
+            float width = height * state.Lens.Aspect;
+            Vector3 vx = (rot * Vector3.right) * width;
+            Vector3 vy = (rot * Vector3.up) * height;
 
-            Vector3 displacement = Vector3.zero;
             Vector3 camPos = state.CorrectedPosition;
+            
+            Vector3 dx = Vector3.zero;
+            Vector3 dy = Vector3.zero;
+            while (fit)
+            {
+                vx -= dx;
+                vy -= dy;
+                
+                // camera view corners
+                // A...D 
+                // .[+].
+                // B...C
+                Vector3 A = (camPos + vy) - vx;
+                Vector3 B = (camPos - vy) - vx;
+                Vector3 C = (camPos - vy) + vx;
+                Vector3 D = (camPos + vy) + vx;
+
+                Vector3 dA = ConfinePoint(A);
+                Vector3 dB = ConfinePoint(B);
+                Vector3 dC = ConfinePoint(C);
+                Vector3 dD = ConfinePoint(D);
+
+                dx.x = Mathf.Max(WidthSquash(dA, dD), WidthSquash(dB, dC));// / 2.0f;
+                dy.y = Mathf.Max(HeightSquash(dA, dB), HeightSquash(dD, dC));// / 2.0f;
+
+                if (dx.x < Mathf.Epsilon && dy.y < Mathf.Epsilon)
+                {
+                    break;
+                }
+            }
+            
+            Vector3 displacement = Vector3.zero;
             const int kMaxIter = 12;
             for (int i = 0; i < kMaxIter; ++i)
             {
-                Vector3 d = ConfinePoint((camPos - vy) - vx);
+                Vector3 A = (camPos + vy) - vx;
+                Vector3 B = (camPos - vy) - vx;
+                Vector3 C = (camPos - vy) + vx;
+                Vector3 D = (camPos + vy) + vx;
+                
+                Vector3 d = ConfinePoint(B);
                 if (d.AlmostZero())
-                    d = ConfinePoint((camPos - vy) + vx);
+                    d = ConfinePoint(C);
                 if (d.AlmostZero())
-                    d = ConfinePoint((camPos + vy) - vx);
+                    d = ConfinePoint(D);
                 if (d.AlmostZero())
-                    d = ConfinePoint((camPos + vy) + vx);
+                    d = ConfinePoint(A);
                 if (d.AlmostZero())
                     break;
                 displacement += d;
                 camPos += d;
             }
             return displacement;
+        }
+
+        /// <summary>Returns a non-negative number indicating height squash</summary>
+        private float HeightSquash(in Vector3 top, in Vector3 bottom)
+        {
+            float squash = 0f;
+            if (top.y < 0 && bottom.y > 0)
+                squash = Mathf.Abs(top.y - bottom.y);
+            return squash;
+        }
+
+        /// <summary>Returns a non-negative number indicating width squash</summary>
+        private float WidthSquash(in Vector3 left, in Vector3 right)
+        {
+            float squash = 0f;
+            if (left.x > 0 && right.x < 0)
+                squash = Mathf.Abs(left.x - right.x);
+            return squash;
         }
     }
 #endif
