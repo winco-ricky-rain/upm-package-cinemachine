@@ -17,7 +17,7 @@ namespace Cinemachine
         private List<List<IntPoint>> m_ClipperInput;
         private List<List<IntPoint>> m_Skeleton;
 
-        const long k_FloatToIntScaler = 10000000; // same as in Physics2D
+        const long k_FloatToIntScaler = 100000; // same as in Physics2D
         const float k_IntToFloatScaler = 1.0f / k_FloatToIntScaler;
         const float k_MinStepSize = 0.005f;
 
