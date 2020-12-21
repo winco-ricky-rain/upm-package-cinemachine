@@ -81,3 +81,19 @@ namespace Cinemachine
         }
     }
 }
+
+/*Turn this window off by removing the example window script on Main Camera
+
+Scene setup:
+<i>Vehicle</i> follows the path driven by its <i>CinemachineDollyCart</i> component.
+<i>CM vcam follow camera</i> looks at and follows object <i>Vehicle</i> and has Aim and Body compoents setup to illustrate the main controls:
+
+Body
+Follow offset - where the camera is in relation to the follow object
+Damping - positional lag between the camera and follow object
+Binding mode - different styles of relationships between camera and follow object
+Pitch, Yaw, Roll damping - rotation damping on the axis binding 
+
+Aim
+Tracked offset - looking ahead of the ship
+Damping - letting the ship move around on the screen, lots of vertical, a little horizontal.*/
